@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bridgeflow"
+version = "0.1.8"
+description = "BridgeFlow 人机协作桥接与团队巡检工具"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "joinwell52-AI" }
+]
+dependencies = [
+  "websockets>=12,<16",
+  "segno>=1.5"
+]
+
+[project.scripts]
+bridgeflow = "bridgeflow.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bridgeflow = ["data/*.json", "data/rules/*.mdc", "dashboard/*.html"]

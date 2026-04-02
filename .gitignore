@@ -1,0 +1,74 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+.installed.cfg
+pip-selfcheck.json
+*.pyo
+
+# ── 测试 & 覆盖率 ──
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# ── 类型检查 ──
+.mypy_cache/
+.dmypy.json
+.pyright/
+
+# ── 构建产物 ──
+dist/
+build/
+*.whl
+*.tar.gz
+
+# ── Node / PWA ──
+node_modules/
+.nuxt/
+.next/
+.output/
+dist/
+
+# ── IDE ──
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Cursor ──
+.cursor/cache/
+
+# ── 运行时 ──
+.bridgeflow/runtime/
+*.log
+*.tmp
+
+# ── 配置文件（含敏感信息，不提交） ──
+bridgeflow_config.json
+.env
+.env.*
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 临时文件 ──
+_patch_*.py
+_rebuild*.py
+*.bak

@@ -1,0 +1,87 @@
+---
+description: BridgeFlow 项目规范 - 所有 session 全局生效
+alwaysApply: true
+---
+
+# BridgeFlow 项目规范
+
+## 项目定位
+
+BridgeFlow 是一套面向多 AI 角色团队的人机协作桥接工具。
+
+- **手机端**：主控台（ADMIN01），发任务、看状态、扫码绑定
+- **PC 端**：专用执行机，收任务、写文件、巡检、桥接
+- **中继**：轻量文本事件转发层（wss://ai.chedian.cc/bridgeflow/ws/）
+
+## 命名约定
+
+| 名称 | 含义 |
+|------|------|
+| `BridgeFlow` | 应用层名称 |
+| `agent_bridge` | 文件协作协议 |
+| `bridgeflow` | Python 包名 / CLI |
+| `ADMIN01` | 真人操作角色 |
+| `PM01/DEV01/OPS01/QA01` | AI 执行角色 |
+
+## 目录结构规范
+
+```
+D:\BridgeFlow\
+├── src/bridgeflow/      # Python 包，不要在这里写一次性脚本
+├── web/pwa/             # PWA 源码，改完同步到 bridgeflow-pwa 仓库并升版本号
+├── docs/                # 项目文档，改代码时同步更新
+├── docs/agents/         # Agent 角色定义和任务文件
+├── server/relay/        # 本地联调中继（不部署到生产）
+└── scripts/             # 运维脚本
+```
+
+## 代码规范
+
+### Python
+- 最低版本：Python 3.10
+- 包管理：`pyproject.toml`（不用 `setup.py`）
+- CLI 入口：`src/bridgeflow/cli.py`
+- 跨平台兼容：Windows / macOS / Linux
+
+### PWA（web/pwa/）
+- 每次改动必须升 `config.js` 中的 `appVersion`，否则 Service Worker 缓存不更新
+- 改完同步到 `bridgeflow-pwa/` 并推送到 GitHub Pages
+- 不依赖 CDN 的核心功能（CDN 仅用于可选增强）
+
+### 文件协议（agent_bridge）
+- 任务文件格式：`TASK-YYYYMMDD-序号-发送方-to-接收方.md`
+- 每个文件必须有 YAML 元数据头（protocol / version / sender / recipient / thread_key）
+- 不允许只在中继消息里传内容而不落文件
+
+## 中继事件规范
+
+发送事件必须包含：
+```json
+{
+  "room_key": "...",
+  "sender": "ADMIN01",
+  "client_type": "mobile_admin",
+  "event_type": "...",
+  "payload": {}
+}
+```
+
+## 发布规范
+
+### Python 包（PyPI）
+1. 修改 `pyproject.toml` 中的 `version`
+2. 更新 `CHANGELOG.md`
+3. 构建：`py -3.10 -m build`
+4. 上传：`py -3.10 -m twine upload dist/*`
+
+### PWA（GitHub Pages）
+1. 修改 `web/pwa/config.js` 中的 `appVersion`
+2. 同步：`Copy-Item ..\web\pwa\index.html index.html -Force`（在 `bridgeflow-pwa/` 目录下）
+3. 推送：`git push origin main`
+
+## 严禁事项
+
+- 不要把真实 `room_key` 写死到公开示例配置
+- 不要在中继传大文件（限制 8KB）
+- 不要修改 `docs/agents/tasks/` 和 `reports/` 下已有的任务文件（只追加）
+- 不要引入第二套"只聊天不落文件"的协议
