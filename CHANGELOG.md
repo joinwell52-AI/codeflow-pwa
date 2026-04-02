@@ -13,14 +13,29 @@ BridgeFlow 版本历史，遵循 [语义化版本](https://semver.org/lang/zh-CN
 
 ---
 
+## [0.2.0] - 2026-03-21
+
+### 新增
+- **自动生成唯一房间号**：`bridgeflow init` 自动生成 `bf-{主机名}-{8位随机hex}`，
+  每台机器天然隔离，不再共用 `bridgeflow-default` 公共房间
+- 房间号嵌入 QR 二维码，手机扫码后自动同步，无需手填
+- 启动横幅增加房间号显示
+- init 完成后提示"手机扫描二维码可自动同步房间号"
+- `scripts/一键安装启动.bat`（Windows）/ `scripts/一键安装启动.sh`（macOS/Linux）：
+  检查 Python → 安装 bridgeflow → 自动运行，双击一步到位
+
+---
+
 ## [0.1.9] - 2026-03-21
 
 ### 新增
-- `bridgeflow run` 启动时后台检查 PyPI 新版本（`version_check.py`）
-  - 非阻塞后台线程，不影响启动速度
-  - 有新版时打印升级提示框和 `pip install --upgrade bridgeflow` 命令
-  - 结果缓存 24 小时，避免每次启动都查网络
-  - 网络不可用时静默跳过
+- `bridgeflow run` 发现新版时交互询问是否立即升级并重启（`check_update_interactive`）
+  - 升级成功后自动重启进程（`os.execv` / `subprocess` 双保险）
+  - `--auto-upgrade` 参数：跳过确认直接升级（无人值守/脚本场景）
+- `bridgeflow run` 找不到配置文件时自动执行 `init`（无需手动两步操作）
+- `bridgeflow init` 自动生成双击启动脚本
+  - Windows：`启动BridgeFlow.bat`
+  - macOS / Linux：`start_bridgeflow.sh`
 - 启动横幅显示当前版本号（`v0.1.x`）
 - `bridgeflow init` 完成后打印当前版本号和升级命令
 - `__init__.py` 版本号修正为 `0.1.8`（之前误写为 `0.1.0`）

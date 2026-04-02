@@ -82,6 +82,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             print(f"配置已存在：{target}")
         return 0
 
+    import secrets
     hostname = socket.gethostname() or "BridgeFlow-PC"
     raw = json.loads(example.read_text(encoding="utf-8-sig"))
     raw["project"]["root_dir"] = str(project_root)
@@ -90,10 +91,17 @@ def cmd_init(args: argparse.Namespace) -> int:
     raw["device"]["device_name"] = f"{hostname} AI执行机"
     raw["device"].setdefault("owner_role", "PM01")
     raw["device"]["machine_code"] = _build_machine_code(hostname)
-    if getattr(args, "relay_url", None):
-        raw.setdefault("relay", {})["url"] = args.relay_url
+
+    # 房间号：优先使用用户指定值，否则自动生成唯一随机房间号
+    # 格式 bf-{主机名slug}-{8位随机hex}，确保每台机器独立隔离
     if getattr(args, "room_key", None):
         raw.setdefault("relay", {})["room_key"] = args.room_key
+    else:
+        auto_room = f"bf-{_slug(hostname)}-{secrets.token_hex(4)}"
+        raw.setdefault("relay", {})["room_key"] = auto_room
+
+    if getattr(args, "relay_url", None):
+        raw.setdefault("relay", {})["url"] = args.relay_url
 
     raw.setdefault("ai_team", {})
     raw["ai_team"]["fixed_roles"] = DEFAULT_FIXED_ROLES[:]
@@ -132,12 +140,20 @@ def cmd_init(args: argparse.Namespace) -> int:
             shutil.copy2(mdc, rules_dst / mdc.name)
         print(f"已安装 Cursor 规则：{rules_dst}")
 
+    # 生成双击启动脚本
+    _make_launcher(project_root, target)
+
     from bridgeflow import __version__
     print(f"已生成配置：{target}")
-    print(f"设备ID：{config.device_id}")
-    print(f"机器码：{config.machine_code}")
+    print(f"设备ID    ：{config.device_id}")
+    print(f"机器码    ：{config.machine_code}")
+    print(f"中继地址  ：{config.relay_url}")
+    print(f"房间号    ：{config.room_key}")
     print(f"运行态目录：{config.runtime_dir}")
-    print(f"当前版本：v{__version__}  （升级：pip install --upgrade bridgeflow）")
+    print(f"当前版本  ：v{__version__}  （升级：pip install --upgrade bridgeflow）")
+    print()
+    print("  ℹ️  手机端需要使用相同的房间号才能与本机通信。")
+    print("     最简单的方式：启动后扫描仪表盘上的二维码，房间号自动同步到手机。")
     return 0
 
 
@@ -221,16 +237,75 @@ def cmd_relay_connect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _make_launcher(project_root: Path, config_path: Path) -> None:
+    """在项目目录生成双击启动脚本（每次 init 都重新生成）。"""
+    import platform
+    system = platform.system()
+
+    if system == "Windows":
+        bat = project_root / "启动BridgeFlow.bat"
+        bat.write_text(
+            "@echo off\n"
+            "chcp 65001 > nul\n"
+            "title BridgeFlow\n"
+            "\n"
+            "REM 检查升级\n"
+            "pip install --upgrade bridgeflow -q 2>nul\n"
+            "\n"
+            f"cd /d \"{project_root}\"\n"
+            f"bridgeflow run --config \"{config_path}\"\n"
+            "\n"
+            "if %errorlevel% neq 0 (\n"
+            "    echo.\n"
+            "    echo  启动失败，错误代码：%errorlevel%\n"
+            "    pause\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        print(f"  已生成启动脚本：{bat}")
+        print(f"  ★ 下次直接双击 【启动BridgeFlow.bat】 即可，无需敲命令")
+    else:
+        sh = project_root / "start_bridgeflow.sh"
+        sh.write_text(
+            "#!/bin/bash\n"
+            "pip install --upgrade bridgeflow -q 2>/dev/null\n"
+            f"cd \"{project_root}\"\n"
+            f"bridgeflow run --config \"{config_path}\"\n",
+            encoding="utf-8",
+        )
+        try:
+            sh.chmod(0o755)
+        except Exception:
+            pass
+        print(f"  已生成启动脚本：{sh}")
+        print(f"  ★ 下次直接运行 bash start_bridgeflow.sh 即可")
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     import webbrowser
     from bridgeflow import __version__
     from bridgeflow.dashboard.server import DASHBOARD_PORT, start_dashboard, update_status
     from bridgeflow.env_check import check_env
-    from bridgeflow.version_check import check_update_async
+    from bridgeflow.version_check import check_update_interactive
+
+    # ── 自动初始化：找不到配置文件时自动生成 ─────────────────────────────────
+    config_path = Path(args.config)
+    if not config_path.exists():
+        print(f"  未找到配置文件 {args.config}，自动初始化中…")
+        init_args = argparse.Namespace(
+            project_root=str(config_path.parent) if config_path.parent != Path(".") else "",
+            relay_url="",
+            room_key="",
+            force=False,
+        )
+        ret = cmd_init(init_args)
+        if ret != 0:
+            return ret
+        print()
 
     config = load_config(args.config)
 
-    # 环境检测
+    # ── 启动横幅 ──────────────────────────────────────────────────────────────
     print("=" * 52)
     print(f"  BridgeFlow PC 执行机  v{__version__}")
     print("=" * 52)
@@ -241,10 +316,14 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"  设备ID    : {config.device_id}")
     print(f"  机器码    : {config.machine_code}")
     print(f"  中继      : {config.relay_url}")
+    print(f"  房间号    : {config.room_key}")
     print("=" * 52)
 
-    # 后台检查是否有新版本（非阻塞，最多等 0.3s 让提示在横幅后打印）
-    check_update_async(runtime_dir=config.runtime_dir)
+    # ── 版本检查：有新版则交互询问，--auto-upgrade 则直接升级重启 ─────────────
+    check_update_interactive(
+        runtime_dir=config.runtime_dir,
+        auto_upgrade=getattr(args, "auto_upgrade", False),
+    )
 
     # 启动本地仪表盘
     start_dashboard(config)
@@ -362,6 +441,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_p = sub.add_parser("run", help="启动桌面桥接主循环")
     run_p.add_argument("--config", default=DEFAULT_CONFIG_NAME)
+    run_p.add_argument("--auto-upgrade", action="store_true",
+                       help="发现新版本时跳过确认，直接升级并重启")
     run_p.set_defaults(func=cmd_run)
 
     return parser

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bridgeflow"
-version = "0.1.9"
+version = "0.2.0"
 description = "BridgeFlow — 手机主控 + PC 执行机 + 文件协议的多 AI 角色人机协作桥接工具"
 readme = "README.md"
 requires-python = ">=3.10"
