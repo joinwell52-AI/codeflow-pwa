@@ -247,7 +247,6 @@ def main():
     except Exception:
         pass
 
-    start_nudger()
     start_relay(config)
 
     logger.info("BridgeFlow Desktop 运行中（Ctrl+C 退出）")
