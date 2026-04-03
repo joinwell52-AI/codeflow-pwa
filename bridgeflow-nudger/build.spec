@@ -14,6 +14,7 @@ a = Analysis(
         ('panel/index.html', 'panel'),
         ('panel/logo-sm.png', 'panel'),
         ('panel/logo.png', 'panel'),
+        ('panel/app.ico', 'panel'),
         ('templates', 'templates'),
     ],
     hiddenimports=[
@@ -41,7 +42,8 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='bridgeflow',
+    name='BridgeFlow-Desktop',
+    icon='panel/app.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
