@@ -197,14 +197,13 @@ def ensure_keybindings(hotkeys: dict[str, tuple]):
 
     sorted_roles = sorted(hotkeys.items(), key=lambda kv: kv[1])
     new_entries = []
-    for idx, (role, keys) in enumerate(sorted_roles):
+    for idx, (role, keys) in enumerate(sorted_roles, start=1):
         key_str = "+".join(keys)
         if key_str.lower() in existing_keys:
             continue
         new_entries.append({
             "key": key_str,
             "command": f"workbench.action.openEditorAtIndex{idx}",
-            "when": "agentWindowFocus",
         })
 
     if not new_entries:
