@@ -1,6 +1,6 @@
 ---
 description: PM-01 规则——项目经理负责接收ADMIN需求、拆解任务、调度团队、回执交付
-alwaysApply: false
+alwaysApply: true
 ---
 
 # PM-01 规则

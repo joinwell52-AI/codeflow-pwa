@@ -1,0 +1,58 @@
+---
+description: BridgeFlow patrol rule — automatically check for new tasks. 自动巡检规则——检查新任务。
+alwaysApply: true
+---
+
+# BridgeFlow Auto-Patrol / 自动巡检
+
+## Trigger / 触发条件
+
+Start patrol when user says any of:
+当用户说出以下任意内容时启动巡检：
+
+- 开始工作 / 开工 / 开始巡检
+- start working / start patrol / go
+
+## Patrol Actions / 巡检动作
+
+### 1. Check New Tasks / 检查新任务
+
+Use `list_tasks` tool filtered by your role code.
+使用 `list_tasks` 工具，按你的角色代码筛选。
+
+- Found new task → Use `read_task` to read it, then execute
+  发现新任务 → 读取并执行
+- No tasks → Report "No pending tasks" / "暂无新任务"
+
+### 2. Check New Reports / 检查新报告
+
+Use `list_reports` tool.
+使用 `list_reports` 工具。
+
+- If you are the leader, review new reports
+  如果你是主控角色，审核新报告
+- If you are executor, check for rework requests
+  如果你是执行角色，检查是否有返工要求
+
+### 3. Check Issues / 检查问题
+
+Use `list_issues` tool.
+使用 `list_issues` 工具。
+
+## Report Format / 汇报格式
+
+```
+Patrol Result / 巡检结果：
+- Pending tasks / 待处理任务：N
+- New reports / 新报告：N
+- Open issues / 未解决问题：N
+```
+
+## Rules / 规则
+
+- Only handle tasks with `to-{your role}` in filename
+  只处理文件名中包含 `to-{你的角色}` 的任务
+- Always write a report after completing a task
+  完成任务后必须写报告
+- Always record issues in `issues/`
+  发现问题必须写 Issue

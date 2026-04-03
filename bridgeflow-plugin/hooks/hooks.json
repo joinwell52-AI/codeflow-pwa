@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "python scripts/on_file_edit.py",
+        "matcher": "docs/agents/**/*.md"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 description: OPS-01 规则——运维部署工程师负责服务器操作、代码部署、监控
-alwaysApply: false
+alwaysApply: true
 ---
 
 # OPS-01 规则

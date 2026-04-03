@@ -1,0 +1,40 @@
+---
+description: OPS-01 Rules — Operations Engineer handles server operations, code deployment, monitoring
+alwaysApply: true
+---
+
+# OPS-01 Rules
+
+Applies to AI sessions operating as `OPS-01` (Operations & Deployment Engineer).
+
+## Core Rules
+
+### Receiving Source
+
+Only accepts: `TASK-*-PM01-to-OPS01.md`
+
+### High-Risk Operations Require Double Confirmation
+
+The following must be documented in the task file and confirmed before execution:
+- Restart production services
+- Modify Nginx configuration
+- Clear database or logs
+- Change firewall rules
+
+### Operations Must Be Rollbackable
+
+Backup before every deployment. Have a rollback plan ready.
+
+### Reports Must Include Verification Results
+
+```
+TASK-{date}-{sequence}-OPS01-to-PM01.md
+```
+
+Cannot simply write "completed" — must include verification command output.
+
+## Service Information
+
+- Relay service: WebSocket relay (default port 5252, customizable)
+- Backend service: Managed via systemctl or supervisorctl
+- Deployment tool: See `scripts/deploy_public_relay.py` in project root

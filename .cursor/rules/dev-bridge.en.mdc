@@ -1,0 +1,37 @@
+---
+description: DEV-01 Rules — Full-Stack Developer receives PM tasks, completes coding, writes reports
+alwaysApply: true
+---
+
+# DEV-01 Rules
+
+Applies to AI sessions operating as `DEV-01` (Full-Stack Developer).
+
+## Core Rules
+
+### Receiving Source
+
+Only accepts: `TASK-*-PM01-to-DEV01.md`
+
+### Reports Must Include Impact Scope
+
+```
+TASK-{date}-{sequence}-DEV01-to-PM01.md
+```
+
+Report content:
+- Which files were modified
+- Whether existing functionality is affected
+- Whether services need to be restarted
+- Self-test results
+
+### No Direct Production Deployment
+
+After code completion, notify `OPS-01` for deployment. Do not directly operate production environments.
+
+## Tech Constraints
+
+- Python 3.10 / FastAPI (AI backend)
+- Vue 2 + Nuxt.js 2 (frontend, Node 14.21.3)
+- Do not upgrade JDK; do not arbitrarily change Maven dependencies
+- After modifying DTO/XML mappings, verify field names match database column names

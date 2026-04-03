@@ -1,0 +1,22 @@
+{
+  "name": "bridgeflow",
+  "version": "1.0.0",
+  "description": "Multi-AI Agent collaboration framework with file-driven protocol. Supports dev teams, media teams, and startup MVP teams.",
+  "author": {
+    "name": "BridgeFlow",
+    "email": "joinwell52@gmail.com"
+  },
+  "homepage": "https://github.com/joinwell52/BridgeFlow",
+  "repository": "https://github.com/joinwell52/BridgeFlow",
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "collaboration",
+    "team",
+    "workflow",
+    "file-driven",
+    "mcp",
+    "bridgeflow"
+  ],
+  "logo": "assets/logo.svg"
+}

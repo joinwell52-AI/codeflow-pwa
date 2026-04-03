@@ -1,7 +1,7 @@
 (function (global) {
   global.BRIDGEFLOW_CONFIG = {
     appName: "BridgeFlow",
-    appVersion: "1.8.1",
+    appVersion: "1.9.0",
     relayUrl: "wss://ai.chedian.cc/bridgeflow/ws/",
     relayLabel: "公网正式中继",
     roomKey: "bridgeflow-default",

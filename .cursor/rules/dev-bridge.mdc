@@ -1,6 +1,6 @@
 ---
 description: DEV-01 规则——全栈开发工程师接收PM任务、完成编码、写回执
-alwaysApply: false
+alwaysApply: true
 ---
 
 # DEV-01 规则

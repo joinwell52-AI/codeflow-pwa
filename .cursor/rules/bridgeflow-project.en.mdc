@@ -1,0 +1,87 @@
+---
+description: BridgeFlow Project Rules — applies globally to all sessions
+alwaysApply: true
+---
+
+# BridgeFlow Project Rules
+
+## Project Positioning
+
+BridgeFlow is a human-AI collaboration bridge tool for multi-AI-role teams.
+
+- **Phone side**: Command center (ADMIN01) — send tasks, view status, scan to bind
+- **PC side**: Dedicated execution machine — receive tasks, write files, patrol, bridge
+- **Relay**: Lightweight text event forwarding layer (wss://your-relay-server/bridgeflow/ws/)
+
+## Naming Conventions
+
+| Name | Meaning |
+|------|---------|
+| `BridgeFlow` | Application-level name |
+| `agent_bridge` | File collaboration protocol |
+| `bridgeflow` | Python package name / CLI |
+| `ADMIN01` | Human operator role |
+| `PM01/DEV01/OPS01/QA01` | AI execution roles |
+
+## Directory Structure
+
+```
+BridgeFlow/
+├── src/bridgeflow/      # Python package — no one-off scripts here
+├── web/pwa/             # PWA source — sync to bridgeflow-pwa repo and bump version after changes
+├── docs/                # Project docs — update when code changes
+├── docs/agents/         # Agent role definitions and task files
+├── server/relay/        # Local debug relay (not for production)
+└── scripts/             # Operations scripts
+```
+
+## Code Standards
+
+### Python
+- Minimum version: Python 3.10
+- Package management: `pyproject.toml` (no `setup.py`)
+- CLI entry: `src/bridgeflow/cli.py`
+- Cross-platform: Windows / macOS / Linux
+
+### PWA (web/pwa/)
+- Must bump `config.js` `appVersion` on every change, otherwise Service Worker cache won't update
+- Sync to `bridgeflow-pwa/` and push to GitHub Pages after changes
+- Core functionality must not depend on CDN (CDN only for optional enhancements)
+
+### File Protocol (agent_bridge)
+- Task file format: `TASK-YYYYMMDD-sequence-sender-to-recipient.md`
+- Every file must have a YAML metadata header (protocol / version / sender / recipient / thread_key)
+- Content must not only exist in relay messages without being saved to files
+
+## Relay Event Specification
+
+Outgoing events must include:
+```json
+{
+  "room_key": "...",
+  "sender": "ADMIN01",
+  "client_type": "mobile_admin",
+  "event_type": "...",
+  "payload": {}
+}
+```
+
+## Release Process
+
+### Python Package (PyPI)
+1. Update `version` in `pyproject.toml`
+2. Update `CHANGELOG.md`
+3. Build: `py -3.10 -m build`
+4. Upload: `py -3.10 -m twine upload dist/*`
+
+### PWA (GitHub Pages)
+1. Update `appVersion` in `web/pwa/config.js`
+2. Sync: `Copy-Item ..\web\pwa\index.html index.html -Force` (in `bridgeflow-pwa/` directory)
+3. Push: `git push origin main`
+
+## Prohibited Actions
+
+- Do not hardcode real `room_key` in public example configs
+- Do not transmit large files via relay (8KB limit)
+- Do not modify existing task files in `docs/agents/tasks/` and `reports/` (append only)
+- Do not introduce a secondary "chat-only, no-file" protocol

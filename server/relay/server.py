@@ -16,6 +16,7 @@ ALLOWED_EVENTS = {
     "hello",
     "ping",
     "command_from_admin",
+    "admin_command",
     "task_event",
     "reply_summary",
     "alert",
@@ -25,6 +26,21 @@ ALLOWED_EVENTS = {
     "task_detail",
     "request_device_roster",
     "device_roster",
+    # Phase 2 — MCP ↔ 手机端同步
+    "file_change",
+    "agent_status",
+    "message_history",
+    "request_message_history",
+    # PWA → PC 控制指令（定向投递）
+    "start_patrol",
+    "stop_patrol",
+    "patrol_status",
+    "patrol_state",
+    "request_bind_state",
+    "request_bind_code",
+    "bind_state",
+    "execute_desktop_action",
+    "desktop_action_result",
 }
 MAX_MESSAGE_BYTES = 8 * 1024
 TRANSPORT_MAX_BYTES = 16 * 1024
@@ -225,7 +241,19 @@ async def relay_handler(websocket) -> None:
                 )
                 continue
 
-            if event_type in {"command_from_admin", "request_dashboard", "request_task_detail"}:
+            if event_type in {
+                "command_from_admin",
+                "admin_command",
+                "request_dashboard",
+                "request_task_detail",
+                "request_message_history",
+                "start_patrol",
+                "stop_patrol",
+                "patrol_status",
+                "request_bind_state",
+                "request_bind_code",
+                "execute_desktop_action",
+            }:
                 target_device_id = str(payload.get("target_device_id", "")).strip()
                 if not target_device_id:
                     await send_alert(websocket, "缺少 target_device_id，无法定向投递", room_key)

@@ -1,0 +1,22 @@
+[
+    {
+        "key": "ctrl+alt+1",
+        "command": "workbench.action.openEditorAtIndex0",
+        "when": "agentWindowFocus"
+    },
+    {
+        "key": "ctrl+alt+2",
+        "command": "workbench.action.openEditorAtIndex1",
+        "when": "agentWindowFocus"
+    },
+    {
+        "key": "ctrl+alt+3",
+        "command": "workbench.action.openEditorAtIndex2",
+        "when": "agentWindowFocus"
+    },
+    {
+        "key": "ctrl+alt+4",
+        "command": "workbench.action.openEditorAtIndex3",
+        "when": "agentWindowFocus"
+    }
+]

@@ -1,6 +1,6 @@
 ---
 description: QA-01 规则——测试工程师负责验收、回归测试、缺陷反馈
-alwaysApply: false
+alwaysApply: true
 ---
 
 # QA-01 规则

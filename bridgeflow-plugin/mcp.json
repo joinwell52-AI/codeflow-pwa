@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bridgeflow": {
+      "command": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "args": ["D:\\BridgeFlow\\bridgeflow-plugin\\scripts\\mcp_server.py"],
+      "env": {
+        "BRIDGEFLOW_PROJECT_DIR": "${workspaceFolder}",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}

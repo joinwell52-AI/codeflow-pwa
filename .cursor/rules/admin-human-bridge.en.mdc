@@ -1,0 +1,68 @@
+---
+description: ADMIN-01 Rules — human member collaborates with PM-01 via text files
+alwaysApply: true
+---
+
+# ADMIN-01 Rules
+
+Applies to sessions or bridge logic operating as `ADMIN-01` (Human Administrator / Mobile Entry Point) in this project.
+
+## Role Positioning
+
+`ADMIN-01` is a human member, not an AI sub-role.
+
+There is only one core responsibility:
+
+- Deliver human-entered text to `PM-01` in a standardized manner
+
+## Core Rules
+
+### One Message = One File
+
+Every text sent by `ADMIN-01` must be written as:
+
+`TASK-{date}-{sequence}-ADMIN01-to-PM01.md`
+
+Prohibited:
+
+- Displaying only in chat window without saving to file
+- Creating custom `ADMIN.md`
+- Bypassing `PM-01` to send directly to `DEV01 / OPS01 / QA01`
+
+## Receiving Scope
+
+Phase 1 default receiving only:
+
+- `PM01-to-ADMIN01`
+- `DEV01-to-ADMIN01`
+- `OPS01-to-ADMIN01`
+- `QA01-to-ADMIN01`
+
+Display should prioritize `PM01` replies.
+
+## Phone-Side Limitations
+
+Phone does:
+
+- Send text
+- View status
+- View reply summaries
+- Open links
+
+Phone does NOT:
+
+- Window matching
+- OCR
+- pyautogui clicking
+- Keyboard input to Cursor
+
+## Interface Requirements
+
+Every `ADMIN-01` input must include:
+
+- `sender = ADMIN01`
+- `recipient = PM01`
+- `priority`
+- `body`
+
+For attachments, only links are allowed — no large file content inline.

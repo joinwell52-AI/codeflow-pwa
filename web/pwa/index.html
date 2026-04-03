@@ -220,6 +220,9 @@
     .badge.status-doing     { background:rgba(251,191,36,.15); border-color:rgba(251,191,36,.3); color:#fcd34d; }
     .badge.status-waiting   { background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.25); color:#fde68a; }
     .badge.status-done      { background:rgba(34,197,94,.15); border-color:rgba(34,197,94,.3); color:#86efac; }
+    .badge.status-offline   { background:rgba(148,163,184,.12); border-color:rgba(148,163,184,.25); color:#94a3b8; }
+    .role-card.offline .team-icon { opacity:.4; filter:grayscale(1); }
+    .role-card.offline .team-role-state { opacity:.5; }
     .pair-summary { margin-top:6px; padding:6px 8px; border-radius:8px; background:rgba(59,130,246,.1); border-left:3px solid var(--blue); font-size:11px; color:var(--text2); }
 
 
@@ -587,6 +590,31 @@
     </div>
 
     <div class="card">
+      <div class="card-head"><h3 id="patrolTitle" class="card-title">PC 巡检</h3></div>
+      <div id="patrolDesc" class="muted">远程控制 PC 端巡检器，日志实时同步。</div>
+      <div style="display:flex;gap:8px;margin:10px 0;">
+        <button id="patrolStartBtn" type="button" style="flex:1;padding:8px;border-radius:8px;background:var(--green);border:1px solid rgba(34,197,94,.4);color:#fff;font-size:13px;cursor:pointer;">开始巡检</button>
+        <button id="patrolStopBtn" type="button" style="flex:1;padding:8px;border-radius:8px;background:var(--red);border:1px solid rgba(239,68,68,.4);color:#fff;font-size:13px;cursor:pointer;" disabled>停止巡检</button>
+        <button id="pcResetBtn" type="button" style="flex:1;padding:8px;border-radius:8px;background:var(--amber);border:1px solid rgba(251,191,36,.4);color:#1e293b;font-size:13px;cursor:pointer;font-weight:600;">重置 PC</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span class="muted" style="font-size:12px;">巡检状态：</span>
+        <span id="patrolStatusBadge" class="badge status-offline" style="font-size:11px;">未启动</span>
+        <span class="muted" style="font-size:12px;margin-left:auto;">轮次：</span>
+        <span id="patrolRoundValue" style="font-size:12px;color:var(--text);">0</span>
+      </div>
+      <div id="patrolLogBox" style="background:rgba(0,0,0,.3);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-family:'Fira Code',monospace;font-size:11px;line-height:1.5;color:var(--text3);max-height:200px;overflow-y:auto;white-space:pre-wrap;min-height:40px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3 id="msgHistoryTitle" class="card-title">消息记录</h3></div>
+      <div id="msgHistoryDesc" class="muted">PC 和手机之间的收发消息记录。</div>
+      <div id="msgHistoryList" style="background:rgba(0,0,0,.2);border:1px solid var(--card-border);border-radius:8px;padding:8px;max-height:240px;overflow-y:auto;min-height:40px;">
+        <div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无消息</div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-head"><h3 id="connectTitle" class="card-title">连接状态</h3></div>
       <div id="connectInfo" class="muted">最近连接：无 | 最近断开：无 | 重连状态：未启动</div>
     </div>
@@ -734,6 +762,14 @@
     const roleRecordViewEl = document.getElementById("roleRecordView");
     const roleMarkdownViewEl = document.getElementById("roleMarkdownView");
     const logEl = document.getElementById("systemLog");
+    const patrolLogBoxEl = document.getElementById("patrolLogBox");
+    const patrolStatusBadgeEl = document.getElementById("patrolStatusBadge");
+    const patrolRoundValueEl = document.getElementById("patrolRoundValue");
+    const patrolStartBtnEl = document.getElementById("patrolStartBtn");
+    const patrolStopBtnEl = document.getElementById("patrolStopBtn");
+    const pcResetBtnEl = document.getElementById("pcResetBtn");
+    const msgHistoryListEl = document.getElementById("msgHistoryList");
+    let messageHistory = JSON.parse(localStorage.getItem("bridgeflow_msg_history") || "[]");
     const teamListEl = document.getElementById("teamList");
     const teamCountEl = document.getElementById("teamCount");
     const currentTaskTitleEl = document.getElementById("currentTaskTitle");
@@ -758,7 +794,7 @@
     const appConfig = window.BRIDGEFLOW_CONFIG || {};
     const APP_VERSION = String(appConfig.appVersion || "1.0.0").trim();
     const RELAY_URL = String(appConfig.relayUrl || "wss://relay.example.com/bridgeflow/ws/").trim();
-    const ROOM_KEY = String(appConfig.roomKey || "replace-with-random-room-key").trim();
+    let ROOM_KEY = localStorage.getItem("bridgeflow_room_key") || String(appConfig.roomKey || "replace-with-random-room-key").trim();
     const AUTO_CONNECT = appConfig.autoConnect !== false;
     const DEFAULT_TARGET = String(appConfig.defaultTarget || "PM").trim();
     const RELAY_LABEL = String(appConfig.relayLabel || "公网正式中继").trim();
@@ -997,6 +1033,7 @@
         teamBusy: "忙碌",
         teamIdle: "闲着",
         teamWaiting: "等待",
+        teamOffline: "离线",
         versionTitle: "版本号",
         languageTitle: "语言",
         bindStatusPending: "待确认",
@@ -1011,7 +1048,20 @@
         fpFlowLabel: "流转路径",
         fpRecordTab: "任务记录",
         fpMarkdownTab: "MD原文",
-        myPageTitle: "我的"
+        myPageTitle: "我的",
+        patrolTitle: "PC 巡检",
+        patrolDesc: "远程控制 PC 端巡检器，日志实时同步。",
+        patrolStart: "开始巡检",
+        patrolStop: "停止巡检",
+        pcReset: "重置 PC",
+        patrolNotStarted: "未启动",
+        patrolRunning: "运行中",
+        patrolStopped: "已停止",
+        msgHistoryTitle: "消息记录",
+        msgHistoryDesc: "PC 和手机之间的收发消息记录。",
+        msgHistoryEmpty: "暂无消息",
+        msgSent: "发送",
+        msgReceived: "收到"
       },
       en: {
         title: "BridgeFlow Workspace",
@@ -1112,6 +1162,7 @@
         teamBusy: "Busy",
         teamIdle: "Idle",
         teamWaiting: "Waiting",
+        teamOffline: "Offline",
         versionTitle: "Version",
         languageTitle: "Language",
         bindStatusPending: "Pending",
@@ -1126,7 +1177,20 @@
         fpFlowLabel: "Flow Path",
         fpRecordTab: "Task Record",
         fpMarkdownTab: "MD Source",
-        myPageTitle: "My"
+        myPageTitle: "My",
+        patrolTitle: "PC Patrol",
+        patrolDesc: "Remote control PC patrol agent, logs synced in real-time.",
+        patrolStart: "Start Patrol",
+        patrolStop: "Stop Patrol",
+        pcReset: "Reset PC",
+        patrolNotStarted: "Not Started",
+        patrolRunning: "Running",
+        patrolStopped: "Stopped",
+        msgHistoryTitle: "Messages",
+        msgHistoryDesc: "Messages between PC and mobile.",
+        msgHistoryEmpty: "No messages yet",
+        msgSent: "Sent",
+        msgReceived: "Received"
       }
     };
 
@@ -1211,6 +1275,13 @@
       setText("myPageTitle", t("myPageTitle"));
       setText("scanQrBtn", t("scanQrBtn"));
       setText("scanQrTitle", t("scanQrTitle"));
+      setText("patrolTitle", t("patrolTitle"));
+      setText("patrolDesc", t("patrolDesc"));
+      setText("patrolStartBtn", t("patrolStart"));
+      setText("patrolStopBtn", t("patrolStop"));
+      setText("pcResetBtn", t("pcReset"));
+      setText("msgHistoryTitle", t("msgHistoryTitle"));
+      setText("msgHistoryDesc", t("msgHistoryDesc"));
       setText("sendBtn", t("sendBtnLabel"));
       setText("fpRecordTabBtn", t("fpRecordTab"));
       setText("fpMarkdownTabBtn", t("fpMarkdownTab"));
@@ -1236,6 +1307,59 @@
 
     function appendLog(text) {
       logEl.textContent = `${new Date().toLocaleTimeString()}  ${text}\n` + logEl.textContent;
+    }
+
+    function updatePatrolUI(data) {
+      if (!data) return;
+      const running = !!data.running;
+      patrolStatusBadgeEl.textContent = running ? t("patrolRunning") : (data.round > 0 ? t("patrolStopped") : t("patrolNotStarted"));
+      patrolStatusBadgeEl.className = `badge ${running ? "status-doing" : "status-offline"}`;
+      patrolRoundValueEl.textContent = String(data.round || 0);
+      if (data.log) patrolLogBoxEl.textContent = data.log;
+      patrolStartBtnEl.disabled = running;
+      patrolStopBtnEl.disabled = !running;
+    }
+
+    function startPatrol() {
+      requestPatrolStart();
+    }
+
+    function stopPatrol() {
+      requestPatrolStop();
+    }
+
+    function resetPC() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { appendLog("未连接中继，无法重置 PC"); return; }
+      if (!confirm(currentLang === "en" ? "Reset PC BridgeFlow process?" : "确定重置 PC 端 BridgeFlow 进程？")) return;
+      sendEvent("execute_desktop_action", { action: "restart" });
+      appendLog("已发送：重置 PC");
+    }
+
+    function addMessageRecord(direction, text, role) {
+      const record = { time: new Date().toLocaleString(), dir: direction, text: text.substring(0, 200), role: role || "" };
+      messageHistory.unshift(record);
+      if (messageHistory.length > 100) messageHistory = messageHistory.slice(0, 100);
+      localStorage.setItem("bridgeflow_msg_history", JSON.stringify(messageHistory));
+      renderMessageHistory();
+    }
+
+    function renderMessageHistory() {
+      if (!msgHistoryListEl) return;
+      if (!messageHistory.length) {
+        msgHistoryListEl.innerHTML = `<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">${t("msgHistoryEmpty")}</div>`;
+        return;
+      }
+      msgHistoryListEl.innerHTML = messageHistory.slice(0, 50).map((m) => {
+        const arrow = m.dir === "out" ? "→" : "←";
+        const color = m.dir === "out" ? "var(--blue)" : "var(--green)";
+        const label = m.dir === "out" ? t("msgSent") : t("msgReceived");
+        return `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;line-height:1.5;">
+          <span style="color:${color};font-weight:600;">${arrow} ${label}</span>
+          <span style="color:var(--text3);margin-left:4px;">${m.role || ""}</span>
+          <span style="color:var(--text3);float:right;font-size:10px;">${m.time}</span>
+          <div style="color:var(--text2);margin-top:2px;word-break:break-all;">${m.text}</div>
+        </div>`;
+      }).join("");
     }
 
     function formatStamp(date = new Date()) {
@@ -1423,6 +1547,7 @@
     }
 
     function roleStateInfo(role) {
+      if (!onlineDevices.length) return { text: t("teamOffline"), cls: "status-offline", offline: true };
       const items = tasksForRole(role);
       const hasDoing = items.some((item) => mapProgress(item.progress).cls === "status-doing");
       const hasWaiting = items.some((item) => ["status-published", "status-received", "status-waiting"].includes(mapProgress(item.progress).cls));
@@ -1547,8 +1672,9 @@
       teamListEl.innerHTML = roles.map((role) => {
         const state = roleStateInfo(role);
         const roleItems = tasksForRole(role);
+        const offlineCls = state.offline ? " offline" : "";
         return `
-          <div class="role-card team-icon-card ${selectedRole === role ? "active" : ""}" data-role="${role}">
+          <div class="role-card team-icon-card${offlineCls} ${selectedRole === role ? "active" : ""}" data-role="${role}">
             <div class="team-icon">${role}</div>
             <div class="team-role-state"><span class="badge ${state.cls}">${state.text}</span> <span style="font-size:9px;color:var(--text3);">${roleItems.length}</span></div>
           </div>
@@ -1727,6 +1853,89 @@
       sendEvent("request_bind_code", { target_device_id: target.device_id, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
     }
 
+    // ── Patrol control ──────────────────────────────────────────────
+    const patrolStartBtn = document.getElementById("patrolStartBtn");
+    const patrolStopBtn = document.getElementById("patrolStopBtn");
+    const pcResetBtn = document.getElementById("pcResetBtn");
+    const patrolStatusBadge = document.getElementById("patrolStatusBadge");
+    const patrolRoundValue = document.getElementById("patrolRoundValue");
+    const patrolLogBox = document.getElementById("patrolLogBox");
+    let patrolPolling = null;
+
+    function applyPatrolState(p) {
+      if (!patrolStatusBadge) return;
+      const running = !!p.running;
+      patrolStatusBadge.textContent = running ? "运行中" : "已停止";
+      patrolStatusBadge.className = "badge " + (running ? "status-doing" : "status-offline");
+      if (patrolRoundValue) patrolRoundValue.textContent = String(p.round || 0);
+      if (patrolLogBox && p.log) { patrolLogBox.textContent = p.log; patrolLogBox.scrollTop = patrolLogBox.scrollHeight; }
+      if (patrolStartBtn) patrolStartBtn.disabled = running;
+      if (patrolStopBtn) patrolStopBtn.disabled = !running;
+    }
+
+    function _pcDeviceId() {
+      const target = currentTargetDevice() || onlineDevices[0];
+      return target ? target.device_id : "";
+    }
+    function requestPatrolStart() {
+      const did = _pcDeviceId();
+      if (!did) { appendLog(currentLang === "en" ? "PC not online" : "PC 不在线，无法启动巡检"); return; }
+      sendEvent("start_patrol", { target_device_id: did });
+      appendLog(currentLang === "en" ? "Sent: Start Patrol" : "已发送: 开始巡检");
+      addMsgRecord("pwa", currentLang === "en" ? "Start Patrol" : "开始巡检");
+      if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 8000);
+    }
+    function requestPatrolStop() {
+      const did = _pcDeviceId();
+      if (!did) { appendLog(currentLang === "en" ? "PC not online" : "PC 不在线"); return; }
+      sendEvent("stop_patrol", { target_device_id: did });
+      appendLog(currentLang === "en" ? "Sent: Stop Patrol" : "已发送: 停止巡检");
+      addMsgRecord("pwa", currentLang === "en" ? "Stop Patrol" : "停止巡检");
+    }
+    function requestPatrolStatus() {
+      const did = _pcDeviceId();
+      if (ws && ws.readyState === WebSocket.OPEN && did) sendEvent("patrol_status", { target_device_id: did });
+    }
+    function requestPcReset() {
+      const did = _pcDeviceId();
+      if (!did) { appendLog(currentLang === "en" ? "PC not online" : "PC 不在线，无法重置"); return; }
+      if (!confirm(currentLang === "en" ? "Restart BridgeFlow on PC?" : "确定要重置 PC 端 BridgeFlow 吗？")) return;
+      sendEvent("execute_desktop_action", { action: "restart", target_device_id: did });
+      appendLog(currentLang === "en" ? "Sent: Reset PC" : "已发送: 重置 PC");
+      addMsgRecord("pwa", currentLang === "en" ? "Reset PC" : "重置 PC");
+    }
+
+    if (patrolStartBtn) patrolStartBtn.onclick = requestPatrolStart;
+    if (patrolStopBtn) patrolStopBtn.onclick = requestPatrolStop;
+    if (pcResetBtn) pcResetBtn.onclick = requestPcReset;
+
+    // ── Message history (PC ↔ PWA) ──────────────────────────────────
+    const msgHistoryList = document.getElementById("msgHistoryList");
+    let msgRecords = JSON.parse(localStorage.getItem("bridgeflow_msg_records") || "[]");
+
+    function addMsgRecord(from, text) {
+      const ts = new Date().toLocaleTimeString();
+      const label = from === "pwa" ? "📱 手机" : "🖥️ PC";
+      msgRecords.push({ ts, from, label, text });
+      if (msgRecords.length > 200) msgRecords = msgRecords.slice(-100);
+      localStorage.setItem("bridgeflow_msg_records", JSON.stringify(msgRecords));
+      renderMsgHistory();
+    }
+
+    function renderMsgHistory() {
+      if (!msgHistoryList) return;
+      if (!msgRecords.length) {
+        msgHistoryList.innerHTML = '<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无消息</div>';
+        return;
+      }
+      msgHistoryList.innerHTML = msgRecords.slice(-50).reverse().map(r =>
+        `<div style="font-size:12px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);color:${r.from === "pwa" ? "var(--blue-hi)" : "var(--green)"};">` +
+        `<span style="color:var(--text3);margin-right:6px;">${r.ts}</span>${r.label} ${r.text}</div>`
+      ).join("");
+      msgHistoryList.scrollTop = 0;
+    }
+    renderMsgHistory();
+
     function sendDesktopAction(action) {
       const target = currentTargetDevice() || onlineDevices[0];
       if (!target) { appendLog("暂无可用设备，无法执行动作"); return; }
@@ -1758,24 +1967,44 @@
         updateStatus(t("connected"), "status-ok");
         appendLog(currentLang === "en" ? "Connected to relay" : "已连接到中继");
         updateConnectInfo(t("connected"));
-        sendEvent("hello", { role: "ADMIN01", device_name: t("mobile"), owner_role: "ADMIN01" });
-        requestDeviceRoster(); requestDashboard();
+        sendEvent("hello", { device_id: localMobileDeviceId, device_name: t("mobile"), owner_role: "ADMIN01" });
+        requestDeviceRoster();
       };
       ws.onmessage = (event) => {
         let data = null;
         try { data = JSON.parse(event.data); } catch (error) { appendLog(`收到无法解析的消息: ${error.message}`); return; }
         appendLog(`收到事件: ${data.event_type}`);
         if (data.event_type === "dashboard_state") { applyDashboard(data.payload || {}); }
-        else if (data.event_type === "device_roster") { renderDevices(data.payload?.devices || []); if (currentTargetDevice()) requestDashboard(); }
+        else if (data.event_type === "device_roster") {
+          renderDevices(data.payload?.devices || []);
+          if (_pcDeviceId()) {
+            requestDashboard();
+            requestPatrolStatus();
+            if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 8000);
+          }
+        }
         else if (data.event_type === "task_detail") { renderDetail(data.payload || {}); }
         else if (data.event_type === "task_event") { if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("bridgeflow_last_thread", data.payload.thread_key); } setSendLocked(false); requestDashboard(); }
-        else if (data.event_type === "bind_state") { bindState = data.payload || {}; renderMyDeviceInfo(); if (data.payload?.pending_bind_code) appendLog(`绑定码: ${data.payload.pending_bind_code}`); }
-        else if (data.event_type === "desktop_action_result") { appendLog(`执行动作: ${data.payload?.message || ""}`); }
-        else if (data.event_type === "reply_summary") { if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("bridgeflow_last_thread", data.payload.thread_key); } requestDashboard(); }
-        else if (data.event_type === "pong") { appendLog("收到 pong"); }
-        else if (data.event_type === "alert") { appendLog(`告警: ${data.payload.message}`); }
+        else if (data.event_type === "bind_state") {
+          bindState = data.payload || {};
+          if (bindState.status === "bound" && bindState.machine_code) {
+            localStorage.setItem("bridgeflow_bound_pc_code", bindState.machine_code);
+            localStorage.setItem("bridgeflow_bound_pc_name", bindState.bound_mobile_device_name || "BridgeFlow-PC");
+            appendLog("绑定成功！PC=" + bindState.machine_code);
+          }
+          renderMyDeviceInfo();
+          if (bindState.pending_bind_code) appendLog("绑定码: " + bindState.pending_bind_code);
+        }
+        else if (data.event_type === "patrol_state") { applyPatrolState(data.payload || {}); }
+        else if (data.event_type === "desktop_action_result") { appendLog(`PC动作: ${data.payload?.message || ""}`); addMsgRecord("pc", data.payload?.message || "动作完成"); }
+        else if (data.event_type === "reply_summary") { addMsgRecord("pc", `回复: ${data.payload?.summary || ""}`); if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("bridgeflow_last_thread", data.payload.thread_key); } requestDashboard(); }
+        else if (data.event_type === "pong") { }
+        else if (data.event_type === "alert") { appendLog(`告警: ${data.payload.message}`); addMsgRecord("pc", `告警: ${data.payload.message}`); }
       };
       ws.onclose = (event) => {
+        onlineDevices = []; renderTeam([], "");
+        if (patrolPolling) { clearInterval(patrolPolling); patrolPolling = null; }
+        applyPatrolState({ running: false, round: 0, log: "" });
         lastDisconnectedAt = formatStamp();
         lastDisconnectReason = manualDisconnect ? (currentLang === "en" ? "Manual disconnect" : "手动断开") : decodeCloseReason(event);
         updateStatus(manualDisconnect ? t("disconnected") : t("disconnectedWarn"), manualDisconnect ? "status-warn" : "status-bad");
@@ -1805,6 +2034,7 @@
       })) {
         localStorage.setItem("bridgeflow_target_device_id", target.device_id);
         addPendingTask(text, target.owner_role, currentThread);
+        addMsgRecord("pwa", `→${target.owner_role}: ${text.substring(0, 80)}`);
         messageEl.value = "";
         requestDashboard();
         setTimeout(requestDashboard, 1200);
@@ -1876,19 +2106,63 @@
           if (frameCount % 10 === 0) { qrScanStatus.textContent = '扫描中… (' + frameCount + ' frames)'; }
           if (code) {
             const raw = code.data || '';
-            if (raw.startsWith('bridgeflow://bind?')) {
-              stopScan();
+            let machineCode = '', deviceId = '';
+            let matched = false;
+            let scannedRoomKey = '';
+            if (raw.startsWith('bf:')) {
+              const parts = raw.substring(3).split('|');
+              machineCode = parts[0] || '';
+              deviceId = parts[1] || '';
+              scannedRoomKey = parts[2] || '';
+              matched = true;
+            } else if (raw.startsWith('bridgeflow://bind?')) {
               const params = new URLSearchParams(raw.replace('bridgeflow://bind?', ''));
-              const machineCode = params.get('machine_code') || '';
-              const deviceId = params.get('device_id') || '';
-              appendLog('扫码成功：PC=' + deviceId + ' 机器码=' + machineCode);
-              qrScanStatus.textContent = '扫码成功！';
-              const ok = sendEvent('request_bind_code', { target_device_id: deviceId, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
-              if (ok) { alert('扫码成功！\nPC设备：' + deviceId + '\n绑定请求已发送，等待 PC 确认。'); }
-              else { alert('扫码成功，但未连接中继。\n请先确保手机已连接，再重试绑定。\n机器码：' + machineCode); }
-            } else {
+              machineCode = params.get('machine_code') || params.get('mc') || '';
+              deviceId = params.get('device_id') || params.get('did') || '';
+              matched = true;
+            }
+            if (matched && (machineCode || deviceId)) {
+              stopScan();
+              appendLog('扫码成功：PC=' + deviceId + ' 机器码=' + machineCode + (scannedRoomKey ? ' 房间=' + scannedRoomKey : ''));
+              localStorage.setItem("bridgeflow_bound_pc_code", machineCode);
+              localStorage.setItem("bridgeflow_bound_pc_name", deviceId);
+              if (scannedRoomKey) { localStorage.setItem("bridgeflow_room_key", scannedRoomKey); }
+
+              const needSwitch = scannedRoomKey && scannedRoomKey !== ROOM_KEY;
+              if (needSwitch) {
+                appendLog('房间不同，切换到 PC 房间: ' + scannedRoomKey);
+                ROOM_KEY = scannedRoomKey;
+                qrScanStatus.textContent = '正在切换房间并绑定…';
+                disconnect();
+                setTimeout(() => {
+                  connect();
+                  const waitBind = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                      clearInterval(waitBind);
+                      sendEvent('request_bind_code', { target_device_id: deviceId, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
+                      bindState = { status: "bound", machine_code: machineCode };
+                      renderMyDeviceInfo();
+                      qrScanStatus.textContent = '绑定成功！';
+                      appendLog('绑定成功：' + machineCode);
+                    }
+                  }, 300);
+                  setTimeout(() => clearInterval(waitBind), 15000);
+                }, 500);
+              } else {
+                const ok = sendEvent('request_bind_code', { target_device_id: deviceId, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
+                if (ok) {
+                  bindState = { status: "bound", machine_code: machineCode };
+                  renderMyDeviceInfo();
+                  qrScanStatus.textContent = '绑定成功！';
+                  appendLog('绑定成功：' + machineCode);
+                } else {
+                  qrScanStatus.textContent = '未连接中继，请先连接后重试';
+                  appendLog('扫码成功但中继未连接');
+                }
+              }
+            } else if (raw) {
               qrScanStatus.textContent = '检测到二维码，但不是 BridgeFlow 码';
-              appendLog('检测到非BF二维码: ' + raw.substring(0, 60));
+              appendLog('非BF码: ' + raw.substring(0, 60));
             }
           }
         }, 200);
