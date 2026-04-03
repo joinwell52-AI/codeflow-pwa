@@ -141,11 +141,7 @@ def parse_recipient(filename: str) -> str | None:
 
 _MSG_TEMPLATES = {
     "zh": {
-        "first_hello": (
-            "@{role_file} 你好，我是 BridgeFlow 巡检器。"
-            "你的角色定义在 @{role_file} 中，请先阅读了解自己的职责。"
-            "现在有一个新任务需要你处理：{filename}"
-        ),
+        "first_hello": "@{role_file} 你好，我是 BridgeFlow 巡检器。你的角色定义在 @{role_file} 中，请阅读后开始巡检。开工！",
         "new_task": "@{role_file} [BridgeFlow] 新任务到达: {filename}，请读取任务单并执行",
         "new_report": "@{role_file} [BridgeFlow] 新报告到达: {filename}，请审核并回复",
         "new_issue": "@{role_file} [BridgeFlow] 新问题: {filename}，请查看并处理",
@@ -153,11 +149,7 @@ _MSG_TEMPLATES = {
         "remind": "@{role_file} [BridgeFlow] 催办: {filename} 已等待 {minutes} 分钟，请尽快处理",
     },
     "en": {
-        "first_hello": (
-            "@{role_file} Hello, I'm the BridgeFlow Nudger. "
-            "Your role is defined in @{role_file}, please read it first. "
-            "You have a new task to handle: {filename}"
-        ),
+        "first_hello": "@{role_file} Hello, I'm the BridgeFlow Nudger. Your role is defined in @{role_file}, please read it and start patrol. Let's go!",
         "new_task": "@{role_file} [BridgeFlow] New task arrived: {filename}, please read and execute",
         "new_report": "@{role_file} [BridgeFlow] New report arrived: {filename}, please review",
         "new_issue": "@{role_file} [BridgeFlow] New issue: {filename}, please check and handle",
