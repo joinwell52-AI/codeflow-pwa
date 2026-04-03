@@ -34,6 +34,8 @@ except ImportError:
     websockets = None
     HAS_WS = False
 
+_relay_connected = False
+
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.05
 
@@ -452,7 +454,7 @@ class Nudger:
             "cursor_found": win is not None,
             "cursor_connected": win is not None,
             "cursor_title": win[1] if win else None,
-            "relay_connected": False,
+            "relay_connected": _relay_connected,
             "tasks_count": tasks_count,
             "reports_count": reports_count,
             "issues_count": issues_count,
@@ -495,6 +497,8 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                     },
                 }
                 await ws.send(json.dumps(hello, ensure_ascii=False))
+                global _relay_connected
+                _relay_connected = True
                 logger.info("已连接中继: %s", config.relay_url)
 
                 async def _send(event_type: str, payload: dict):
@@ -569,6 +573,7 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                 for t_task in pending:
                     t_task.cancel()
         except Exception as exc:
+            _relay_connected = False
             logger.warning("中继断开: %s — 3秒后重连", exc)
             try:
                 await asyncio.wait_for(_stop.wait(), timeout=3.0)

@@ -24,6 +24,7 @@ VERSION = "1.0.0"
 logger = logging.getLogger("bridgeflow")
 
 _nudger_thread: threading.Thread | None = None
+_relay_thread: threading.Thread | None = None
 _nudger_instance = None
 
 
@@ -130,6 +131,31 @@ def start_nudger():
     logger.info("唤醒器线程已启动")
 
 
+def start_relay(config):
+    """在后台线程启动中继 WebSocket 客户端。"""
+    global _relay_thread
+    if not config.room_key:
+        logger.info("未配置 room_key，跳过中继连接")
+        return
+
+    import asyncio
+    from nudger import relay_client
+
+    def _run_relay():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(relay_client(config, _nudger_instance))
+        except Exception as e:
+            logger.warning("中继线程异常: %s", e)
+        finally:
+            loop.close()
+
+    _relay_thread = threading.Thread(target=_run_relay, daemon=True, name="relay")
+    _relay_thread.start()
+    logger.info("中继线程已启动 → %s", config.relay_url)
+
+
 def stop_nudger():
     global _nudger_instance
     if _nudger_instance:
@@ -220,6 +246,7 @@ def main():
         pass
 
     start_nudger()
+    start_relay(config)
 
     logger.info("BridgeFlow Desktop 运行中（Ctrl+C 退出）")
     try:
