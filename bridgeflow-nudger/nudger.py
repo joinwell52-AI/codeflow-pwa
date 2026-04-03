@@ -137,17 +137,58 @@ def parse_recipient(filename: str) -> str | None:
     return m.group(4).upper() if m else None
 
 
-def build_nudge_message(filename: str, directory: str, recipient: str = "") -> str:
+# ─── 情景对话模板 ─────────────────────────────────────────
+
+_MSG_TEMPLATES = {
+    "zh": {
+        "first_hello": (
+            "@{role_file} 你好，我是 BridgeFlow 巡检器。"
+            "你的角色定义在 @{role_file} 中，请先阅读了解自己的职责。"
+            "现在有一个新任务需要你处理：{filename}"
+        ),
+        "new_task": "@{role_file} [BridgeFlow] 新任务到达: {filename}，请读取任务单并执行",
+        "new_report": "@{role_file} [BridgeFlow] 新报告到达: {filename}，请审核并回复",
+        "new_issue": "@{role_file} [BridgeFlow] 新问题: {filename}，请查看并处理",
+        "new_file": "@{role_file} [BridgeFlow] 新文件: {filename}",
+        "remind": "@{role_file} [BridgeFlow] 催办: {filename} 已等待 {minutes} 分钟，请尽快处理",
+    },
+    "en": {
+        "first_hello": (
+            "@{role_file} Hello, I'm the BridgeFlow Nudger. "
+            "Your role is defined in @{role_file}, please read it first. "
+            "You have a new task to handle: {filename}"
+        ),
+        "new_task": "@{role_file} [BridgeFlow] New task arrived: {filename}, please read and execute",
+        "new_report": "@{role_file} [BridgeFlow] New report arrived: {filename}, please review",
+        "new_issue": "@{role_file} [BridgeFlow] New issue: {filename}, please check and handle",
+        "new_file": "@{role_file} [BridgeFlow] New file: {filename}",
+        "remind": "@{role_file} [BridgeFlow] Reminder: {filename} has been waiting {minutes} min, please act",
+    },
+}
+
+_greeted_roles: set[str] = set()
+
+
+def build_nudge_message(filename: str, directory: str, recipient: str = "",
+                        lang: str = "zh", minutes: int = 0) -> str:
     role_code = re.sub(r'\d+$', '', recipient.upper()) if recipient else ""
-    role_ref = f"@{role_code}.md " if role_code else ""
+    role_file = f"{role_code}.md" if role_code else ""
+    tpl = _MSG_TEMPLATES.get(lang, _MSG_TEMPLATES["zh"])
+
+    if minutes > 0:
+        return tpl["remind"].format(role_file=role_file, filename=filename, minutes=minutes)
+
+    if role_code and role_code not in _greeted_roles:
+        _greeted_roles.add(role_code)
+        return tpl["first_hello"].format(role_file=role_file, filename=filename)
 
     if "tasks" in directory:
-        return f"{role_ref}[BridgeFlow] 新任务: {filename}，请查看并执行"
+        return tpl["new_task"].format(role_file=role_file, filename=filename)
     elif "reports" in directory:
-        return f"{role_ref}[BridgeFlow] 新报告: {filename}，请审核"
+        return tpl["new_report"].format(role_file=role_file, filename=filename)
     elif "issues" in directory:
-        return f"{role_ref}[BridgeFlow] 新问题: {filename}，请查看"
-    return f"{role_ref}[BridgeFlow] 新文件: {filename}"
+        return tpl["new_issue"].format(role_file=role_file, filename=filename)
+    return tpl["new_file"].format(role_file=role_file, filename=filename)
 
 
 # ─── 文件监听 ─────────────────────────────────────────────
@@ -344,7 +385,7 @@ class Nudger:
                 continue
 
             win = find_cursor_window()
-            msg = build_nudge_message(filename, dir_name, recipient)
+            msg = build_nudge_message(filename, dir_name, recipient, self.config.lang)
             nudged = False
 
             if win:
@@ -397,10 +438,9 @@ class Nudger:
                 break
 
             hwnd, _ = win
-            auto_msg = (
-                f"[BridgeFlow] 任务 {item['task_id']} 已等待 "
-                f"{int(item['age_seconds'] / 60)} 分钟，如有疑问请自行判断，"
-                f"继续执行，完成后向主控角色回复。"
+            mins = int(item["age_seconds"] / 60)
+            auto_msg = build_nudge_message(
+                item["filename"], "tasks", recipient, self.config.lang, minutes=mins
             )
             logger.info("自动催促 %s: %s", recipient, item["task_id"])
             if switch_and_send(hwnd, recipient, auto_msg,

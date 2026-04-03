@@ -15,6 +15,7 @@ class NudgerConfig:
     device_id: str = "bridgeflow-nudger"
     poll_interval: float = 2.0
     nudge_cooldown: float = 5.0
+    lang: str = "zh"
 
     hotkeys: dict[str, tuple] = field(default_factory=lambda: {
         "PM":  ("ctrl", "alt", "1"),

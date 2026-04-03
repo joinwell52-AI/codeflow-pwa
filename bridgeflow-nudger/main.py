@@ -202,6 +202,8 @@ def main():
                 config.room_key = data["room_key"]
             if "relay_url" in data:
                 config.relay_url = data["relay_url"]
+            if "lang" in data:
+                config.lang = data["lang"]
             if "roles" in data and isinstance(data["roles"], list):
                 new_hotkeys = {}
                 for idx, role in enumerate(data["roles"]):
