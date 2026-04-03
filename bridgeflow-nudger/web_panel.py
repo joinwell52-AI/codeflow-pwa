@@ -268,6 +268,7 @@ class PanelHandler(BaseHTTPRequestHandler):
         routes = {
             "/": lambda: self._serve_file("index.html", "text/html"),
             "/index.html": lambda: self._serve_file("index.html", "text/html"),
+            "/qrcode.min.js": lambda: self._serve_file("qrcode.min.js", "application/javascript"),
             "/logo-sm.png": lambda: self._serve_file("logo-sm.png", "image/png"),
             "/logo.png": lambda: self._serve_file("logo.png", "image/png"),
             "/api/debug-panel-dir": lambda: self._json({"panel_dir": str(_panel_dir()), "files": [f.name for f in _panel_dir().iterdir()] if _panel_dir().exists() else []}),

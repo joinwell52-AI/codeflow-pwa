@@ -28,11 +28,20 @@ _nudger_instance = None
 
 
 def setup_logging():
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s", datefmt="%H:%M:%S"))
+    fmt = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s", datefmt="%H:%M:%S")
     root = logging.getLogger("bridgeflow")
     root.setLevel(logging.INFO)
-    root.addHandler(handler)
+
+    if sys.stdout:
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(fmt)
+        root.addHandler(sh)
+
+    log_dir = Path(os.environ.get("APPDATA", ".")) / "BridgeFlow"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    fh = logging.FileHandler(log_dir / "desktop.log", encoding="utf-8")
+    fh.setFormatter(fmt)
+    root.addHandler(fh)
 
 
 def get_config_path() -> Path:
