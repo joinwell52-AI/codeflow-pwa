@@ -69,9 +69,21 @@ def focus_window(hwnd: int) -> bool:
         return False
 
 
+def _resolve_role(role: str, hotkeys: dict[str, tuple]) -> str | None:
+    """精确匹配 → 去尾数字匹配 → 失败返回 None"""
+    key = role.upper()
+    if key in hotkeys:
+        return key
+    stripped = re.sub(r'\d+$', '', key)
+    if stripped and stripped in hotkeys:
+        return stripped
+    return None
+
+
 def switch_and_send(hwnd: int, role: str, message: str,
                     hotkeys: dict[str, tuple], input_offset: tuple[float, float] = (0, 0)) -> bool:
-    if role.upper() not in hotkeys:
+    resolved = _resolve_role(role, hotkeys)
+    if not resolved:
         logger.warning("角色 %s 没有配置快捷键，跳过", role)
         return False
 
@@ -79,7 +91,7 @@ def switch_and_send(hwnd: int, role: str, message: str,
         return False
 
     try:
-        keys = hotkeys[role.upper()]
+        keys = hotkeys[resolved]
         pyautogui.hotkey(*keys)
         time.sleep(0.8)
 
