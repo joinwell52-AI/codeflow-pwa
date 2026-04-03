@@ -456,9 +456,37 @@ class Nudger:
 
         return events
 
+    def greet_all_roles(self):
+        """启动时逐个角色发打招呼消息，让每个 Agent 知道自己的身份并开始巡检。"""
+        win = find_cursor_window()
+        if not win:
+            logger.warning("未找到 Cursor 窗口，跳过打招呼")
+            return
+
+        hwnd, title = win
+        logger.info("找到 Cursor 窗口: %s", title[:60])
+
+        prev_hwnd = _save_foreground()
+        greeted = 0
+
+        for role, keys in sorted(self.config.hotkeys.items(), key=lambda kv: kv[1]):
+            msg = build_nudge_message("", "", role, self.config.lang)
+            logger.info("打招呼 → %s", role)
+            if switch_and_send(hwnd, role, msg, self.config.hotkeys, self.config.input_offset):
+                greeted += 1
+                time.sleep(self.config.nudge_cooldown)
+            else:
+                logger.warning("打招呼失败: %s", role)
+
+        if prev_hwnd:
+            _restore_foreground(prev_hwnd)
+
+        logger.info("已向 %d 个角色打招呼", greeted)
+
     def start_loop(self):
         self._running = True
         self._tick_count = 0
+        self.greet_all_roles()
         self.check_and_nudge()
         logger.info("唤醒器已启动，监听: %s", self.config.agents_dir)
         try:
