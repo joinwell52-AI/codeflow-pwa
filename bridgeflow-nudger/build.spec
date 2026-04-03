@@ -12,6 +12,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('panel/index.html', 'panel'),
+        ('panel/qrcode.min.js', 'panel'),
         ('panel/logo-sm.png', 'panel'),
         ('panel/logo.png', 'panel'),
         ('panel/app.ico', 'panel'),

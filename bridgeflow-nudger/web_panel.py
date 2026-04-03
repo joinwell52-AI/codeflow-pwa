@@ -329,7 +329,11 @@ class PanelHandler(BaseHTTPRequestHandler):
         body = fp.read_bytes()
         self.send_response(200)
         ct = content_type
-        if filename.endswith(".png"):
+        if filename.endswith(".js"):
+            ct = "application/javascript"
+        elif filename.endswith(".css"):
+            ct = "text/css"
+        elif filename.endswith(".png"):
             ct = "image/png"
         elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
             ct = "image/jpeg"
@@ -367,7 +371,13 @@ class PanelHandler(BaseHTTPRequestHandler):
             status["room_key"] = cfg.get("room_key", "")
             status["relay_url"] = cfg.get("relay_url", "")
         else:
-            status["need_setup"] = True
+            pd = _project_dir()
+            if pd:
+                status["need_setup"] = True
+                status["has_project_dir"] = True
+                status["project_dir"] = str(pd)
+            else:
+                status["need_setup"] = True
         status["panel_time"] = datetime.now().strftime("%H:%M:%S")
         self._json(status)
 
