@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("bridgeflow.panel")
 
 PANEL_PORT = 18765
-_VERSION = "1.2.0"
+_VERSION = "1.9.6"
 
 
 def _get_version() -> str:
@@ -151,6 +151,25 @@ def _scan_files(directory: Path) -> list[dict]:
 _TASK_RE = re.compile(r'TASK-(\d{8})-(\d{3})-([A-Za-z0-9]+)-to-([A-Za-z0-9]+)\.md', re.IGNORECASE)
 
 
+def _parse_frontmatter(filepath: Path) -> dict:
+    """解析 MD 文件的 YAML frontmatter"""
+    try:
+        text = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return {}
+    if not text.startswith("---"):
+        return {}
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    front = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            front[k.strip().lower()] = v.strip()
+    return front
+
+
 def _build_pipeline() -> list[dict]:
     ad = _agents_dir()
     if not ad:
@@ -161,10 +180,10 @@ def _build_pipeline() -> list[dict]:
     if not tasks_dir.exists():
         return []
 
-    report_names = set()
-    if reports_dir.exists():
+    report_map: dict[str, str] = {}
+    if reports_dir and reports_dir.exists():
         for f in reports_dir.glob("*.md"):
-            report_names.add(f.name.upper())
+            report_map[f.name.upper()] = f.name
 
     pipeline = []
     for f in sorted(tasks_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
@@ -176,15 +195,24 @@ def _build_pipeline() -> list[dict]:
         recipient = m.group(4)
         age_min = int((time.time() - f.stat().st_mtime) / 60)
 
-        has_report = any(task_id.upper() in rn for rn in report_names)
+        has_report = any(task_id.upper() in rn for rn in report_map)
+
+        front = _parse_frontmatter(f)
+        fm_status = front.get("progress", front.get("status", "")).lower()
 
         if has_report:
             status = "completed"
+        elif fm_status in ("completed", "done", "finished"):
+            status = "completed"
+        elif fm_status in ("in_progress", "working", "executing"):
+            status = "in_progress"
+        elif fm_status in ("blocked", "failed"):
+            status = "blocked"
         elif age_min > 1440:
             status = "expired"
-        elif age_min < 5:
+        elif age_min < 10:
             status = "in_progress"
-        elif age_min < 15:
+        elif age_min < 30:
             status = "maybe_stuck"
         else:
             status = "timeout"
@@ -197,6 +225,8 @@ def _build_pipeline() -> list[dict]:
             "age_minutes": age_min,
             "status": status,
             "has_report": has_report,
+            "priority": front.get("priority", ""),
+            "title": front.get("title", front.get("task_id", task_id)),
         })
 
     return pipeline[:30]
@@ -284,6 +314,7 @@ class PanelHandler(BaseHTTPRequestHandler):
             "/logo.png": lambda: self._serve_file("logo.png", "image/png"),
             "/api/debug-panel-dir": lambda: self._json({"panel_dir": str(_panel_dir()), "files": [f.name for f in _panel_dir().iterdir()] if _panel_dir().exists() else []}),
             "/api/status": self._api_status,
+            "/api/cursor-state": self._api_cursor_state,
             "/api/preflight": self._api_preflight,
             "/api/teams": self._api_teams,
             "/api/devices": self._api_devices,
@@ -400,6 +431,16 @@ class PanelHandler(BaseHTTPRequestHandler):
         status["machine_code"] = _get_machine_code()
         status["device_id"] = _nudger_ref.config.device_id if _nudger_ref and hasattr(_nudger_ref, 'config') else __import__("platform").node()
         self._json(status)
+
+    def _api_cursor_state(self):
+        """OCR 扫描 Cursor 窗口状态"""
+        if not _nudger_ref:
+            return self._json({"error": "nudger 未启动"})
+        try:
+            result = _nudger_ref.get_cursor_state()
+            self._json(result)
+        except Exception as e:
+            self._json({"error": str(e)})
 
     def _api_preflight(self):
         from nudger import find_cursor_window, check_keybindings
@@ -543,9 +584,16 @@ class PanelHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
         self._json({"ok": True, "message": "正在退出"})
-        import threading, os
+
         def _shutdown():
-            time.sleep(0.8)
+            time.sleep(1.0)
+            logger.info("面板退出：正在终止进程")
+            import os, signal
+            try:
+                os.kill(os.getpid(), signal.SIGTERM)
+            except Exception:
+                pass
+            time.sleep(0.5)
             os._exit(0)
         threading.Thread(target=_shutdown, daemon=True).start()
 

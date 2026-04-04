@@ -27,6 +27,7 @@ ALLOWED_EVENTS = {
     "request_device_roster",
     "device_roster",
     # Phase 2 — MCP ↔ 手机端同步
+    "file_list",
     "file_change",
     "agent_status",
     "message_history",

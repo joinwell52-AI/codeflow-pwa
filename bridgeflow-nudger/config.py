@@ -13,8 +13,8 @@ class NudgerConfig:
     relay_url: str = "wss://ai.chedian.cc/bridgeflow/ws/"
     room_key: str = ""
     device_id: str = "bridgeflow-nudger"
-    poll_interval: float = 2.0
-    nudge_cooldown: float = 5.0
+    poll_interval: float = 5.0
+    nudge_cooldown: float = 15.0
     lang: str = "zh"
 
     hotkeys: dict[str, tuple] = field(default_factory=lambda: {

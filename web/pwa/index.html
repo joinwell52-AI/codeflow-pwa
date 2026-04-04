@@ -68,6 +68,7 @@
       width: 100%; height: 100%;
       display: flex; flex-direction: column;
       overflow: hidden;
+      background: linear-gradient(160deg, #1c2e4a 0%, #162540 35%, #1a3050 65%, #142238 100%);
       box-shadow: 0 0 60px rgba(0,0,0,.5);
     }
 
@@ -139,6 +140,24 @@
     .card-title { font-family:"Fira Code",monospace; font-size:13px; font-weight:700; color:var(--text); margin:0; }
     .muted { color:var(--text3); font-size:12px; }
     .note  { color:var(--text3); font-size:11px; margin-top:6px; }
+
+    /* ══ 0. 绑定提示横幅 ══ */
+    .bind-banner {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      background:linear-gradient(135deg, rgba(251,191,36,.18) 0%, rgba(245,158,11,.12) 100%);
+      border:1px solid rgba(251,191,36,.4); border-radius:var(--r2);
+      padding:10px 14px; margin-bottom:12px;
+      font-size:13px; color:var(--amber);
+      animation: banner-pulse 2s ease-in-out infinite;
+    }
+    .bind-banner-btn {
+      background:var(--amber); color:#000; border:none; border-radius:6px;
+      padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer;
+      white-space:nowrap; flex-shrink:0;
+    }
+    @keyframes banner-pulse {
+      0%,100% { opacity:1; } 50% { opacity:.75; }
+    }
 
     /* ══ 1. 看板区：4个统计卡片 ══ */
     .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
@@ -378,7 +397,7 @@
       <span class="header-brand">BridgeFlow</span>
       <div class="header-right">
         <span id="statusLight" class="status-light"></span>
-        <span id="statusText" style="font-size:11px;color:var(--text3);white-space:nowrap;">未连接</span>
+        <span id="statusText" style="font-size:11px;color:var(--text3);white-space:nowrap;">巡检器离线</span>
         <button id="myQuickBtn" class="header-my-btn" type="button">我的</button>
       </div>
     </div>
@@ -387,6 +406,12 @@
 
   <!-- ════ 主滚动内容 ════ -->
   <main class="app-content">
+
+    <!-- ── 0. 未绑定提示 ── -->
+    <div id="bindBanner" class="bind-banner" style="display:none;">
+      <span id="bindBannerText">未绑定 PC，请点击「我的」扫码绑定</span>
+      <button id="bindBannerBtn" type="button" class="bind-banner-btn">去绑定 →</button>
+    </div>
 
     <!-- ── 1. 看板：4个统计（紧凑） ── -->
     <div class="stat-grid">
@@ -567,6 +592,15 @@
     <div class="card">
       <div class="card-head"><h3 id="deployTitle" class="card-title">配置与版本</h3></div>
       <div class="my-grid">
+        <div class="detail-field">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <span id="relayStatusLabel" class="slot-label" style="margin:0;">中继服务器</span>
+            <span id="relayStatusValue" class="detail-value" style="margin:0;display:flex;align-items:center;gap:5px;">
+              <span id="relayStatusLight" class="status-light" style="width:7px;height:7px;"></span>
+              <span id="relayStatusText" style="font-size:12px;">未连接</span>
+            </span>
+          </div>
+        </div>
         <div class="detail-field"><div class="slot-label">配置</div><div id="deployInfo" class="detail-value" style="font-size:11px;line-height:1.6;"></div><div id="deployDesc" class="muted" style="margin-top:4px;"></div></div>
         <div class="detail-field">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -1372,9 +1406,36 @@
     }
 
     function updateStatus(text, cls) {
+      const relayLight = document.getElementById("relayStatusLight");
+      const relayText = document.getElementById("relayStatusText");
+      if (relayLight) relayLight.classList.toggle("ok", cls === "status-ok");
+      if (relayText) relayText.textContent = text;
+      if (statusEl) statusEl.className = `hero-status-chip ${cls || ""}`.trim();
+      _wsConnected = cls === "status-ok";
+      updateHeaderStatus();
+    }
+
+    function updateHeaderStatus() {
+      const bound = !!localStorage.getItem("bridgeflow_bound_pc_code");
+      let text, isOk;
+      if (!bound) {
+        text = currentLang === "en" ? "Not bound" : "未绑定";
+        isOk = false;
+      } else if (!_wsConnected) {
+        text = currentLang === "en" ? "Relay offline" : "中继离线";
+        isOk = false;
+      } else if (!_pcWasOnline) {
+        text = currentLang === "en" ? "PC offline" : "PC 离线";
+        isOk = false;
+      } else if (_patrolRunning) {
+        text = currentLang === "en" ? "Patrolling" : "巡检中";
+        isOk = true;
+      } else {
+        text = currentLang === "en" ? "PC online" : "PC 在线";
+        isOk = true;
+      }
       if (statusTextEl) statusTextEl.textContent = text;
-      statusEl.className = `hero-status-chip ${cls || ""}`.trim();
-      if (statusLightEl) statusLightEl.classList.toggle("ok", cls === "status-ok");
+      if (statusLightEl) statusLightEl.classList.toggle("ok", isOk);
     }
 
     function updateConnectInfo(extraText) {
@@ -1406,6 +1467,21 @@
       if (unbindBtn) {
         unbindBtn.style.display = boundPcCode ? "block" : "none";
         unbindBtn.textContent = t("unbindPcBtn");
+      }
+      updateBindBanner();
+      updateHeaderStatus();
+    }
+
+    function updateBindBanner() {
+      const banner = document.getElementById("bindBanner");
+      const bannerText = document.getElementById("bindBannerText");
+      if (!banner) return;
+      const bound = !!localStorage.getItem("bridgeflow_bound_pc_code");
+      banner.style.display = bound ? "none" : "flex";
+      if (!bound && bannerText) {
+        bannerText.textContent = currentLang === "en"
+          ? "Not bound to PC. Tap \"My\" → Scan QR to bind."
+          : "未绑定 PC，请点击「我的」→ 扫码绑定";
       }
     }
 
@@ -1565,7 +1641,8 @@
     }
 
     function roleStateInfo(role) {
-      if (!onlineDevices.length) return { text: t("teamOffline"), cls: "status-offline", offline: true };
+      if (!_pcWasOnline) return { text: t("teamOffline"), cls: "status-offline", offline: true };
+      if (!_patrolRunning) return { text: currentLang === "en" ? "Standby" : "待命", cls: "status-waiting", offline: false };
       const items = tasksForRole(role);
       const hasDoing = items.some((item) => mapProgress(item.progress).cls === "status-doing");
       const hasWaiting = items.some((item) => ["status-published", "status-received", "status-waiting"].includes(mapProgress(item.progress).cls));
@@ -1868,16 +1945,68 @@
     let patrolPolling = null;
     let rosterPolling = null;
     let _pcWasOnline = false;
+    let _patrolRunning = false;
+    let _wsConnected = false;
 
     function applyPatrolState(p) {
-      if (!patrolStatusBadge) return;
       const running = !!p.running;
-      patrolStatusBadge.textContent = running ? "运行中" : "已停止";
-      patrolStatusBadge.className = "badge " + (running ? "status-doing" : "status-offline");
+      _patrolRunning = running;
+      if (patrolStatusBadge) {
+        patrolStatusBadge.textContent = running
+          ? (currentLang === "en" ? "Running" : "运行中")
+          : (currentLang === "en" ? "Stopped" : "已停止");
+        patrolStatusBadge.className = "badge " + (running ? "status-doing" : "status-offline");
+      }
       if (patrolRoundValue) patrolRoundValue.textContent = String(p.round || 0);
       if (patrolLogBox && p.log) { patrolLogBox.textContent = p.log; patrolLogBox.scrollTop = patrolLogBox.scrollHeight; }
       if (patrolStartBtn) patrolStartBtn.disabled = running;
       if (patrolStopBtn) patrolStopBtn.disabled = !running;
+      updateHeaderStatus();
+    }
+
+    let _lastFileListTotal = -1;
+    function applyFileList(payload) {
+      const tasks = payload.tasks || [];
+      const reports = payload.reports || [];
+      const issues = payload.issues || [];
+      const total = payload.total || 0;
+      const running = !!payload.patrol_running;
+
+      const todayTasks = payload.today_tasks ?? tasks.filter(f => f.today).length;
+      const todayReports = payload.today_reports ?? reports.filter(f => f.today).length;
+      const todayIssues = payload.today_issues ?? issues.filter(f => f.today).length;
+
+      document.getElementById("todayTasks").textContent = String(todayTasks);
+      document.getElementById("todayReplies").textContent = String(todayReports);
+      const issueEl = document.getElementById("inProgressThreads");
+      if (issueEl) issueEl.textContent = String(todayIssues);
+
+      applyPatrolState({ running, round: 0 });
+
+      if (_lastFileListTotal >= 0 && total !== _lastFileListTotal) {
+        const diff = total - _lastFileListTotal;
+        if (diff > 0) {
+          appendLog(currentLang === "en" ? `${diff} new file(s) detected` : `检测到 ${diff} 个新文件`);
+          addMsgRecord("pc", currentLang === "en" ? `File update: ${total} files` : `文件更新: 共 ${total} 个`);
+        }
+      }
+      _lastFileListTotal = total;
+
+      const items = [];
+      for (const f of tasks) {
+        items.push({ filename: f.filename, dir: "tasks", type: "task", recipient: f.recipient || "", progress: "pending", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
+      }
+      for (const f of reports) {
+        items.push({ filename: f.filename, dir: "reports", type: "report", recipient: f.recipient || "", progress: "completed", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
+      }
+      for (const f of issues) {
+        items.push({ filename: f.filename, dir: "issues", type: "issue", recipient: f.recipient || "", progress: "in_progress", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
+      }
+      if (items.length > 0) {
+        mergeDashboardItems(items);
+        renderTaskList();
+        renderRolePanel();
+      }
     }
 
     function _pcDeviceId() {
@@ -1979,7 +2108,7 @@
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
       };
-      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state"]);
+      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list"]);
       ws.onmessage = (event) => {
         let data = null;
         try { data = JSON.parse(event.data); } catch (error) { appendLog(`收到无法解析的消息: ${error.message}`); return; }
@@ -1992,6 +2121,7 @@
           if (pcNow) {
             if (!_pcWasOnline) appendLog(currentLang === "en" ? "PC online" : "PC 已上线");
             _pcWasOnline = true;
+            updateHeaderStatus();
             requestDashboard();
             requestPatrolStatus();
             if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 30000);
@@ -2001,6 +2131,8 @@
               addMsgRecord("sys", currentLang === "en" ? "PC offline" : "PC 已离线");
             }
             _pcWasOnline = false;
+            _patrolRunning = false;
+            updateHeaderStatus();
             if (patrolPolling) { clearInterval(patrolPolling); patrolPolling = null; }
             applyPatrolState({ running: false, round: 0, log: "" });
           }
@@ -2018,6 +2150,7 @@
           if (bindState.pending_bind_code) appendLog("绑定码: " + bindState.pending_bind_code);
         }
         else if (et === "patrol_state") { applyPatrolState(data.payload || {}); }
+        else if (et === "file_list") { applyFileList(data.payload || {}); }
         else if (et === "desktop_action_result") { appendLog(`PC动作: ${data.payload?.message || ""}`); addMsgRecord("pc", data.payload?.message || "动作完成"); }
         else if (et === "reply_summary") { addMsgRecord("pc", `回复: ${data.payload?.summary || ""}`); if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("bridgeflow_last_thread", data.payload.thread_key); } requestDashboard(); }
         else if (et === "pong") { }
@@ -2029,6 +2162,8 @@
       };
       ws.onclose = (event) => {
         onlineDevices = []; renderTeam([], ""); _pcWasOnline = false;
+        _patrolRunning = false; _wsConnected = false;
+        updateHeaderStatus();
         if (patrolPolling) { clearInterval(patrolPolling); patrolPolling = null; }
         if (rosterPolling) { clearInterval(rosterPolling); rosterPolling = null; }
         applyPatrolState({ running: false, round: 0, log: "" });
@@ -2198,6 +2333,8 @@
 
     if (scanQrBtn) scanQrBtn.onclick = startScan;
     if (qrScanClose) qrScanClose.onclick = stopScan;
+    const bindBannerBtn = document.getElementById("bindBannerBtn");
+    if (bindBannerBtn) bindBannerBtn.onclick = () => { setActiveTab("my"); };
     const unbindPcBtnEl = document.getElementById("unbindPcBtn");
     if (unbindPcBtnEl) unbindPcBtnEl.onclick = () => { if (confirm(currentLang === "en" ? "Unbind this PC?" : "确认解除绑定？")) unbindPc(); };
     document.getElementById("sendBtn").onclick = sendMessage;
@@ -2218,6 +2355,8 @@
 
     applyLanguage();
     syncDetailTabs();
+    updateBindBanner();
+    updateHeaderStatus();
     updateStatus(t("notConnected"), "status-warn");
     updateConnectInfo(currentLang === "en" ? "Idle" : "未启动");
     updateMeta();

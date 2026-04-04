@@ -19,7 +19,7 @@ import time
 import webbrowser
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.9.6"
 
 logger = logging.getLogger("bridgeflow")
 
@@ -112,23 +112,27 @@ def init_project_dirs(project_dir: Path):
     logger.info("项目目录已就绪: %s", agents_dir)
 
 
-def start_nudger():
-    """在后台线程启动唤醒器。"""
-    global _nudger_thread, _nudger_instance
-    if _nudger_instance and _nudger_instance.running:
-        logger.info("唤醒器已在运行")
+def _ensure_poll_thread():
+    """确保后台轮询线程在运行（只轮询，不自动执行操作）"""
+    global _nudger_thread
+    if _nudger_thread and _nudger_thread.is_alive():
         return
-
-    if _nudger_instance:
-        _nudger_instance._running = False
-        time.sleep(0.5)
 
     def _run():
         _nudger_instance.start_loop()
 
     _nudger_thread = threading.Thread(target=_run, daemon=True, name="nudger")
     _nudger_thread.start()
-    logger.info("唤醒器线程已启动")
+    logger.info("后台轮询线程已启动（等待启动巡检指令）")
+
+
+def start_nudger():
+    """启动巡检（由面板按钮触发）"""
+    global _nudger_instance
+    if not _nudger_instance:
+        return
+    _ensure_poll_thread()
+    _nudger_instance.start_patrol()
 
 
 def start_relay(config):
@@ -159,8 +163,8 @@ def start_relay(config):
 def stop_nudger():
     global _nudger_instance
     if _nudger_instance:
-        _nudger_instance.stop()
-        logger.info("唤醒器已停止")
+        _nudger_instance.stop_patrol()
+        logger.info("巡检已停止")
 
 
 def main():
@@ -263,6 +267,8 @@ def main():
     global _nudger_instance
     _nudger_instance = Nudger(config)
 
+    _ensure_poll_thread()
+
     start_panel(_nudger_instance, start_nudger, stop_nudger)
 
     url = "http://127.0.0.1:18765"
@@ -275,20 +281,29 @@ def main():
 
     start_relay(config)
 
-    import signal
+    import signal, atexit
     _quit_flag = False
-    def _on_quit(signum, frame):
-        nonlocal _quit_flag
-        _quit_flag = True
-    signal.signal(signal.SIGTERM, _on_quit)
 
-    logger.info("BridgeFlow Desktop 运行中（Ctrl+C 退出）")
+    def _on_quit(signum=None, frame=None):
+        nonlocal _quit_flag
+        if _quit_flag:
+            return
+        _quit_flag = True
+        logger.info("收到退出信号，正在清理...")
+        stop_nudger()
+
+    signal.signal(signal.SIGTERM, _on_quit)
+    signal.signal(signal.SIGINT, _on_quit)
+    atexit.register(_on_quit)
+
+    logger.info("BridgeFlow Desktop 运行中（Ctrl+C 或关闭窗口退出）")
     try:
         while not _quit_flag:
             time.sleep(1)
     except KeyboardInterrupt:
         pass
-    stop_nudger()
+    finally:
+        _on_quit()
     logger.info("BridgeFlow Desktop 已退出")
 
 
