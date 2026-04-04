@@ -16,6 +16,33 @@ BridgeFlow 版本历史，遵循 [语义化版本](https://semver.org/lang/zh-CN
 
 ---
 
+## [v1.9.6] - 2026-04-04
+
+### OCR 视觉增强 + 快捷键优先 + 文件推送优化
+
+#### 新增 `cursor_vision.py` — Cursor 窗口视觉识别模块
+- **自适应 OCR**：截图 Cursor 窗口 → 英中双语 OCR → 结构化分析 UI 状态
+- **角色名模糊匹配**：空格/连字符/点号互通（`2 DEV` → `2-DEV`），正则驱动
+- **Pinned 面板推断**：检测到 `Pinned` 标签后，从面板结构推断 OCR 漏掉的角色（如 1-PM 被转圈图标遮挡）
+- **Agent 忙碌检测**：扫描 `Awaiting`/`Generating`/`Stop` 等关键词，判定 Agent 是否在工作中
+- **角色状态读取**：竖排 Pinned 列表下方的状态文字提取（如 `Awaiting plan review`）
+
+#### 巡检器 `nudger.py`
+- **快捷键优先 + 视觉验证**：切换角色改为先按 `Ctrl+Alt+N` → OCR 验证 → 失败则点击角色名兜底 → 再验证，最多重试 2 次
+- **忙碌免打扰**：催办前检测 Agent 忙碌状态，忙碌时自动推迟，不打断工作中的 Agent
+- **文件推送按天过滤**：`tasks/reports/issues` 三文件夹全部推给 PWA，新增 `today_*` 计数字段
+- **轮询节奏优化**：`poll_interval` 5s，`nudge_cooldown` 15s，不再频繁催办
+
+#### PWA `index.html`
+- **Dashboard 当天统计**：使用后端 `today_tasks`/`today_reports`/`today_issues` 显示当日数据
+- **背景色统一**：`.app-shell` 与"我的"页面统一深蓝渐变背景
+- **manifest 背景同步**：`background_color`/`theme_color` 更新为 `#162540`/`#1c2e4a`
+
+#### 版本号统一
+- PWA `config.js`、Desktop `main.py`、`web_panel.py` 全部升至 `1.9.6`
+
+---
+
 ## [PWA v1.9.0 + Desktop v1.0.1] - 2026-04-03
 
 ### 通信链路打通（PWA ↔ 中继 ↔ PC Desktop）
