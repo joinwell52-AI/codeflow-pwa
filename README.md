@@ -2,7 +2,23 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-GitHub%20Pages-green)](https://joinwell52-ai.github.io/codeflow-pwa/)
-[![GitHub](https://img.shields.io/badge/GitHub-joinwell52--AI-black)](https://github.com/joinwell52-AI/codeflow-pwa)
+[![GitHub](https://img.shields.io/badge/GitHub-codeflow--pwa-black)](https://github.com/joinwell52-AI/codeflow-pwa)
+
+本仓库在 GitHub 上为 **`joinwell52-AI/codeflow-pwa`**（曾用仓库名 `bridgeflow-pwa`，已重命名；克隆地址请用当前名）。**GitHub Pages：** [joinwell52-ai.github.io/codeflow-pwa](https://joinwell52-ai.github.io/codeflow-pwa/)。版本与变更见 [CHANGELOG.md](CHANGELOG.md)。
+
+### GitHub 网页「About」设置（复制即用）
+
+在仓库页右侧 **About** 点 **⚙**，或 **Settings → General**：
+
+| 项 | 填写内容 |
+|----|----------|
+| **Description** | `CodeFlow / 码流 — Multi-agent collaboration via file-driven TASK protocol; mobile PWA + PC desktop.` |
+| **Website** | `https://joinwell52-ai.github.io/codeflow-pwa/` |
+| **Topics**（可选） | `codeflow`, `pwa`, `cursor`, `mcp`, `websocket`, `multi-agent`, `collaboration`, `task-protocol` |
+
+若希望描述以中文为主，可改用：**`码流（CodeFlow）— 文件驱动多角色协作；手机 PWA + PC 桌面端，TASK 文件名即协议。`**（与上表二选一即可。）
+
+更细的步骤与备用英文句见 **[docs/github-repo-about.md](docs/github-repo-about.md)**。
 
 **码流（CodeFlow）**——AI 驱动的人机协作中枢，用手机轻松驾驭 AI，让指令高效流转、直达团队。
 
