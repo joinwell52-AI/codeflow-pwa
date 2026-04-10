@@ -1,8 +1,8 @@
-{
+﻿{
   "mcpServers": {
     "codeflow": {
       "command": "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
-      "args": ["D:\\BridgeFlow\\codeflow-plugin\\scripts\\mcp_server.py"],
+      "args": ["D:\\\\CodeFlow\\\\codeflow-plugin\\scripts\\mcp_server.py"],
       "env": {
         "CODEFLOW_PROJECT_DIR": "${workspaceFolder}",
         "PYTHONIOENCODING": "utf-8"

@@ -1,6 +1,6 @@
-# 码流（CodeFlow）配置参考
+﻿# 码流（CodeFlow）配置参考
 
-**版本：** v0.2.1（文档内仍保留历史 `bridgeflow` CLI 字段名处，请以当前桌面端/PWA 实际行为为准）
+**版本：** v0.2.1（文档内仍保留历史 `CodeFlow` CLI 字段名处，请以当前桌面端/PWA 实际行为为准）
 
 ---
 
@@ -8,24 +8,24 @@
 
 | 文件 | 位置 | 作用 |
 |------|------|------|
-| `bridgeflow_config.json` | 旧版 pip CLI 工作目录（若仍使用 `bridgeflow init`） | PC 执行机运行参数（历史） |
+| `codeflow_config.json` | 旧版 pip CLI 工作目录（若仍使用 `codeflow init`） | PC 执行机运行参数（历史） |
 | `web/pwa/config.js` | PWA 主源 | 手机端中继地址、品牌文案、`appVersion`（改后需同步根目录副本） |
-| `docs/agents/codeflow.json` | 项目内团队配置 | 角色、房间、中继（兼容旧名 `bridgeflow.json`） |
+| `docs/agents/codeflow.json` | 项目内团队配置 | 角色、房间、中继（兼容旧名 `codeflow.json`） |
 
 ---
 
-## 一、`bridgeflow_config.json` 完整参数字典
+## 一、`codeflow_config.json` 完整参数字典
 
 ### 生成与更新
 
 ```powershell
-bridgeflow init                          # 首次生成（默认值）
-bridgeflow init --relay-url wss://...    # 生成时指定中继
-bridgeflow init --room-key my-room       # 生成时指定房间
-bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状态）
+codeflow init                          # 首次生成（默认值）
+codeflow init --relay-url wss://...    # 生成时指定中继
+codeflow init --room-key my-room       # 生成时指定房间
+codeflow init --force                  # 强制覆盖（⚠️ 重置绑定状态）
 ```
 
-已有配置时，`bridgeflow init --relay-url/--room-key` 只更新对应字段，不影响其他配置。
+已有配置时，`codeflow init --relay-url/--room-key` 只更新对应字段，不影响其他配置。
 
 ---
 
@@ -33,8 +33,8 @@ bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状
 
 | 字段 | 类型 | 默认值 | 必填 | 说明 |
 |------|------|--------|------|------|
-| `url` | `string` | `"wss://ai.chedian.cc/codeflow/ws/"`（旧文档可能写作 `/bridgeflow/ws/`） | ✅ | WebSocket 中继地址。格式必须为 `wss://` 或 `ws://`。网关路径须与客户端一致 |
-| `room_key` | `string` | `"codeflow-default"`（旧默认可能为 `bridgeflow-default`） | ✅ | 房间隔离 key。PC 端和手机端必须填写**完全相同**的值才能互相通信。建议每团队使用独立随机字符串 |
+| `url` | `string` | `"wss://ai.chedian.cc/codeflow/ws/"`（旧文档可能写作 `/CodeFlow/ws/`） | ✅ | WebSocket 中继地址。格式必须为 `wss://` 或 `ws://`。网关路径须与客户端一致 |
+| `room_key` | `string` | `"codeflow-default"`（旧默认可能为 `CodeFlow-default`） | ✅ | 房间隔离 key。PC 端和手机端必须填写**完全相同**的值才能互相通信。建议每团队使用独立随机字符串 |
 | `shared_secret` | `string` | `""` | ❌ | 共享密钥（预留扩展字段，当前未启用） |
 
 > **`room_key` 安全建议：** 默认公共房间名是公开的，团队使用时请改为随机字符串，例如 `team-abc-2026-x7k`。
@@ -53,7 +53,7 @@ bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状
 
 | 字段 | 类型 | 默认值 | 必填 | 说明 |
 |------|------|--------|------|------|
-| `device_id` | `string` | 主机名 slug | ✅ | PC 的唯一标识符，用于中继路由。`bridgeflow init` 根据主机名自动生成，格式如 `my-pc`。多台 PC 时每台不同 |
+| `device_id` | `string` | 主机名 slug | ✅ | PC 的唯一标识符，用于中继路由。`codeflow init` 根据主机名自动生成，格式如 `my-pc`。多台 PC 时每台不同 |
 | `device_name` | `string` | `"{主机名} AI执行机"` | ✅ | 显示名称，显示在仪表盘和手机端绑定信息中。可手动修改为更易识别的名称 |
 | `owner_role` | `string` | `"PM01"` | ✅ | 本机主要负责的 AI 角色 ID。可选值：`PM01` / `DEV01` / `OPS01` / `QA01` |
 | `machine_code` | `string` | `"BF-{12位哈希}"` | ✅ | 扫码绑定用的机器码，格式 `BF-XXXXXXXX`。由主机名+MAC 地址哈希生成，**不要手动修改** |
@@ -107,7 +107,7 @@ bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状
 
 | 字段 | 类型 | 默认值 | 必填 | 说明 |
 |------|------|--------|------|------|
-| `root_dir` | `string` | `.`（工作目录绝对路径） | ✅ | 项目根目录。`bridgeflow init` 自动设为执行命令时的绝对路径 |
+| `root_dir` | `string` | `.`（工作目录绝对路径） | ✅ | 项目根目录。`codeflow init` 自动设为执行命令时的绝对路径 |
 | `tasks_dir` | `string` | `"docs/agents/tasks"` | ✅ | 任务文件写入目录，相对于 `root_dir`。AI 收到任务时写入此目录 |
 | `reports_dir` | `string` | `"docs/agents/reports"` | ✅ | 回执文件目录，相对于 `root_dir`。AI 完成任务时写入此目录 |
 | `issues_dir` | `string` | `"docs/agents/issues"` | ✅ | 问题记录目录，相对于 `root_dir` |
@@ -121,7 +121,7 @@ bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状
 }
 ```
 
-> **说明：** `root_dir` 由 `bridgeflow init` 根据你运行命令时所在目录自动填写，无需手动设置，可以在任意盘符、任意路径下运行。
+> **说明：** `root_dir` 由 `codeflow init` 根据你运行命令时所在目录自动填写，无需手动设置，可以在任意盘符、任意路径下运行。
 
 ---
 
@@ -129,17 +129,17 @@ bridgeflow init --force                  # 强制覆盖（⚠️ 重置绑定状
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `runtime_dir` | `string` | `".bridgeflow/runtime"` | 运行时状态文件根目录（已在 `.gitignore` 中排除） |
-| `status_dir` | `string` | `".bridgeflow/runtime/status"` | 各角色状态文件目录（JSON 文件，记录在线/忙碌/闲置状态） |
-| `task_details_dir` | `string` | `".bridgeflow/runtime/task_details"` | 任务详情缓存目录（供仪表盘和手机端查询） |
+| `runtime_dir` | `string` | `".CodeFlow/runtime"` | 运行时状态文件根目录（已在 `.gitignore` 中排除） |
+| `status_dir` | `string` | `".CodeFlow/runtime/status"` | 各角色状态文件目录（JSON 文件，记录在线/忙碌/闲置状态） |
+| `task_details_dir` | `string` | `".CodeFlow/runtime/task_details"` | 任务详情缓存目录（供仪表盘和手机端查询） |
 | `idle_seconds` | `integer` | `180` | 角色超过多少秒无动作，状态判定为"空闲"。单位：秒 |
 | `stale_task_seconds` | `integer` | `900` | 任务超过多少秒无回复，判定为"过期/阻塞"。单位：秒 |
 
 ```json
 "runtime": {
-  "runtime_dir": ".bridgeflow/runtime",
-  "status_dir": ".bridgeflow/runtime/status",
-  "task_details_dir": ".bridgeflow/runtime/task_details",
+  "runtime_dir": ".CodeFlow/runtime",
+  "status_dir": ".CodeFlow/runtime/status",
+  "task_details_dir": ".CodeFlow/runtime/task_details",
   "idle_seconds": 180,
   "stale_task_seconds": 900
 }
@@ -275,22 +275,22 @@ global.CODEFLOW_CONFIG = {
 
 ---
 
-## 三、`bridgeflow init` 命令参数
+## 三、`codeflow init` 命令参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--project-root PATH` | `string` | 当前目录 | 配置文件和任务文件的根目录 |
-| `--relay-url URL` | `string` | `wss://ai.chedian.cc/bridgeflow/ws/` | 覆盖中继地址 |
-| `--room-key KEY` | `string` | `bridgeflow-default` | 覆盖房间 key |
+| `--relay-url URL` | `string` | `wss://ai.chedian.cc/CodeFlow/ws/` | 覆盖中继地址 |
+| `--room-key KEY` | `string` | `CodeFlow-default` | 覆盖房间 key |
 | `--force` | `flag` | `false` | 强制重新生成配置（⚠️ 会重置绑定状态和机器码） |
 
 ---
 
-## 四、`bridgeflow run` 命令参数
+## 四、`codeflow run` 命令参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--config PATH` | `string` | `./bridgeflow_config.json` | 指定配置文件路径 |
+| `--config PATH` | `string` | `./codeflow_config.json` | 指定配置文件路径 |
 
 ---
 
@@ -323,8 +323,8 @@ global.CODEFLOW_CONFIG = {
 {
   "version": 1,
   "relay": {
-    "url": "wss://ai.chedian.cc/bridgeflow/ws/",
-    "room_key": "bridgeflow-default",
+    "url": "wss://ai.chedian.cc/CodeFlow/ws/",
+    "room_key": "CodeFlow-default",
     "shared_secret": ""
   },
   "device": {
@@ -352,9 +352,9 @@ global.CODEFLOW_CONFIG = {
     "issues_dir": "docs/agents/issues"
   },
   "runtime": {
-    "runtime_dir": ".bridgeflow/runtime",
-    "status_dir": ".bridgeflow/runtime/status",
-    "task_details_dir": ".bridgeflow/runtime/task_details",
+    "runtime_dir": ".CodeFlow/runtime",
+    "status_dir": ".CodeFlow/runtime/status",
+    "task_details_dir": ".CodeFlow/runtime/task_details",
     "idle_seconds": 180,
     "stale_task_seconds": 900
   },
@@ -391,3 +391,4 @@ global.CODEFLOW_CONFIG = {
   }
 }
 ```
+

@@ -1,9 +1,9 @@
-// build: 20260404-2.0.1
+﻿// build: 20260404-2.0.1
 importScripts("./config.js");
 
 const APP_VERSION = (self.CODEFLOW_CONFIG && self.CODEFLOW_CONFIG.appVersion) || "1.0.0";
 const CACHE_NAME = `codeflow-pwa-${APP_VERSION}`;
-const CORE_ASSETS = ["./", "./index.html", "./config.js", "./manifest.json", "./logo-BridgeFlow-125.png"];
+const CORE_ASSETS = ["./", "./index.html", "./config.js", "./manifest.json", "./logo-CodeFlow-125.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,7 +16,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => (key.startsWith("codeflow-pwa-") || key.startsWith("bridgeflow-pwa-")) && key !== CACHE_NAME)
+          .filter((key) => (key.startsWith("codeflow-pwa-") || key.startsWith("codeflow-pwa-")) && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       )
     ).then(() => self.clients.claim())

@@ -1,4 +1,4 @@
----
+﻿---
 name: switch-team
 description: Switch CodeFlow team template without losing existing data
 ---
@@ -11,7 +11,7 @@ description: Switch CodeFlow team template without losing existing data
 
 1. 查看可用模板：调用 `get_available_teams` 工具
 2. 重新初始化：调用 `init_project(team="新模板名")`
-3. 旧的任务文件会保留，新的角色配置会写入 `codeflow.json`（若仍存在旧版则覆盖 `bridgeflow.json`）
+3. 旧的任务文件会保留，新的角色配置会写入 `codeflow.json`（若仍存在旧版则覆盖 `CodeFlow.json`）
 
 ## 注意
 

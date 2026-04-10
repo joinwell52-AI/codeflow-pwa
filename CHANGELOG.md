@@ -6,6 +6,333 @@
 
 ## [Unreleased]
 
+---
+
+## [2.9.04] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 首次引导向导（全新项目初始化流程）
+- **沉浸式引导页**：新项目首次启动时自动打开全屏引导向导，分三步：①连接 Cursor → ②选择团队 → ③初始化项目。
+- **自动检测 Cursor**：Step 0 自动检测 `Cursor.exe` 路径，已找到则显示路径；未找到时提供"浏览选择"按钮。
+- **左侧品牌区**：引导页左侧用 `product.png` 宣传图铺满，底部渐变遮罩保证文字可读。
+- **项目目录浏览**：Step 2 项目路径改为系统文件夹选择对话框（`tkinter.filedialog`），无需手动输入。
+- **引导完成自动退出**：配置保存后程序自动退出（`os._exit(0)`），用户重启即为正常启动流程。
+- **前端提示**：完成页显示"配置已保存，请关闭页面后重启程序即可正常使用"，3 秒后自动关闭浏览器标签。
+
+#### 进程查找重构（彻底修复 Surface 等机器找不到 Cursor 的问题）
+- **三层查找策略**：①`CreateToolhelp32Snapshot` Win32 API（最可靠，不依赖外部命令）→ ②`psutil`（兜底）→ ③`tasklist` 全量输出自行过滤（兜底²）。
+- 彻底解决 `tasklist /fi "imagename eq cursor.exe"` 在部分 Windows 版本大小写过滤失效的问题。
+- 降级逻辑排除已知系统窗口（`Windows 输入体验`、`Program Manager`、`向日葵`等），不再误选非 IDE 窗口。
+
+#### 项目级配置隔离（多项目并行）
+- 日志切换到 `{project_dir}/.codeflow/desktop.log`，不同项目日志互不干扰。
+- 截图 `tab_debug.png` 保存到项目 `.codeflow/` 目录。
+- 配置拆分为全局（`cursor_exe_path`）和项目级（`{project_dir}/.codeflow/config.json`）。
+- exe 放在项目文件夹内运行，自动以 exe 所在目录为项目根，无需选择对话框。
+
+#### 端口统一固定
+- 面板端口统一固定为 `18765`，废弃之前的路径 hash 动态端口（曾导致重启后端口变化、面板断线）。
+
+#### Bug 修复
+- 正常启动时 `start_panel` 未传端口导致使用默认值、URL 写死 `18765` 但实际端口不同，已修复。
+- 引导完成后错误地触发 `/api/restart` 重启新进程导致端口变化和重启循环，已修复（改为直接退出）。
+- `wiz-left-bg` CSS `background-image` 路径在打包环境解析失败，改用 `<img>` 标签。
+- logo 路径 `panel/logo-sm.png` 修正为 `logo-sm.png`。
+
+---
+
+## [2.8.77] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 发送串台根本修复
+- **粘贴前顶部 Tab 终止校验**：`greet_strict` 模式下，在粘贴前终检和普通粘贴前 recheck 环节，额外调用 `get_active_tab_role`（× 关闭按钮法 + 像素亮度法）确认顶部激活 Tab 必须与目标角色一致；不匹配则放弃发送，彻底杜绝多 Tab 场景下焦点串台导致消息发错窗口的问题。
+
+---
+
+## [2.8.76] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### OCR 切换可靠性修复
+- **激活高亮行 OCR 补偿**：Cursor 侧栏被选中的 Agent 行因背景高亮导致 OCR 识别失败时，自动通过相邻行 y 坐标线性插值估算缺失行坐标，写入 `role_positions` 占位（`NN-?`），使点击切换仍能命中目标。
+- **切换等待时间放宽**：`greet_strict` 模式等待由 12s 不变，普通催办 `_WAIT_AFTER_CLICK` 由 2.5s → 3.0s；验证失败后额外多等 1.0s 再重扫，给 Cursor 渲染更充裕的时间。
+- **OCR 坐标缺失时降级热键**：`_switch_and_send_with_vision` 中若 `vision_click_role` 找不到坐标，自动降级用 `hotkeys` 里的快捷键切换，不再直接跳过。
+- **聊天标题 y 阈值放宽**：`get_chat_title_role` 的 `y < 160px` 限制放宽至 `y < 240px`，兼容多 Tab 布局时标题行下移的情况。
+
+#### 打招呼消息内容修复
+- **`first_hello` 模板新增 `{role_name}`**：同时显示角色代码名（如 `COLLECTOR`）和文件路径（`docs/agents/COLLECTOR.md`），发送到错误窗口时 Agent 也能自行核对身份。
+- **`build_nudge_message` 媒体/MVP 团队支持**：`_role_to_file` 补全 WRITER / EDITOR / PUBLISHER / COLLECTOR / BUILDER / DESIGNER / MARKETER / RESEARCHER 的映射，不再 fallback 成错误文件名。
+- **`_fmt_tpl` 容错**：模板中多余占位符不再抛 `KeyError`，缺失键自动补空串。
+- **`bridgeflow-nudger/nudger.py` 同步修复**：`role_code` 提取正则改为 `re.sub(r'^\d+[-_\s]*', '', ...)` 正确剥离 `NN-` 前缀；`_ROLE_TO_FILE` 补全媒体+MVP团队角色。
+
+---
+
+## [2.8.64] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 首次身份校验加强
+- **`greet_strict` 粘贴前终检**：多轮复核通过后再额外静止 ~1.85s 扫一次 vision，校验失败则整条 `first_hello` 消息不发出，确保首条身份问候绝不发错 Agent 窗口。
+- **`_is_role_active_for_greet`** 逻辑不变（Tab / 侧栏+Author 双重命中才通过），终检在复核之后作为独立防线追加，不影响正常后续催办路径。
+
+#### 后续催办改为短句
+- 每个角色 **首次** 仍发完整 `first_hello`（包含 `role_file` 指引）；该角色一旦进入 `_greeted_roles` 集合，后续所有新文件通知、定时催办、stuck 催促一律改发 **`patrol_ping`**（中文默认：`【码流巡检】巡检，开工。请自行查看 docs/agents/tasks/ 等待办任务。`），由 Agent 自行打开任务文件阅读，不再贴长文案。
+- 可在 `codeflow-nudger.json` 的 `patrol_ping_zh` / `patrol_ping_en` 字段覆盖短句文案（空字符串则使用内置默认）。
+
+#### 卡住检测参数可配置
+- `TaskTracker` 的阈值从硬编码改为读取 `config`，支持在 `codeflow-nudger.json` 中按项目调整：
+
+  | 配置字段 | 默认 | 含义 |
+  |---|---|---|
+  | `task_stuck_threshold_s` | 600（10 分钟）| tasks/ 下 .md 多久未更新算「可能卡住」 |
+  | `task_timeout_threshold_s` | 1200（20 分钟）| 多久算「超时」 |
+  | `auto_nudge_interval_s` | 300（5 分钟）| 同一 TASK 编号两次自动催促最小间隔 |
+  | `stuck_reload_window` | true | 自动催促卡住任务前是否先 Reload Window |
+  | `stuck_reload_min_age_s` | 600 | 触发 Reload 的任务最小年龄（对齐 stuck 阈值） |
+  | `stuck_reload_once_per_task` | true | 每个 TASK 编号仅 Reload 一次，避免反复刷窗口 |
+  | `reload_window_wait_s` | 12 | Reload 后等待 Cursor 就绪的秒数 |
+
+- 面板 `get_status()` 的 `patrol_tuning` 字段同步暴露上述配置，便于实时核查生效参数。
+
+#### 卡住时自动 Reload Window
+- 新增 `reload_cursor_window(config)` 函数：`Ctrl+Shift+P` → 粘贴 `Developer: Reload Window` → 回车，用于恢复长时间卡死的 Cursor UI。
+- 在 `auto_nudge_stuck()` 中于发送催办短句前自动调用：仅当 `stuck_reload_window=true` 且任务年龄 ≥ `stuck_reload_min_age_s` 且（`stuck_reload_once_per_task=true` 下该 TASK 尚未 Reload）才触发；Reload 成功后重新 `find_cursor_window` 获取最新句柄，再发短句催办；Reload 失败不记入已处理集合，下次仍可重试。
+
+#### 催办时机说明（文档化）
+- 主循环 `poll_interval`（默认 5s）× `stuck_check_every_n`（默认 30 轮）= **约 150s 扫一次卡住任务**；idle 「继续」每 `idle_check_every_n`（默认 6 轮）≈ **30s 一次**；同一收件人发完一条后仍有 `nudge_cooldown`（默认 15s）冷却保护。
+
+---
+
+## [2.8.19] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **技能市场数据源改为 `external/README.md`**：面板「技能市场」优先解析 `external/README.md` 中的 Markdown 表格（本地目录 / GitHub URL / 用途摘要），自动提取推荐仓库列表；用内置 `_SKILL_REPOS` 补充友好中文名称和描述；README 未覆盖的仓库从内置列表 fallback 补齐。新增仓库只需在 README 表格加一行，无需改代码。
+
+## [2.8.18] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **修复外部技能显示空白**：`_get_external_dir()` 原来完全依赖用户在面板设置的「项目目录」，未设置时返回 `None` 导致技能市场和已下载技能均显示空白。新增 fallback 逻辑：优先查找 `web_panel.py` 父级目录（`BridgeFlow/external/`）和 `codeflow-desktop/external/`，未设置项目目录时也能自动定位到 `D:\BridgeFlow\external\`。`_api_skills_list` 同步改为调用 `_get_external_dir()`，逻辑统一。
+
+## [2.8.17] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **技能市场**：「外部技能」区块新增「技能市场」子区块，内置5个预设仓库（Anthropic官方、小红书、智能配图、微信公众号等），一键 `git clone --depth=1` 下载到 `external/`，已下载可一键更新（`git pull`）；下载完成后在「已下载技能」区选择安装到当前项目 `.cursor/skills/`。
+- **新增 `_bump_version.py`**：统一版本号同步工具，用相对路径替代历史遗留的硬编码临时脚本。
+
+## [2.8.16] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **新增外部技能安装功能**：面板新增「外部技能」区块，自动扫描项目同级 `external/` 目录下所有 `SKILL.md`，读取 name/description，支持一键安装到项目 `.cursor/skills/<name>/`，已安装的显示绿色"✓ 已安装"标记，可重装覆盖。后端新增 `GET /api/skills/list` 和 `POST /api/skills/install` 接口。
+
+## [2.8.15] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **新增 `get_chat_title_role()` 专用函数**（`cursor_vision.py`）：专门从 OCR 结果中识别聊天区左上角的 Agent 大标题，条件为 y<160px、x≥30px、符合角色命名格式，按 y 升序取最顶行，是判断"当前激活 Agent 是谁"的唯一可靠来源。
+- **实测验证统一调用该函数**：成功显示 `已切换 → 01-PUBLISHER`，失败显示 `目标=02-COLLECTOR，聊天区标题=01-PUBLISHER（切换失败）`，彻底告别误报。
+
+## [2.8.14] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **实测验证改用聊天区标题栏 OCR**：Cursor 聊天区左上角的大标题（如 `01-PUBLISHER`）是当前激活 Agent 最可靠的来源。点击后在 OCR 结果中扫描 x<窗口60%、y<200px 的区域，找到的第一个角色名即为当前标题；严格比对目标角色，匹配则成功，不匹配则报失败并显示实际标题名，彻底解决误报问题。
+
+## [2.8.13] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **实测验证改为像素亮度检测**：OCR `all_roles` / `role_positions` 包含全部角色，无法区分"当前激活哪个"。新方案：点击后对目标 Agent 行截图，计算该行像素平均亮度与其他角色行的亮度差值——Cursor 激活行背景明显更亮（差值 ≥8），以此作为唯一判断依据；详情输出 `亮度 目标=xx 其他均值=xx`，失败时附完整诊断。
+
+## [2.8.11] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **实测成功必须显示 Agent 名字**：成功详情从 `侧栏已确认（via positions）` 改为 `已切换 → 01-PUBLISHER`，显示 OCR 实际读到的完整角色名（优先 author 行，其次 role_positions key，再次 all_roles 列表）。
+
+## [2.8.10] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **面板 UI 重设计（嵌入优化）**：全面重写 CSS，字体基准从 16px 缩至 11px，heading 12px，代码 10.5px；控件 padding/间距紧凑化，更适合 Cursor Simple Browser 嵌入窗口；颜色系统升级为更深的 `#0b0f1a` 背景 + 更细的 border，整体风格 Compact Dark Terminal；scrollbar 细化为 4px。
+
+## [2.8.9] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **实测详情精简**：成功时只显示 `侧栏已确认（via positions/roles/author）`；只有 OCR 未匹配时才输出完整诊断信息，保持界面整洁。
+
+## [2.8.8] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **实测详情全量输出 OCR 原始内容**：验证步骤的详情栏现在固定显示 `author=... | roles=[...] | positions=[...]`，无论成功还是已点击，都能看到 OCR 实际扫到了什么，方便定位识别问题。
+
+## [2.8.7] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **修复切换实测误报失败**：验证逻辑改为检查 OCR `role_positions` / `all_roles`（侧栏可见项），不再依赖 `agent_role`（聊天 Author 行，切换后不立即刷新，导致始终读到上一个角色名）；等待时间从 1.5s 延长至 2.5s；OCR 仍无法确认时标记为"已点击"而非"失败"，方便人工核查。
+
+## [2.8.6] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **修复切换实测表格始终空白**：`test_all_poll` 接口误注册在 POST 路由，前端 GET 请求每次得到 404 后静默重试，步骤数据永远无法返回。已将该接口移至 GET 路由。
+- **修复实测时 Cursor 窗口被还原为标准大小**：`_safe_focus` 使用 `SW_RESTORE(9)` 会强制还原最大化窗口；改为先调用 `IsZoomed` 判断当前状态，最大化时用 `SW_MAXIMIZE(3)` 保持，否则用 `SW_SHOW(5)` 不改变窗口大小。
+
+## [2.8.5] - 2026-04-08
+
+### 桌面端（`codeflow-desktop`）
+
+- **修复切换实测竞态**：线程启动前先在主线程重置 `_test_all_state`（`running: True, steps: [], total: 0`），消除线程初始化与前端轮询之间的竞态窗口；`_api_agent_test_all` 末尾补 `return`。
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **实验性 ACP**：可选在 `codeflow-nudger.json` 配置 `cursor_acp_endpoint`（或环境变量 `CODEFLOW_ACP_ENDPOINT`），向 Cursor 侧发送 JSON-RPC `workspace/openSimpleBrowser`（`layout` / `widthRatio`）；成功则不再用系统浏览器 + `win_snap`。端点与方法以所用 Cursor 版本为准，见 `BUILD.md`。
+- **环境预检**：启动巡检（`/api/start`）前 **必须** 预检全部通过；未通过时返回 400 并提示在 Cursor/项目中修正后重跑预检。面板「启动巡检」对应展示告警并刷新预检列表。`first_hello` 与 BUILD 说明与之一致。
+- **巡检轨迹**：内存环形缓冲仍最多 **280** 条；面板 `/api/patrol_trace` 支持 `limit`/`offset` 分页，表格底部增加上一页/下一页与说明。
+- **巡检轨迹搜索**：`q` 参数在内存中按说明/阶段/时间及附加字段做子串匹配（空格/逗号分隔多词为 AND）；面板增加搜索框与清除。
+- **随机等待**：主循环在 `poll_interval` 上叠加 `patrol_sleep_jitter_s`（默认约 0.4～2.5s）；每次成功向 Cursor 发送后叠加 `post_send_jitter_s`（默认约 0.25～1.8s）。可在项目根 `codeflow-nudger.json` 覆盖；`get_status().patrol_tuning` 可查看当前值。
+
+---
+
+## [2.2.1] - 2026-04-04
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **预检 · Agent 切换实测**：在「快捷键」「Agent 映射」之外，新增一项——按 `codeflow.json` 顺序 **真实发送各角色快捷键**，再 **OCR 校验当前焦点 Agent**，证实窗口可见且能切换；未通过则整表预检不通过。面板 **2.2.1**。
+
+---
+
+## [2.2.0] - 2026-04-04
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **向导步骤 3**：Agent 对齐说明按 **`docs/agents/codeflow.json` 的 `roles`**（所选团队模板）动态生成，支持自媒体等多套角色，不再写死 PM/DEV/QA/OPS。
+- **团队策略**：已配置后 **不提供「切换团队」入口**；「团队」区块增加说明——更换团队模板须 **「重置」** 后重新走向导；「同步角色模板」仅按**当前**模板刷新 `docs/agents/`。重置确认文案同步说明会覆盖 `codeflow.json` 等。
+- **vision**：`ocr_with_layout_boost` 增加 **右侧竖条** OCR 并与坐标合并，改善 Open Agents 在 **右侧** 时侧栏角色识别不到的问题。
+- **版本**：面板/API 上报 **2.2.0**（`web_panel._VERSION`）。
+
+---
+
+## [2.1.4] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **环境预检**：撤销阻塞「全部通过」的 **客户确认** 步骤；快捷键与 Agent 映射 **仅由预检自动判定**，移除 `preflight_user_confirm` 落盘与 `/api/preflight_confirm`。
+- **面板**：预检明细列增加换行与 `overflow-x` 约束，减轻横向撑破布局。
+
+## [2.1.3] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **巡检文案**：首轮与各通道消息带 **角色代码 + 侧栏标签（01-PM～04-OPS）**，要求身份不符时勿执行任务。
+- **闭环判定**：`terminal` 元数据 + `thread_key` 等补充已闭环任务号，减轻假催办；面板流水线与 nudger 共用 `collect_closed_task_ids`。
+- **BUILD.md**：补充 CodeFlow 与 Cursor 分工说明。
+
+## [2.1.2] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **vision_no_input（chat_open=true）**：在 Agent 模式且已识别侧栏角色时，若 OCR 仍识别不到输入框占位符，增加**窗口右下几何兜底**为输入区（`input_box_heuristic`），减少仅因主题/语言导致的死循环；并扩充 placeholder 关键词与模型行检测（gpt-4 等）。轨迹阶段 **`vision_input_heuristic`** 表示本次使用了兜底。
+
+---
+
+## [2.1.1] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **预检区块**：每次「环境预检」结束后，**全部通过**则自动**折叠**预检区域；**有未通过项**则自动**展开**，便于逐项处理。标题旁箭头与折叠状态同步。
+
+---
+
+## [2.1.0] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **环境预检 · Agent 映射**：在找到 Cursor 窗口后自动 **聚焦 → 截图 OCR**，为每个配置的快捷键角色（PM/DEV/QA/OPS）建立 **逻辑角色 ↔ 侧栏 OCR 文案 ↔ 屏幕坐标**；预检项「Agent 映射」全部命中后更易保证巡检接手。映射可写入 `docs/agents/.codeflow/preflight_agent_map.json` 备查。
+- **面板**：预检区展示映射表与当前焦点 OCR、OCR 耗时。
+
+---
+
+## [2.0.9] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **Open Agents / Pinned 列表**：Cursor 界面为 **01-PM、02-DEV**（前导零）时，原 OCR 正则无法识别「01」中的 **1-PM**（`0` 会阻断匹配）。已改为数字前缀支持可选 **0**，与列表文案一致。
+- **区域锚点**：除「Pinned」外，识别 **Open Agents Window** 标题行，便于竖向列表区域推断。
+- **点击切换**：`click_role` 优先尝试 **01-PM / 02-DEV** 等与界面一致的串，再回退 **1-PM / PM**，提高对「打招呼」等流程的命中率。
+
+---
+
+## [2.0.8] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **视觉发送快路径**：与 Cursor 实际行为一致——**Ctrl+Alt 切 Agent 通常会同时带上聊天输入焦点**。若 OCR 已判定「当前即目标 Agent 且存在输入框」，则**直接粘贴发送**，不再先多轮 Ctrl+L；否则**先试一次快捷键**，若随后 OCR 同时满足目标 Agent + 输入框，则**跳过**慢路径（Ctrl+L 循环 + 多轮切换）。仅当快路径未达成时才走原有慢路径。
+
+---
+
+## [2.0.7] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **视觉发送顺序**：先多次 **Ctrl+L** 确保检测到聊天 **输入框**（轨迹 `vision_chat_focus` / `vision_chat_ready`），再进入切换 Agent；避免未打开聊天就快捷键/点击/命令面板连打。
+- **减少命令面板**：切换轮次改为 **2**；**Ctrl+Shift+P** 仅在**最后一轮**作为兜底（`vision_palette` 不再每轮都出现）。
+
+---
+
+## [2.0.6] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **无面板即无进程**：浏览器每 **4s** `POST /api/panel_ping`；若 **约 42s** 未收到心跳，或 **3 分钟内从未** 有面板连接，则 **自动 `shutdown_desktop()`**，避免无控制面板仍运行巡检/pyautogui导致乱点。与「关标签 / 退出」互为补充。
+- **面板文案**：顶部提示条同步说明心跳与自动退出逻辑。
+
+---
+
+## [2.0.5] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **关闭浏览器即退出**：面板页监听 **`pagehide`**，在**非刷新**关闭标签时 **`fetch('/api/quit', { keepalive: true })`**，与点「退出」相同，避免「只关网页进程还在」。**刷新（F5）不会**触发退出。
+- **提示条**：面板顶部增加红色提示说明上述行为；多开多个面板标签时，**关闭任一标签会结束整个进程**。
+- **第二实例弹窗**：文案更新，说明可关标签退出及任务管理器处理方式。
+
+---
+
+## [2.0.4] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **巡检轨迹面板**：内层 **`#traceScrollWrap`** 纵向滚动、表头 sticky；默认拉取 **200** 条；环形缓冲 **280** 条。解决「看不到上面记录、无滚动条」问题。
+- **轨迹粒度**：视觉发送失败时不再只显示笼统 `send_fail`，而区分 **`vision_palette`**（已走 Ctrl+Shift+P）、**`vision_switch_fail`**、**`vision_no_input`**、**`vision_role_mismatch`**、**`vision_scan_fail`** 等；打招呼增加 **`greet_try` / `greet_ok` / `greet_fail` / `greet_done`**。
+- **说明**：命令面板是切换 Agent 的**第三档降级**（快捷键→点击→命令面板），OCR 长期对不上时会出现多次 `vision_palette`，属预期；若 **`vision_no_input`** 持续出现，需保证 Agent 聊天区可见、侧栏未完全挡住输入区。
+
+---
+
+## [2.0.3] - 2026-04-06
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **单实例**：Windows 下使用命名互斥 **`Local\CodeFlowDesktop_SingleInstance_Mutex_v1`**，避免多次双击 exe 出现多个 **CodeFlow-Desktop.exe**（任务管理器同名 `(2)`）。若已有实例在运行，新进程弹窗说明后退出。
+
+---
+
+## [2.0.2] - 2026-04-04
+
+### 桌面端（`bridgeflow-nudger`）
+
+- **退出与后台残留**：停止巡检时置位全局中止标志，打断进行中的 `pyautogui` 快捷键/点击链；面板 **`/api/quit`**、**Ctrl+C**、**SIGTERM** 统一走 **`shutdown_desktop()`**：先停巡检、再关闭本地面板 HTTP 服务、**`os._exit(0)`** 结束进程，避免「只关浏览器 / 任务管理器看似关了」仍占内存并继续模拟输入。
+- **日志**：说明须使用面板 **「退出」** 或 **Ctrl+C**；仅关闭浏览器标签**不会**停止进程。
+- **查找 Cursor 窗口**：`cursor_vision` 仅依赖 `QueryFullProcessImageName` 时，部分环境下对 Cursor 进程返回空路径，导致永远 `no_cursor_window`。现 **`find_all_cursor_windows`** 增加与巡检器相同的 **OpenProcess 回退解析**；且 **`vision_find_window` 失败时**在 **`nudger`** 中回退到 **EnumWindows + 双路径 exe 解析**，避免「已开 Cursor 却仍提示未找到窗口」。
+
 ### 仓库整理（协作）
 - **文档**：新增 **`docs/repo-collaboration.md`**（分支约定、勿提交目录）；**README**、**HANDOVER** 增加引用。（后续约定：**仅 `main` 为主分支**，不再使用 `master`。）
 - **`.gitignore`**：忽略 `_pages_tmp/`、临时提交说明、桌面端调试图、`CodeFlow-Desktop.spec` / `BridgeFlow-Desktop.spec`（自动生成；以 **`build.spec`** / **`pack.cmd`** 为准）。

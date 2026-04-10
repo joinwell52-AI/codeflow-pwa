@@ -1,0 +1,2109 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>码流（CodeFlow）控制面板</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/logo-sm.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0f1a;--card:#111827;--card2:#1a2233;--border:#1e2d40;
+  --text:#e2e8f0;--dim:#94a3b8;--muted:#4b5e78;
+  --accent:#38bdf8;--cyan:#22d3ee;
+  --green:#4ade80;--green-bg:rgba(74,222,128,.12);
+  --red:#f87171;--red-bg:rgba(248,113,113,.12);
+  --yellow:#fbbf24;--yellow-bg:rgba(251,191,36,.12);
+  --blue:#60a5fa;--blue-bg:rgba(96,165,250,.12);
+  --purple:#c084fc;--orange:#fb923c;
+  --r:6px;
+  --fs:11px;
+  --fs-sm:10px;
+  --fs-title:12px;
+  --fs-mono:10.5px;
+}
+html{font-size:var(--fs)}
+body{
+  font-family:'Fira Sans','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;line-height:1.55;
+  font-size:var(--fs);
+}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.wrap{max-width:1440px;margin:0 auto;padding:10px 18px 28px}
+
+/* ── Header ── */
+.header{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 0 10px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:12px;
+}
+.header img{width:28px;height:28px;border-radius:6px}
+.header .brand{font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--text)}
+.header .brand b{color:var(--cyan)}
+.header .ver{
+  font-size:var(--fs-sm);color:var(--dim);
+  background:var(--card);padding:2px 8px;border-radius:8px;
+  border:1px solid var(--border);margin-left:4px;font-family:'Fira Code',monospace;
+}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.hd-dot{display:flex;align-items:center;gap:5px;font-size:var(--fs);color:var(--dim)}
+.dot{width:7px;height:7px;border-radius:50%;transition:.3s;flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.dot.off{background:#2d3f55}
+.hd-path{
+  font-size:var(--fs-sm);color:var(--muted);
+  font-family:'Fira Code',monospace;
+  max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ── Section ── */
+.sec{margin-bottom:12px}
+.sec-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:6px;
+  cursor:pointer;user-select:none;
+}
+.sec-head:hover .sec-title{color:var(--cyan)}
+.sec-title{font-size:var(--fs-title);font-weight:600;color:var(--text);transition:color .2s}
+.sec-badge{
+  font-size:var(--fs-sm);background:rgba(56,189,248,.15);color:var(--cyan);
+  padding:1px 7px;border-radius:6px;font-weight:600;border:1px solid rgba(56,189,248,.2);
+}
+.sec-toggle{margin-left:auto;font-size:10px;color:var(--muted)}
+.sec-body{overflow:hidden;transition:max-height .25s ease}
+
+/* ── Stat Cards ── */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;position:relative;overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.c1::before{background:linear-gradient(90deg,var(--cyan),transparent)}
+.c2::before{background:linear-gradient(90deg,var(--green),transparent)}
+.c3::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.c4::before{background:linear-gradient(90deg,var(--orange),transparent)}
+.card-label{font-size:var(--fs-sm);color:var(--dim);margin-bottom:4px}
+.card-val{font-size:20px;font-weight:700;font-family:'Fira Code',monospace;line-height:1.2}
+.v1{color:var(--cyan)}.v2{color:var(--green)}.v3{color:var(--purple)}.v4{color:var(--orange)}
+.card-sub{font-size:var(--fs-sm);color:var(--muted);margin-top:3px}
+
+/* ── Preflight rows ── */
+.ck-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 12px;background:var(--card);
+  border-radius:5px;margin-bottom:5px;border:1px solid var(--border);
+}
+.ck-icon{
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;flex-shrink:0;
+}
+.ck-icon.ok{background:var(--green-bg);color:var(--green)}
+.ck-icon.fail{background:var(--red-bg);color:var(--red)}
+.ck-name{flex:1;font-size:var(--fs);font-weight:500}
+.ck-detail{font-size:var(--fs-sm);color:var(--dim)}
+
+/* ── Buttons ── */
+.btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{
+  padding:5px 13px;border:1px solid var(--border);border-radius:5px;
+  background:var(--card);color:var(--text);cursor:pointer;
+  font-size:var(--fs);font-family:inherit;font-weight:500;
+  transition:all .15s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--cyan);background:var(--card2)}
+.btn.pri{
+  background:linear-gradient(135deg,#0369a1,#0ea5e9);
+  border-color:transparent;color:#fff;
+  box-shadow:0 1px 8px rgba(14,165,233,.25);
+}
+.btn.pri:hover{opacity:.9;box-shadow:0 2px 12px rgba(14,165,233,.35)}
+.btn.red{border-color:rgba(248,113,113,.3);color:var(--red)}
+.btn.red:hover{background:var(--red-bg)}
+.btn.sm{padding:3px 9px;font-size:var(--fs-sm)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.pri:disabled{background:var(--card2);border:1px solid var(--border);color:var(--muted);box-shadow:none;opacity:.4}
+
+/* ── Two columns ── */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── Panel box ── */
+.box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.box-head{
+  display:flex;align-items:center;padding:8px 12px;
+  border-bottom:1px solid var(--border);gap:8px;
+}
+.box-title{font-size:var(--fs);font-weight:600;flex:1}
+.box-body{max-height:240px;overflow-y:auto}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.tab{
+  padding:6px 12px;font-size:var(--fs);cursor:pointer;
+  color:var(--dim);border-bottom:2px solid transparent;
+  transition:.15s;font-weight:500;
+}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--cyan);border-bottom-color:var(--cyan)}
+
+/* ── List items ── */
+.li{
+  display:flex;align-items:center;
+  padding:6px 12px;border-bottom:1px solid rgba(30,45,64,.6);
+  font-size:var(--fs);gap:8px;
+}
+.li:last-child{border-bottom:none}
+.li:hover{background:rgba(255,255,255,.02)}
+.li-name{font-family:'Fira Code',monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-mono)}
+.li-meta{color:var(--muted);font-size:var(--fs-sm);flex-shrink:0}
+.li-view{
+  color:var(--cyan);cursor:pointer;font-size:var(--fs-sm);font-weight:500;
+  flex-shrink:0;padding:2px 7px;border:1px solid rgba(34,211,238,.3);
+  border-radius:4px;transition:.15s;background:transparent;
+}
+.li-view:hover{background:rgba(34,211,238,.08)}
+
+/* ── Pipeline ── */
+.pip{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border-bottom:1px solid rgba(30,45,64,.6);font-size:var(--fs);
+}
+.pip:last-child{border-bottom:none}
+.pip-b{font-size:var(--fs-sm);padding:2px 8px;border-radius:5px;font-weight:600;flex-shrink:0}
+.pip-b.in_progress{background:var(--blue-bg);color:var(--blue)}
+.pip-b.maybe_stuck{background:var(--yellow-bg);color:var(--yellow)}
+.pip-b.timeout{background:var(--red-bg);color:var(--red)}
+.pip-b.completed{background:var(--green-bg);color:var(--green)}
+.pip-b.expired{background:rgba(75,94,120,.15);color:var(--muted)}
+.pip-id{font-family:'Fira Code',monospace;flex:1;font-size:var(--fs-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pip-info{color:var(--dim);font-size:var(--fs-sm);flex-shrink:0}
+
+/* ── Devices ── */
+.dev-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(30,45,64,.6)}
+.dev-row:last-child{border-bottom:none}
+.dev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dev-dot.online{background:var(--green);box-shadow:0 0 5px var(--green)}
+.dev-dot.offline{background:#2d3f55}
+.dev-name{flex:1;font-size:var(--fs)}
+.dev-role{font-size:var(--fs-sm);color:var(--muted);margin-right:4px}
+.dev-unbind{font-size:var(--fs-sm);color:var(--red);cursor:pointer;text-decoration:underline}
+
+.room-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;background:var(--card);border-radius:5px;
+  margin-bottom:8px;border:1px solid var(--border);
+}
+.room-key{
+  font-family:'Fira Code',monospace;font-size:var(--fs-mono);
+  color:var(--cyan);flex:1;letter-spacing:.5px;
+}
+
+.qr-area{
+  display:flex;align-items:center;justify-content:center;
+  width:140px;height:140px;border:1px dashed var(--border);
+  border-radius:var(--r);margin:8px auto;
+  color:var(--muted);font-size:var(--fs-sm);
+  text-align:center;flex-direction:column;gap:4px;
+}
+
+/* ── Config ── */
+.cfg-row{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 12px;border-bottom:1px solid rgba(30,45,64,.6);font-size:var(--fs);
+}
+.cfg-row:last-child{border-bottom:none}
+.cfg-label{width:90px;color:var(--dim);flex-shrink:0;font-weight:500;font-size:var(--fs-sm)}
+.cfg-val{font-family:'Fira Code',monospace;color:var(--text);flex:1;font-size:var(--fs-mono)}
+
+/* ── Log ── */
+.log{
+  background:#07090f;padding:8px 12px;
+  height:180px;overflow-y:auto;
+  font-family:'Fira Code',monospace;font-size:var(--fs-sm);
+  line-height:1.6;color:var(--dim);
+}
+.log .info{color:var(--text)}
+.log .warn{color:var(--yellow)}
+.log .error{color:var(--red)}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:16px;color:var(--muted);font-size:var(--fs)}
+
+/* ── Overlays ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.ov-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;width:460px;max-width:92vw}
+.ov-box h2{font-size:13px;margin-bottom:12px;text-align:center;color:var(--cyan);font-weight:600}
+.topt{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;margin-bottom:6px;transition:.15s}
+.topt:hover,.topt.sel{border-color:var(--cyan);background:rgba(34,211,238,.05)}
+.topt .tn{font-weight:600;font-size:var(--fs)}
+.topt .tr{font-size:var(--fs-sm);color:var(--dim)}
+.ov-foot{display:flex;justify-content:center;margin-top:12px}
+
+/* ── Confirm modal ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:400;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.confirm-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 26px;width:360px;max-width:90vw;text-align:center}
+.confirm-box .confirm-icon{font-size:1.8rem;margin-bottom:10px}
+.confirm-box .confirm-title{font-size:13px;font-weight:600;margin-bottom:8px}
+.confirm-box .confirm-desc{font-size:var(--fs);color:var(--dim);line-height:1.6;margin-bottom:16px}
+.confirm-box .confirm-btns{display:flex;gap:8px;justify-content:center}
+
+/* ── Preview modal ── */
+.preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.preview-box{background:var(--card);border:1px solid var(--border);border-radius:10px;width:760px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.preview-head{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);gap:8px}
+.preview-head .preview-title{flex:1;font-size:var(--fs);font-weight:600;font-family:'Fira Code',monospace;color:var(--cyan);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-head .preview-close{cursor:pointer;color:var(--muted);font-size:16px;padding:1px 6px;border-radius:4px;transition:.15s;line-height:1}
+.preview-head .preview-close:hover{color:var(--red);background:var(--red-bg)}
+.preview-content{flex:1;overflow-y:auto;padding:14px 18px;font-size:var(--fs-sm);line-height:1.7;white-space:pre-wrap;font-family:'Fira Code',monospace;color:var(--dim)}
+
+/* ── Lang btn ── */
+.lang-btn{
+  padding:2px 8px;border:1px solid var(--border);border-radius:4px;
+  background:var(--card2);color:var(--cyan);cursor:pointer;
+  font-size:var(--fs-sm);font-weight:600;font-family:'Fira Code',monospace;
+  transition:.15s;letter-spacing:.5px;
+}
+.lang-btn:hover{border-color:var(--cyan);background:rgba(34,211,238,.07)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:#2d3f55}
+
+/* ── Agent name guide ── */
+#agentNameGuide{
+  margin-bottom:10px;padding:8px 12px;
+  background:rgba(251,191,36,.06);
+  border:1px solid rgba(251,191,36,.22);
+  border-radius:6px;font-size:var(--fs-sm);line-height:1.65;
+}
+
+/* ── Patrol control block ── */
+#secPatrolCtrl{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:10px 14px;margin-bottom:12px;
+}
+#secPatrolCtrl .patrol-title{font-size:var(--fs-title);font-weight:600;margin-bottom:8px;color:var(--text)}
+
+/* ── Switch test table ── */
+#switchTestTable table{font-size:var(--fs-sm)}
+#switchTestTable th{font-size:var(--fs-sm);padding:5px 8px}
+#switchTestTable td{padding:4px 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <img src="logo-sm.png" alt="CF" onerror="this.style.display='none'">
+    <div class="brand"><b>Code</b>Flow</div>
+    <span class="ver" id="ver">PC v2.8.75</span>
+    <div class="header-right">
+      <div class="hd-dot"><span class="dot off" id="dN"></span><span data-i18n="hd_nudger">巡检器</span></div>
+      <div class="hd-dot"><span class="dot off" id="dC"></span>Cursor</div>
+      <div class="hd-dot"><span class="dot off" id="dR"></span><span data-i18n="hd_relay">中继</span></div>
+      <span class="hd-path" id="projPath">&mdash;</span>
+      <button class="lang-btn" id="langBtn" onclick="toggleLang()" title="Switch Language">EN</button>
+    </div>
+  </div>
+
+  <!-- Agent 命名指引（选了团队就显示，常驻在巡检控制上方） -->
+  <div id="agentNameGuide" style="display:none;margin-bottom:14px;padding:10px 16px;background:rgba(234,179,8,.07);border:1px solid rgba(234,179,8,.28);border-radius:8px;font-size:12px;line-height:1.7">
+    <div style="font-weight:700;color:#fbbf24;margin-bottom:4px">💡 如何在 Cursor 创建团队 Agent</div>
+    <div style="color:#fde68a">按以下格式命名，并 <b>置顶（Pin）</b>到 Agents 列表：</div>
+    <div id="agentNameList" style="font-family:monospace;color:#fcd34d;margin:6px 0 4px;letter-spacing:.5px"></div>
+    <div style="color:#d1d5db;font-size:11px">
+      ① Cursor 顶栏点 <b>Agents</b> → <b>New Agent</b> → 输入名称<br>
+      ② 创建后右键 Agent → <b>Pin</b>（置顶）<br>
+      ③ 命名好后点「<b>环境预检</b>」，系统自动识别坐标
+    </div>
+  </div>
+
+  <!-- 1. 巡检控制 (顶部最醒目) -->
+  <div id="secPatrolCtrl">
+    <div class="patrol-title" data-i18n="patrol_ctrl">巡检控制</div>
+    <div class="btns">
+      <button class="btn pri" id="btnStart" onclick="api('/api/start')"><span data-i18n="btn_start">&#9654; 启动巡检</span></button>
+      <button class="btn" id="btnStop" onclick="api('/api/stop')" disabled><span data-i18n="btn_stop">&#9724; 停止</span></button>
+      <button class="btn" onclick="runPreflight()"><span data-i18n="btn_preflight">&#10003; 环境预检</span></button>
+      <span style="flex:1"></span>
+      <button class="btn red" onclick="doReset()"><span data-i18n="btn_reset">&#8635; 重置</span></button>
+      <button class="btn red" onclick="doQuit()" style="margin-left:6px"><span data-i18n="btn_quit">&#x23FB; 退出</span></button>
+    </div>
+  </div>
+
+  <!-- 2. 预检状态 -->
+  <div class="sec" id="secPreflight">
+    <div class="sec-head" onclick="toggle('pfBody')"><span class="sec-title" data-i18n="sec_preflight">预检状态</span><span class="sec-badge" id="pfBadge">--</span><span class="sec-toggle" id="pfToggle">&#9660;</span></div>
+    <div class="sec-body" id="pfBody" style="max-height:4000px;overflow:visible">
+      <div id="pfProbe" style="font-size:12px;color:var(--muted);padding:0 4px 8px;display:none"></div>
+      <div id="pfList"><div class="empty" data-i18n="empty_loading">加载中...</div></div>
+      <div id="pfAgentMap" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(15,23,42,.5);border-radius:8px;border:1px solid var(--border);overflow-x:auto"></div>
+
+      <!-- 切换实测区域 -->
+      <div id="secSwitchTest" style="display:none;margin-top:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-weight:700;font-size:13px;color:#e2e8f0">切换实测（程序）</span>
+          <button id="btnTestAll" class="btn" style="padding:3px 14px;font-size:12px" onclick="runTestAll()">▶ 全部实测</button>
+          <span id="testAllStatus" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="switchTestTable" style="overflow-x:auto;max-height:300px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:8px">
+            <thead><tr style="background:rgba(15,23,42,.6);color:#94a3b8;text-align:left">
+              <th style="padding:7px 10px">Agent</th>
+              <th style="padding:7px 8px">状态</th>
+              <th style="padding:7px 8px">详情</th>
+            </tr></thead>
+            <tbody id="switchTestBody">
+              <tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center">点击「▶ 全部实测」开始</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2b. 巡检轨迹（结构化：与 [巡检] 日志一致） -->
+  <div class="sec" id="secTrace" style="margin-bottom:22px">
+    <div class="sec-head" onclick="toggle('traceBody')"><span class="sec-title" data-i18n="sec_trace">巡检轨迹</span><span class="sec-badge" id="traceBadge">0</span><span class="sec-toggle" id="traceToggle">&#9660;</span></div>
+    <div class="sec-body" id="traceBody" style="max-height:320px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px" data-i18n="trace_hint">最近动作（阶段 stage + 说明）；与下方实时日志中带 [巡检] 的行同源。</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="traceTable">
+          <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+            <th style="padding:6px 4px">时间</th><th style="padding:6px 4px">阶段</th><th style="padding:6px 4px">说明</th><th style="padding:6px 4px">参数</th>
+          </tr></thead>
+          <tbody id="traceRows"><tr><td colspan="4" class="empty" data-i18n="empty_loading">加载中...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 任务概览 -->
+  <div class="cards">
+    <div class="card c1"><div class="card-label" data-i18n="card_tasks">待处理任务</div><div class="card-val v1" id="sT">0</div></div>
+    <div class="card c2"><div class="card-label" data-i18n="card_reports">完成报告</div><div class="card-val v2" id="sR">0</div></div>
+    <div class="card c3"><div class="card-label" data-i18n="card_issues">问题记录</div><div class="card-val v3" id="sI">0</div></div>
+    <div class="card c4"><div class="card-label" data-i18n="card_nudges">唤醒统计</div><div class="card-val v4" id="sN">0</div><div class="card-sub" id="sNS">成功 0 / 失败 0</div></div>
+  </div>
+
+  <!-- 4. 任务流水线 + 文件浏览 (两栏) -->
+  <div class="cols" style="margin-bottom:22px" id="secFiles">
+    <div class="box">
+      <div class="box-head"><span class="box-title" data-i18n="sec_pipeline">任务流水线</span><span class="sec-badge" id="pipCnt">0</span></div>
+      <div class="box-body" id="pipBox"><div class="empty" data-i18n="empty_no_task">暂无任务</div></div>
+    </div>
+    <div class="box">
+      <div class="box-head"><span class="box-title" data-i18n="sec_files">文件浏览</span></div>
+      <div class="tabs" id="fTabs">
+        <div class="tab on" data-d="tasks" data-i18n="tab_tasks">任务单</div>
+        <div class="tab" data-d="reports" data-i18n="tab_reports">报告</div>
+        <div class="tab" data-d="issues" data-i18n="tab_issues">问题</div>
+        <div class="tab" data-d="log" data-i18n="tab_log">归档</div>
+      </div>
+      <div class="box-body" id="fList"><div class="empty" data-i18n="empty_loading">加载中...</div></div>
+    </div>
+  </div>
+
+  <!-- 5. 团队 -->
+  <div class="sec">
+    <div class="sec-head" onclick="toggle('teamBody')"><span class="sec-title" data-i18n="sec_team">团队</span><span class="sec-toggle" id="teamToggle">&#9660;</span></div>
+    <div class="sec-body" id="teamBody" style="max-height:200px">
+      <div style="padding:12px 0;font-size:1.05rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span><span data-i18n="team_tpl">模板</span>：<b id="teamName">--</b></span>
+        <span><span data-i18n="team_roles">角色</span>：<span id="teamRoles" style="color:var(--cyan)">--</span></span>
+        <button class="btn sm" onclick="showSetup()" data-i18n="team_switch">切换团队</button>
+        <button class="btn sm" onclick="syncRoleTemplates()" data-i18n="team_sync_tpl">同步角色模板</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 5b. 外部技能 -->
+  <div class="sec" id="secSkills">
+    <div class="sec-head" onclick="toggle('skillsBody')">
+      <span class="sec-title">外部技能</span>
+      <span class="sec-badge" id="skillsBadge">0</span>
+      <span class="sec-toggle" id="skillsToggle">&#9660;</span>
+    </div>
+    <div class="sec-body" id="skillsBody" style="max-height:2000px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:var(--fs-sm);font-weight:600;color:var(--cyan)">🛒 技能市场</span>
+        <button class="btn sm" onclick="fetchRepos()" style="margin-left:auto">&#8635; 刷新</button>
+      </div>
+      <div id="noGitTip" style="display:none;align-items:flex-start;gap:8px;background:#2a1a0a;border:1px solid #f59e0b;border-radius:6px;padding:8px 10px;margin-bottom:8px">
+        <span style="font-size:16px">⚠️</span>
+        <div style="font-size:var(--fs-sm);line-height:1.6;color:#fbbf24"><b>未检测到 git</b>，请先安装 <b>Git for Windows</b>：<br><a href="https://git-scm.com/download/win" target="_blank" style="color:#60a5fa;text-decoration:underline">https://git-scm.com/download/win</a><br><span style="color:var(--dim)">安装后重启本程序即可。</span></div>
+        <button onclick="document.getElementById('noGitTip').style.display='none'" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px;margin-left:auto">×</button>
+      </div>
+      <!-- 安装进度面板 -->
+      <div id="installProgress" style="display:none;margin-bottom:8px;background:#0d1f0d;border:1px solid #22c55e;border-radius:6px;padding:10px 12px">
+        <div style="font-size:var(--fs-sm);color:#86efac;font-weight:600;margin-bottom:5px" id="installProgressTitle">正在安装...</div>
+        <div id="installProgressLog" style="font-size:11px;color:var(--dim);line-height:1.9;max-height:130px;overflow-y:auto;font-family:monospace"></div>
+        <div style="margin-top:6px;background:var(--border);border-radius:3px;height:4px">
+          <div id="installProgressBar" style="background:#22c55e;height:4px;border-radius:3px;width:0%;transition:width 0.25s"></div>
+        </div>
+      </div>
+      <div id="reposList"><div class="empty" style="font-size:var(--fs-sm)">点击「刷新」查看可下载的技能包</div></div>
+    </div>
+  </div>
+
+  <!-- 6. 手机连接 -->
+  <div class="sec">
+    <div class="sec-head" onclick="toggle('phoneBody')"><span class="sec-title" data-i18n="sec_phone">手机连接</span><span class="sec-toggle" id="phoneToggle">&#9660;</span></div>
+    <div class="sec-body" id="phoneBody" style="max-height:600px">
+      <div class="room-row">
+        <span style="color:var(--dim);font-weight:500" data-i18n="phone_room_key">房间密钥：</span>
+        <span class="room-key" id="roomKey">--</span>
+        <button class="btn sm" onclick="regenKey()" data-i18n="phone_regen">重新生成</button>
+      </div>
+      <div style="text-align:center;padding:18px 0">
+        <canvas id="qrCanvas" width="180" height="180" style="border-radius:8px;background:#fff;padding:8px"></canvas>
+        <div style="font-size:.95rem;color:var(--muted);margin-top:8px" data-i18n="phone_scan_hint">手机 PWA 扫描绑定</div>
+      </div>
+      <div class="box" style="margin-top:12px">
+        <div class="box-head"><span class="box-title" data-i18n="phone_bound">已绑定设备</span></div>
+        <div id="devList"><div class="empty" data-i18n="empty_no_device">暂无绑定设备</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 实时日志 -->
+  <div class="sec">
+    <div class="sec-head" onclick="toggle('logBody')"><span class="sec-title" data-i18n="sec_log">实时日志</span><span class="sec-toggle" id="logToggle">&#9660;</span></div>
+    <div class="sec-body" id="logBody" style="max-height:500px">
+      <div class="log" id="logBox"></div>
+    </div>
+  </div>
+
+  <!-- 8. 配置 -->
+  <div class="sec">
+    <div class="sec-head" onclick="toggle('cfgBody')"><span class="sec-title" data-i18n="sec_config">配置</span><span class="sec-toggle" id="cfgToggle">&#9654;</span></div>
+    <div class="sec-body" id="cfgBody" style="max-height:0;overflow:hidden">
+      <div class="box">
+        <div class="cfg-row"><span class="cfg-label" data-i18n="cfg_relay">中继地址</span><span class="cfg-val" id="cfgRelay">--</span></div>
+        <div class="cfg-row"><span class="cfg-label" data-i18n="cfg_offset">输入偏移</span><span class="cfg-val">X=80% Y=55px</span></div>
+        <div class="cfg-row"><span class="cfg-label" data-i18n="cfg_poll">轮询间隔</span><span class="cfg-val" id="cfgPollVal">5 s</span></div>
+        <div class="cfg-row"><span class="cfg-label" data-i18n="cfg_watchdog">文件加速</span><span class="cfg-val" id="cfgWatchdog">--</span></div>
+        <div class="cfg-row"><span class="cfg-label" data-i18n="cfg_cooldown">唤醒冷却</span><span class="cfg-val" data-i18n="cfg_cooldown_val">5 秒</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:24px 0 8px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:12px">
+    &copy; 2026 joinwell52-AI &middot; Non-commercial use only &middot; From real production experience
+  </div>
+
+</div>
+
+<!-- Setup Overlay — 全屏沉浸式引导 -->
+<div class="overlay" id="setupOv" style="display:none;align-items:stretch;padding:0;background:#0a0e1a;">
+<style>
+/* ── 引导页专属样式 ── */
+#setupOv {
+  font-family: 'Fira Sans', 'Fira Code', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.wiz-wrap {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+/* 左侧品牌区 */
+.wiz-left {
+  width: 420px;
+  min-width: 340px;
+  flex-shrink: 0;
+  background: #0a0e1a;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid rgba(34,197,94,0.15);
+}
+.wiz-left-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.wiz-left-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 1;
+  display: block;
+}
+/* 底部渐变遮罩，让文字清晰可读 */
+.wiz-left-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.0) 0%,
+    rgba(0,0,0,0.15) 40%,
+    rgba(10,14,26,0.75) 65%,
+    rgba(10,14,26,0.95) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+.wiz-left > * { position: relative; z-index: 2; }
+.wiz-brand {
+  position: relative;
+  z-index: 2;
+  padding: 40px 40px 48px 40px;
+}
+.wiz-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+.wiz-logo-row img {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+}
+.wiz-logo-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+}
+.wiz-logo-name span {
+  color: #22c55e;
+}
+.wiz-tagline {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+.wiz-tagline em {
+  font-style: normal;
+  background: linear-gradient(90deg, #22c55e, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.wiz-sub {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+.wiz-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.wiz-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.wiz-feat-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.wiz-feat-icon svg { width: 16px; height: 16px; }
+.wiz-feat-text strong {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 2px;
+}
+.wiz-feat-text span {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+.wiz-product-img {
+  position: relative;
+  z-index: 1;
+  margin-top: 32px;
+}
+.wiz-product-img img {
+  width: 100%;
+  border-radius: 12px;
+  opacity: 0.85;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.wiz-version {
+  font-size: 0.75rem;
+  color: #334155;
+  margin-top: 20px;
+  font-family: 'Fira Code', monospace;
+}
+/* 右侧表单区 */
+.wiz-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 60px;
+  background: #0f172a;
+  position: relative;
+  overflow: hidden;
+}
+.wiz-right::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(34,197,94,0.04) 0%, transparent 65%);
+  pointer-events: none;
+}
+.wiz-step-panel {
+  width: 100%;
+  max-width: 460px;
+  position: relative;
+  z-index: 1;
+}
+/* 进度指示器 */
+.wiz-progress {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 40px;
+}
+.wiz-step-dot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  transition: color 0.3s;
+}
+.wiz-step-dot.active { color: #22c55e; }
+.wiz-step-dot.done { color: #16a34a; }
+.wiz-dot-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid #1e293b;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #0f172a;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.wiz-step-dot.active .wiz-dot-num {
+  border-color: #22c55e;
+  color: #22c55e;
+  box-shadow: 0 0 12px rgba(34,197,94,0.3);
+}
+.wiz-step-dot.done .wiz-dot-num {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+.wiz-step-line {
+  flex: 1;
+  height: 1px;
+  background: #1e293b;
+  margin: 0 12px;
+  transition: background 0.3s;
+}
+.wiz-step-line.done { background: #22c55e; }
+/* 步骤标题 */
+.wiz-step-title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.wiz-step-desc {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+/* 表单元素 */
+.wiz-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  display: block;
+}
+.wiz-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #1e293b;
+  background: #1a2235;
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-family: 'Fira Code', monospace;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.wiz-input:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+}
+.wiz-input::placeholder { color: #334155; }
+.wiz-err {
+  font-size: 0.83rem;
+  color: #f87171;
+  margin-top: 8px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+.wiz-err svg { width: 14px; height: 14px; flex-shrink: 0; }
+/* 团队选项 */
+.wiz-team-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.wiz-team-card {
+  padding: 16px;
+  border-radius: 10px;
+  border: 1.5px solid #1e293b;
+  background: #1a2235;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.wiz-team-card:hover {
+  border-color: #334155;
+  background: #1e2940;
+}
+.wiz-team-card.selected {
+  border-color: #22c55e;
+  background: rgba(34,197,94,0.06);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.10);
+}
+.wiz-team-card.selected::after {
+  content: '';
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34,197,94,0.6);
+}
+.wiz-team-icon {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  display: block;
+  line-height: 1;
+}
+.wiz-team-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+.wiz-team-roles {
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.5;
+  font-family: 'Fira Code', monospace;
+}
+/* 按钮 */
+.wiz-btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+.wiz-btn {
+  flex: 1;
+  padding: 13px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.01em;
+}
+.wiz-btn.ghost {
+  background: transparent;
+  border: 1.5px solid #1e293b;
+  color: #64748b;
+}
+.wiz-btn.ghost:hover { border-color: #334155; color: #94a3b8; }
+.wiz-btn.primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(34,197,94,0.25);
+}
+.wiz-btn.primary:hover {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  box-shadow: 0 6px 28px rgba(34,197,94,0.35);
+  transform: translateY(-1px);
+}
+.wiz-btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+/* 扫描线动画 */
+@keyframes wiz-scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(800%); opacity: 0; }
+}
+.wiz-scanline {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent);
+  animation: wiz-scan 6s linear infinite;
+  pointer-events: none;
+}
+</style>
+
+<div class="wiz-wrap">
+  <!-- 左侧品牌 -->
+  <div class="wiz-left">
+    <div class="wiz-left-bg"><img src="product.png" alt="" onerror="this.parentElement.style.background='#1a2235'"></div>
+    <div class="wiz-left-mask"></div>
+    <div class="wiz-brand">
+      <div class="wiz-logo-row">
+        <img src="logo-sm.png" alt="CodeFlow" onerror="this.style.display='none'">
+        <div class="wiz-logo-name">码流 <span>CodeFlow</span></div>
+      </div>
+      <div class="wiz-tagline">指令成流，<br><em>智能随行</em></div>
+      <div class="wiz-sub">AI 驱动的人机协作中枢<br>手机驾驭 AI，让指令高效流转、直达团队。</div>
+      <div class="wiz-features">
+        <div class="wiz-feat">
+          <div class="wiz-feat-icon" style="background:rgba(34,197,94,0.1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div class="wiz-feat-text">
+            <strong>多角色 AI 团队</strong>
+            <span>PM / DEV / OPS / QA 协作闭环</span>
+          </div>
+        </div>
+        <div class="wiz-feat">
+          <div class="wiz-feat-icon" style="background:rgba(6,182,212,0.1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+          </div>
+          <div class="wiz-feat-text">
+            <strong>手机端主控</strong>
+            <span>扫码绑定，随时发令查看进度</span>
+          </div>
+        </div>
+        <div class="wiz-feat">
+          <div class="wiz-feat-icon" style="background:rgba(168,85,247,0.1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="wiz-feat-text">
+            <strong>实时任务巡检</strong>
+            <span>文件落地、自动催办、状态可视</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="wiz-version" id="wizVersion">v2.8.89</div>
+    </div>
+  </div>
+
+  <!-- 右侧表单 -->
+  <div class="wiz-right">
+    <div class="wiz-step-panel">
+      <!-- 进度条 3步 -->
+      <div class="wiz-progress">
+        <div class="wiz-step-dot active" id="wizDot0">
+          <div class="wiz-dot-num">1</div>
+          <span>连接 Cursor</span>
+        </div>
+        <div class="wiz-step-line" id="wizLine0"></div>
+        <div class="wiz-step-dot" id="wizDot1">
+          <div class="wiz-dot-num">2</div>
+          <span>选择团队</span>
+        </div>
+        <div class="wiz-step-line" id="wizLine1"></div>
+        <div class="wiz-step-dot" id="wizDot2">
+          <div class="wiz-dot-num">3</div>
+          <span>完成配置</span>
+        </div>
+      </div>
+
+      <!-- Step 0: 欢迎 + Cursor 检测 -->
+      <div id="setupStep0">
+        <div class="wiz-step-title">欢迎使用 CodeFlow</div>
+        <div class="wiz-step-desc">正在检测 Cursor 编辑器…</div>
+
+        <!-- Cursor 检测状态卡片 -->
+        <div id="wizCursorCard" style="border:1.5px solid #1e293b;border-radius:12px;padding:20px;background:#1a2235;margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div id="wizCursorIcon" style="width:40px;height:40px;border-radius:10px;background:rgba(34,197,94,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" width="20" height="20"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:.9rem;font-weight:600;color:#e2e8f0;margin-bottom:3px" id="wizCursorTitle">检测中…</div>
+              <div style="font-size:.8rem;color:#475569;font-family:'Fira Code',monospace" id="wizCursorPath">请稍候</div>
+            </div>
+            <div id="wizCursorBadge" style="font-size:.75rem;padding:4px 10px;border-radius:20px;font-weight:600;background:#1e293b;color:#64748b">检测中</div>
+          </div>
+        </div>
+
+        <!-- 找不到时显示选择按钮 -->
+        <div id="wizNoCursorHint" style="display:none;margin-bottom:20px">
+          <div style="font-size:.85rem;color:#f59e0b;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            未自动找到 Cursor，请手动选择 Cursor.exe
+          </div>
+          <button class="wiz-btn primary" onclick="wizSelectCursor()" style="width:100%">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-right:6px"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            浏览选择 Cursor.exe
+          </button>
+        </div>
+
+        <div class="wiz-btn-row">
+          <button class="wiz-btn primary" id="btnStep0Next" onclick="wizGoStep1(false);wizSetStep(1);" disabled>
+            下一步 →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 1: 团队模板 -->
+      <div id="setupStep1" style="display:none">
+        <div class="wiz-step-title" data-i18n="wiz_s1_h">选择团队模板</div>
+        <div class="wiz-step-desc" data-i18n="wiz_s1_d">选一个最适合你项目的 AI 团队，定义角色和协作规则。</div>
+        <div class="wiz-team-grid" id="teamOpts"></div>
+        <div class="wiz-btn-row">
+          <button class="wiz-btn ghost" onclick="wizGoStep0()">← 返回</button>
+          <button class="wiz-btn primary" id="btnStep1Next" onclick="setupStep1Next()" disabled>
+            <span data-i18n="btn_next">下一步</span> →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: 项目路径 & 完成 -->
+      <div id="setupStep2" style="display:none">
+        <div class="wiz-step-title" data-i18n="wiz_s2_h">初始化项目</div>
+        <div class="wiz-step-desc" data-i18n="wiz_s2_d">确认项目目录，系统将自动创建协作规则文件和目录结构。</div>
+
+        <label class="wiz-field-label">项目目录</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div id="setupPathDisplay" style="flex:1;padding:13px 16px;border-radius:10px;border:1.5px solid #1e293b;background:#1a2235;color:#f8fafc;font-size:.9rem;font-family:'Fira Code',monospace;min-height:48px;display:flex;align-items:center;word-break:break-all">
+            <span id="setupPathText" style="color:#475569">未选择</span>
+          </div>
+          <button class="wiz-btn primary" onclick="wizBrowseFolder()" style="flex-shrink:0;width:auto;padding:13px 18px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="vertical-align:middle;margin-right:6px"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            浏览
+          </button>
+        </div>
+        <input type="hidden" id="setupPath" />
+        <div class="wiz-err" id="setupPathErr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="setupPathErrMsg">请选择项目目录</span>
+        </div>
+
+        <div class="wiz-btn-row">
+          <button class="wiz-btn ghost" onclick="wizGoStep1()">← <span data-i18n="btn_prev">返回</span></button>
+          <button class="wiz-btn primary" id="btnSetup" onclick="doSetup()">
+            <span data-i18n="btn_save">保存并启动</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Confirm Overlay -->
+<div class="confirm-overlay" id="confirmOv">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">&#9888;</div>
+    <div class="confirm-title" id="confirmTitle">确定要重置吗？</div>
+    <div class="confirm-desc" id="confirmDesc">将清除本地配置，重新进入设置向导。<br>项目文件和团队文件不会被删除。</div>
+    <div class="confirm-btns">
+      <button class="btn" onclick="confirmCancel()" data-i18n="btn_cancel">取消</button>
+      <button class="btn red" id="confirmOk" onclick="confirmOk()">确定重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Overlay -->
+<div class="preview-overlay" id="previewOv" onclick="if(event.target===this)closePreview()">
+  <div class="preview-box">
+    <div class="preview-head">
+      <span class="preview-title" id="previewTitle">--</span>
+      <span class="preview-close" onclick="closePreview()" title="关闭">&times;</span>
+    </div>
+    <div class="preview-content" id="previewBody" data-i18n="empty_loading">加载中...</div>
+  </div>
+</div>
+
+<script src="qrcode.min.js"></script>
+<script>
+/* ── 技能市场：仓库下载 + 安装 ── */
+function fetchRepos(){
+  const list=$('reposList');
+  if(list) list.innerHTML='<div class="empty" style="font-size:var(--fs-sm)">扫描中...</div>';
+  // 同时拉取仓库列表和已安装技能列表
+  Promise.all([
+    fetch('/api/skills/repos').then(r=>r.json()),
+    fetch('/api/skills/list').then(r=>r.json()),
+  ]).then(([rd, sd])=>{
+    if(!rd.ok){ list.innerHTML='<div class="empty" style="color:var(--red);font-size:var(--fs-sm)">扫描失败</div>'; return; }
+    const repos=rd.repos||[];
+    const allSkills=sd.skills||[];
+    // 更新徽章
+    const badge=$('skillsBadge');
+    if(badge) badge.textContent=allSkills.length;
+    if(!repos.length){ list.innerHTML='<div class="empty" style="font-size:var(--fs-sm)">暂无预设仓库</div>'; return; }
+    list.innerHTML=repos.map(r=>{
+      const dl=r.downloaded;
+      // 统计该仓库下有多少个 skill、已安装多少
+      // 匹配规则：path 包含 /repoDir/ 或 path 以 /repoDir 结尾（根目录型 skill）
+      const repoSkills=allSkills.filter(s=>{
+        if(!s.path) return false;
+        const p=s.path.replace(/\\/g,'/');
+        return p.includes('/'+r.dir+'/') || p.endsWith('/'+r.dir);
+      });
+      const total=repoSkills.length;
+      const installed=repoSkills.filter(s=>s.installed).length;
+      const allInstalled=total>0&&installed===total;
+      const countLabel=dl&&total>0
+        ? '<span style="font-size:var(--fs-sm);color:'+(allInstalled?'var(--green)':'var(--dim)')+';margin-left:4px">'+installed+'/'+total+' 已安装</span>'
+        : '';
+      const installBtnLabel=allInstalled?'重新安装':'安装全部';
+      const installBtnStyle=allInstalled
+        ?'border-color:var(--green);color:var(--green);font-weight:600'
+        :'background:var(--cyan);color:#000;font-weight:600';
+      return '<div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--card);border-radius:5px;margin-bottom:4px">'
+        +'<div style="display:flex;align-items:flex-start;gap:8px">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        +'<span style="font-size:var(--fs);font-weight:600;color:var(--text)">'+esc(r.name)+'</span>'
+        +(dl?'<span style="font-size:var(--fs-sm);color:var(--green);background:var(--green-bg);padding:1px 6px;border-radius:4px">✓ 已下载</span>':'')
+        +countLabel
+        +'</div>'
+        +'<div style="font-size:var(--fs-sm);color:var(--dim);margin-top:2px;line-height:1.4">'+esc(r.desc)+'</div>'
+        +'<div style="font-size:var(--fs-sm);color:var(--muted);margin-top:2px;font-family:monospace">'+esc(r.url.replace('https://github.com/','gh:').replace('.git',''))+'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+        +'<button class="btn sm" onclick="downloadRepo(\''+r.id+'\',this)">'+(dl?'更新':'下载')+'</button>'
+        +(dl?'<button class="btn sm" style="'+installBtnStyle+'" onclick="installRepoAll(\''+r.id+'\',this)">'+installBtnLabel+'</button>':'')
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+  }).catch(e=>{ if(list) list.innerHTML='<div class="empty" style="color:var(--red);font-size:var(--fs-sm)">请求失败</div>'; });
+}
+
+function fetchSkills(){
+  fetch('/api/skills/list').then(r=>r.json()).then(d=>{
+    const badge=$('skillsBadge');
+    if(badge && d.ok) badge.textContent=(d.skills||[]).length;
+  }).catch(()=>{});
+}
+
+function downloadRepo(id, btn){
+  const orig=btn.textContent;
+  btn.disabled=true; btn.textContent='下载中...';
+  fetch('/api/skills/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    .then(r=>r.json()).then(d=>{
+      btn.disabled=false; btn.textContent=orig;
+      if(d.ok){
+        fetchRepos();
+      } else if(d.no_git){
+        const box=document.getElementById('noGitTip');
+        if(box){ box.style.display='flex'; }
+      } else {
+        const el=document.getElementById('reposList');
+        if(el){
+          const msg=(d.message||'未知错误').replace(/\n/g,'<br>');
+          el.insertAdjacentHTML('afterbegin',
+            '<div style="background:#2a0a0a;border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:var(--fs-sm);color:#fca5a5;line-height:1.6">'
+            +'⚠️ 下载失败：<br><span style="font-family:monospace;color:#f87171">'+msg+'</span></div>');
+        }
+      }
+    }).catch(e=>{ btn.disabled=false; btn.textContent=orig; alert('请求失败: '+e); });
+}
+
+async function installRepoAll(repoId, btn){
+  // 获取该仓库下所有 skill
+  const sd = await fetch('/api/skills/list').then(r=>r.json());
+  if(!sd.ok) return alert('获取技能列表失败');
+  const skills = (sd.skills||[]).filter(s=>{
+    if(!s.path) return false;
+    const p=s.path.replace(/\\/g,'/');
+    return p.includes('/'+repoId+'/') || p.endsWith('/'+repoId);
+  });
+  if(!skills.length){ alert('该仓库下未找到可安装的技能'); return; }
+
+  // 显示进度面板
+  const prog=$('installProgress');
+  const title=$('installProgressTitle');
+  const log=$('installProgressLog');
+  const bar=$('installProgressBar');
+  prog.style.display='block';
+  log.innerHTML='';
+  bar.style.width='0%';
+  title.textContent='准备安装 '+skills.length+' 个技能...';
+  btn.disabled=true;
+
+  let ok=0, fail=0;
+  for(let i=0;i<skills.length;i++){
+    const s=skills[i];
+    title.textContent='正在安装 ('+( i+1)+'/'+skills.length+')：'+s.name;
+    bar.style.width=Math.round((i/skills.length)*100)+'%';
+    log.innerHTML+='<span style="color:var(--dim)">▶ '+esc(s.name)+'</span> ';
+    log.scrollTop=log.scrollHeight;
+    try{
+      const d=await fetch('/api/skills/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:s.path,name:s.name})}).then(r=>r.json());
+      if(d.ok){
+        ok++;
+        log.innerHTML+='<span style="color:#86efac">✓</span><br>';
+      } else {
+        fail++;
+        log.innerHTML+='<span style="color:#f87171">✗ '+esc(d.message||'失败')+'</span><br>';
+      }
+    } catch(e){
+      fail++;
+      log.innerHTML+='<span style="color:#f87171">✗ 请求失败</span><br>';
+    }
+    log.scrollTop=log.scrollHeight;
+  }
+
+  bar.style.width='100%';
+  title.textContent='完成！成功 '+ok+' 个'+(fail?'，失败 '+fail+' 个':'');
+  title.style.color=fail?'#fbbf24':'#86efac';
+  btn.disabled=false;
+  setTimeout(()=>{ prog.style.display='none'; title.style.color=''; fetchRepos(); }, 3000);
+}
+
+</script>
+<script>
+const $=id=>document.getElementById(id);
+let _dir='tasks',_selTeam='',_sse=null,_lang='zh';
+
+/* ═══════ i18n 翻译字典 ═══════ */
+const I18N={
+  zh:{
+    hd_nudger:'巡检器', hd_relay:'中继',
+    patrol_ctrl:'巡检控制',
+    btn_start:'\u25B6 启动巡检', btn_start_running:'\u25CF 运行中',
+    btn_stop:'\u25A0 停止', btn_preflight:'\u2713 环境预检', btn_reset:'\u21BB 重置', btn_quit:'\u23FB 退出',
+    sec_preflight:'预检状态', pf_pass:'全部通过', pf_fail:'有异常',
+    card_tasks:'待处理任务', card_reports:'完成报告', card_issues:'问题记录', card_nudges:'唤醒统计',
+    nudge_stats:'成功 {ok} / 失败 {fail}',
+    sec_pipeline:'任务流水线', sec_files:'文件浏览',
+    tab_tasks:'任务单', tab_reports:'报告', tab_issues:'问题', tab_log:'归档',
+    sec_team:'团队', team_tpl:'模板', team_roles:'角色', team_switch:'切换团队',
+    team_sync_tpl:'同步角色模板', team_sync_ok:'已从内置模板更新 docs/agents/（与当前团队一致，建议先备份旧文件）',
+    sec_phone:'手机连接', phone_room_key:'房间密钥：', phone_regen:'重新生成',
+    phone_scan_hint:'手机 PWA 扫描绑定', phone_bound:'已绑定设备',
+    sec_log:'实时日志', sec_trace:'巡检轨迹', trace_hint:'最近动作（阶段 stage + 说明）；与下方实时日志中带 [巡检] 的行同源。',
+    sec_config:'配置',
+    cfg_relay:'中继地址', cfg_offset:'输入偏移', cfg_poll:'轮询间隔', cfg_poll_val:'2 秒',
+    cfg_watchdog:'文件加速', cfg_watchdog_on:'watchdog 已启用', cfg_watchdog_off:'仅轮询',
+    cfg_cooldown:'唤醒冷却', cfg_cooldown_val:'5 秒',
+    wiz_step1_title:'步骤 1/2 — 项目文件夹',
+    wiz_step1_desc:'请输入你的代码项目根目录（包含 .cursor/ 的文件夹）。<br>系统会自动创建 docs/agents/ 子目录并拷贝协作规则文件。',
+    wiz_step1_ph:'例如 C:\\Users\\你\\Desktop\\my-project',
+    wiz_step2_title:'步骤 2/2 — 选择团队模板',
+    wiz_step2_desc:'选一个团队模板，定义角色和协作规则：',
+    btn_cancel:'取消', btn_next:'下一步', btn_prev:'上一步', btn_save:'保存设置', btn_saving:'配置中...',
+    confirm_reset_title:'确定要重置吗？',
+    confirm_reset_desc:'将清除本地配置，重新进入设置向导。<br>项目文件和团队文件不会被删除。',
+    confirm_reset_ok:'确定重置',
+    confirm_quit_title:'确定要退出码流（CodeFlow）吗？',
+    confirm_quit_desc:'退出后巡检器将停止运行，手机端将断开连接。',
+    confirm_quit_ok:'确定退出',
+    confirm_regen_title:'重新生成密钥？', confirm_regen_desc:'所有已绑定设备需要重新扫码。', confirm_regen_ok:'确定生成',
+    pip_in_progress:'执行中', pip_maybe_stuck:'可能卡住', pip_timeout:'超时', pip_completed:'已完成', pip_expired:'已过期',
+    empty_loading:'加载中...', empty_no_trace:'暂无轨迹（启动巡检并产生文件后会显示）',
+    empty_no_task:'暂无任务', empty_no_file:'暂无文件', empty_no_device:'暂无绑定设备',
+    file_view:'查看', file_err_prefix:'错误: ', file_empty:'(空文件)', file_load_fail:'加载失败: ',
+    setup_path_err:'请输入项目路径',
+    unbind:'解绑',
+    page_title:'码流（CodeFlow）控制面板',
+    lang_btn:'EN',
+    pf_n_项目目录:'项目目录', pf_n_目录结构:'目录结构', pf_n_团队配置:'团队配置',
+    pf_n_角色文件:'角色文件', pf_n_Cursor窗口:'Cursor 窗口', pf_n_快捷键:'快捷键',
+    pf_d_未设置:'未设置', pf_d_就绪:'tasks/ reports/ issues/ log/ 就绪', pf_d_缺少子目录:'缺少子目录',
+    pf_d_未初始化:'未初始化', pf_d_rules_ok:'rules + skills 已就绪', pf_d_rules_no:'未拷贝到项目',
+    pf_d_cursor_no:'未找到 Cursor，请先打开', pf_d_kb_ok:'已配置', pf_d_kb_no:'未配置'
+  },
+  en:{
+    hd_nudger:'Nudger', hd_relay:'Relay',
+    patrol_ctrl:'Patrol Controls',
+    btn_start:'\u25B6 Start Patrol', btn_start_running:'\u25CF Running',
+    btn_stop:'\u25A0 Stop', btn_preflight:'\u2713 Preflight', btn_reset:'\u21BB Reset', btn_quit:'\u23FB Quit',
+    sec_preflight:'Preflight', pf_pass:'All Passed', pf_fail:'Issues Found',
+    card_tasks:'Pending Tasks', card_reports:'Reports', card_issues:'Issues', card_nudges:'Nudges',
+    nudge_stats:'OK {ok} / Fail {fail}',
+    sec_pipeline:'Task Pipeline', sec_files:'File Browser',
+    tab_tasks:'Tasks', tab_reports:'Reports', tab_issues:'Issues', tab_log:'Archive',
+    sec_team:'Team', team_tpl:'Template', team_roles:'Roles', team_switch:'Switch Team',
+    team_sync_tpl:'Sync role templates', team_sync_ok:'Updated docs/agents/ from bundled templates (backup old files first)',
+    sec_phone:'Mobile', phone_room_key:'Room Key:', phone_regen:'Regenerate',
+    phone_scan_hint:'Scan QR with PWA to bind', phone_bound:'Bound Devices',
+    sec_log:'Live Logs', sec_trace:'Patrol trace', trace_hint:'Recent steps (stage + detail); same source as [巡检] lines in logs below.',
+    sec_config:'Config',
+    cfg_relay:'Relay URL', cfg_offset:'Input Offset', cfg_poll:'Poll Interval', cfg_poll_val:'2 sec',
+    cfg_watchdog:'File boost', cfg_watchdog_on:'watchdog on', cfg_watchdog_off:'poll only',
+    cfg_cooldown:'Nudge Cooldown', cfg_cooldown_val:'5 sec',
+    wiz_step1_title:'Step 1/2 — Project Folder',
+    wiz_step1_desc:'Enter your project root directory (containing .cursor/ folder).<br>The system will create docs/agents/ and copy collaboration rules.',
+    wiz_step1_ph:'e.g. C:\\Users\\You\\Desktop\\my-project',
+    wiz_step2_title:'Step 2/2 — Choose Team Template',
+    wiz_step2_desc:'Pick a team template that defines roles and collaboration rules:',
+    btn_cancel:'Cancel', btn_next:'Next', btn_prev:'Back', btn_save:'Save', btn_saving:'Saving...',
+    confirm_reset_title:'Reset configuration?',
+    confirm_reset_desc:'This will clear local config and restart the setup wizard.<br>Project files and team files will not be deleted.',
+    confirm_reset_ok:'Confirm Reset',
+    confirm_quit_title:'Quit CodeFlow?',
+    confirm_quit_desc:'The nudger will stop and mobile connection will be lost.',
+    confirm_quit_ok:'Confirm Quit',
+    confirm_regen_title:'Regenerate room key?', confirm_regen_desc:'All bound devices will need to re-scan.', confirm_regen_ok:'Confirm',
+    pip_in_progress:'In Progress', pip_maybe_stuck:'Maybe Stuck', pip_timeout:'Timeout', pip_completed:'Completed', pip_expired:'Expired',
+    empty_loading:'Loading...', empty_no_trace:'No trace yet (start patrol and add tasks).',
+    empty_no_task:'No tasks', empty_no_file:'No files', empty_no_device:'No bound devices',
+    file_view:'View', file_err_prefix:'Error: ', file_empty:'(empty)', file_load_fail:'Load failed: ',
+    setup_path_err:'Please enter project path',
+    unbind:'Unbind',
+    page_title:'CodeFlow Control Panel',
+    lang_btn:'中文',
+    pf_n_项目目录:'Project Dir', pf_n_目录结构:'Dir Structure', pf_n_团队配置:'Team Config',
+    pf_n_角色文件:'Role Files', pf_n_Cursor窗口:'Cursor Window', pf_n_快捷键:'Hotkeys',
+    pf_d_未设置:'Not set', pf_d_就绪:'tasks/ reports/ issues/ log/ ready', pf_d_缺少子目录:'Missing subdirs',
+    pf_d_未初始化:'Not initialized', pf_d_rules_ok:'rules + skills ready', pf_d_rules_no:'Not copied to project',
+    pf_d_cursor_no:'Cursor not found, please open it', pf_d_kb_ok:'Configured', pf_d_kb_no:'Not configured'
+  }
+};
+
+function t(key,params){
+  let s=I18N[_lang][key]||I18N.zh[key]||key;
+  if(params)Object.entries(params).forEach(([k,v])=>{s=s.replace('{'+k+'}',v);});
+  return s;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function applyLang(){
+  document.title=t('page_title');
+  $('langBtn').textContent=t('lang_btn');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key=el.getAttribute('data-i18n');
+    const val=I18N[_lang][key];
+    if(val!==undefined)el.innerHTML=val;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{
+    const key=el.getAttribute('data-i18n-placeholder');
+    const val=I18N[_lang][key];
+    if(val!==undefined)el.placeholder=val;
+  });
+  localStorage.setItem('bf_lang',_lang);
+}
+
+function toggleLang(){
+  _lang=_lang==='zh'?'en':'zh';
+  applyLang();
+  fetchPipeline();fetchFiles(_dir);fetchDevices();
+}
+
+/* Toggle sections */
+function toggle(id){
+  const el=$(id);
+  if(!el)return;
+  const isOpen=el.style.maxHeight!=='0px'&&el.style.maxHeight!=='0';
+  if(isOpen){
+    el.style.maxHeight='0px';
+    el.style.overflow='hidden';
+  } else {
+    // 用真实内容高度，不截断
+    el.style.maxHeight='none';
+    el.style.overflow='visible';
+  }
+}
+
+/* Status polling */
+function fetchStatus(){
+  fetch('/api/status').then(r=>r.json()).then(d=>{
+    if(d.need_setup){if($('setupOv').style.display!=='flex')showSetup();return;}
+    $('dN').className='dot '+(d.running?'on':'off');
+    $('dC').className='dot '+(d.cursor_found?'on':(d.running?'warn':'off'));
+    $('dR').className='dot '+(d.relay_connected?'on':'off');
+    $('projPath').textContent=d.project_dir||'--';
+    $('sT').textContent=d.tasks_count??0;
+    $('sR').textContent=d.reports_count??0;
+    $('sI').textContent=d.issues_count??0;
+    const ok=d.stats?.nudge_ok??0,fl=d.stats?.nudge_fail??0;
+    $('sN').textContent=ok+fl;
+    $('sNS').textContent=t('nudge_stats',{ok:ok,fail:fl});
+    if(d.running){
+      $('btnStart').onclick=null;$('btnStart').style.cursor='default';$('btnStart').style.opacity='1';
+      $('btnStart').innerHTML=t('btn_start_running');$('btnStart').disabled=false;
+      $('btnStop').disabled=false;
+    }else{
+      $('btnStart').onclick=()=>api('/api/start');$('btnStart').style.cursor='pointer';$('btnStart').style.opacity='1';
+      $('btnStart').innerHTML=t('btn_start');$('btnStart').disabled=false;
+      $('btnStop').disabled=true;
+    }
+    if(d.version)$('ver').textContent='PC v'+d.version;
+    if(d.team_name)$('teamName').textContent=d.team_name;
+    if(d.roles)$('teamRoles').textContent=d.roles.map(r=>r.code).join(' / ');
+    if(d.room_key){$('roomKey').textContent=d.room_key;renderQR(d.relay_url||'',d.room_key,d.machine_code||'',d.device_id||'');}
+    if(d.relay_url)$('cfgRelay').textContent=d.relay_url;
+    if(d.poll_interval_s!=null&&$('cfgPollVal'))$('cfgPollVal').textContent=d.poll_interval_s+' s';
+    if($('cfgWatchdog')){
+      if(d.file_observer_active===true)$('cfgWatchdog').textContent=t('cfg_watchdog_on');
+      else if(d.file_observer_active===false)$('cfgWatchdog').textContent=t('cfg_watchdog_off');
+      else $('cfgWatchdog').textContent='--';
+    }
+  }).catch(()=>{});
+}
+
+/* Pipeline */
+function fetchPipeline(){
+  fetch('/api/pipeline').then(r=>r.json()).then(d=>{
+    const ls=d.pipeline||[];$('pipCnt').textContent=ls.length;
+    $('pipBox').innerHTML=ls.length?ls.map(p=>{
+      const lbl=t('pip_'+p.status)||p.status;
+      return '<div class="pip"><span class="pip-b '+p.status+'">'+lbl+
+        '</span><span class="pip-id">'+p.task_id+'</span><span class="pip-info">'+
+        (p.sender||'?')+' &rarr; '+(p.recipient||'?')+' &middot; '+p.age_minutes+'m</span></div>';
+    }).join(''):'<div class="empty">'+t('empty_no_task')+'</div>';
+  }).catch(()=>{});
+}
+
+/* Files */
+function fetchFiles(dir){
+  _dir=dir;
+  document.querySelectorAll('#fTabs .tab').forEach(t=>t.classList.toggle('on',t.dataset.d===dir));
+  fetch('/api/files?dir='+dir).then(r=>r.json()).then(d=>{
+    const fs=d.files||[];
+    $('fList').innerHTML=fs.length?fs.map(f=>
+      '<div class="li">'+
+        '<span class="li-name">'+f.filename+'</span>'+
+        '<span class="li-meta">'+f.modified+'</span>'+
+        '<span class="li-view" onclick="previewFile(\''+_dir+'\',\''+f.filename.replace(/'/g,"\\'")+'\')">'+t('file_view')+'</span>'+
+      '</div>'
+    ).join(''):'<div class="empty">'+t('empty_no_file')+'</div>';
+  }).catch(()=>{});
+}
+document.querySelectorAll('#fTabs .tab').forEach(t=>t.addEventListener('click',()=>fetchFiles(t.dataset.d)));
+
+function jumpTo(dir){
+  fetchFiles(dir);
+  $('secFiles').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* File Preview */
+function previewFile(dir,name){
+  $('previewTitle').textContent=name;
+  $('previewBody').textContent=t('empty_loading');
+  $('previewOv').style.display='flex';
+  fetch('/api/file_content?dir='+encodeURIComponent(dir)+'&name='+encodeURIComponent(name))
+    .then(r=>r.json()).then(d=>{
+      if(d.error){$('previewBody').textContent=t('file_err_prefix')+d.error;return;}
+      $('previewBody').textContent=d.content||t('file_empty');
+    }).catch(e=>{$('previewBody').textContent=t('file_load_fail')+e;});
+}
+function closePreview(){$('previewOv').style.display='none';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePreview();});
+
+/* Preflight */
+const PF_DETAIL_KEYS={
+  '未设置':'pf_d_未设置',
+  'tasks/ reports/ issues/ log/ 就绪':'pf_d_就绪', '缺少子目录':'pf_d_缺少子目录',
+  '未初始化':'pf_d_未初始化',
+  'rules + skills 已就绪':'pf_d_rules_ok', '未拷贝到项目':'pf_d_rules_no',
+  '未找到 Cursor，请先打开':'pf_d_cursor_no',
+  '已配置':'pf_d_kb_ok', '未配置':'pf_d_kb_no'
+};
+function pfName(n){return t('pf_n_'+n)||n;}
+function pfDetail(d){const k=PF_DETAIL_KEYS[d];return k?t(k):d;}
+function runPreflight(){
+  $('pfBadge').textContent='...';
+  const probeEl=$('pfProbe');
+  if(probeEl){probeEl.style.display='none';probeEl.textContent='';}
+  fetch('/api/preflight').then(r=>r.json()).then(d=>{
+    $('pfList').innerHTML=(d.checks||[]).map(c=>{
+      let actionBtn='';
+      if(!c.ok && c.action==='set_cursor_exe'){
+        actionBtn='<button class="btn btn-sm" style="margin-left:8px;padding:2px 8px;font-size:12px" onclick="setCursorExe()">&#128193; 指定 Cursor.exe</button>';
+      }
+      return '<div class="ck-row"><span class="ck-icon '+(c.ok?'ok':'fail')+'">'+(c.ok?'&#10003;':'&#10007;')+
+        '</span><span class="ck-name">'+pfName(c.name)+'</span><span class="ck-detail">'+pfDetail(c.detail||'')+actionBtn+'</span></div>';
+    }).join('');
+    $('pfBadge').textContent=d.all_ok?t('pf_pass'):t('pf_fail');
+    $('pfBadge').style.background=d.all_ok?'var(--green)':'var(--red)';
+    const m=d.preflight_meta;
+    if(probeEl&&m&&m.cursor_probe_ms!=null){
+      probeEl.style.display='block';
+      probeEl.textContent='Cursor 窗口探测 '+m.cursor_probe_ms+' ms · 最多尝试 '+(m.find_cursor_attempts!=null?m.find_cursor_attempts:'?')+' 次';
+    }
+    // Agent 命名指引（有团队角色就显示）
+    const guideEl=$('agentNameGuide');
+    const nameListEl=$('agentNameList');
+    if(guideEl && m){
+      const hints=Array.isArray(m.agent_name_hint)?m.agent_name_hint:[];
+      if(hints.length){
+        guideEl.style.display='block';
+        if(nameListEl) nameListEl.innerHTML=hints.map(h=>'<span style="display:inline-block;margin-right:14px">'+esc(h)+'</span>').join('');
+      } else {
+        guideEl.style.display='none';
+      }
+    }
+
+    // Agent 映射表格（无论 OCR 是否识别到都显示，方便用户手动定位）
+    const mapEl=$('pfAgentMap');
+    if(mapEl && m){
+      const mapping=Array.isArray(m.agent_mapping)?m.agent_mapping:[];
+      const hints=Array.isArray(m.agent_name_hint)?m.agent_name_hint:[];
+
+      if(mapping.length){
+        mapEl.style.display='block';
+        // 列顺序：[0]角色  [1]期望名称(命令面板用)  [2]OCR识别状态
+        const tbRows=mapping.map(r=>{
+          const lbl=esc(r.sidebar_label_ocr||'');
+          const expected=esc(r.expected_label||r.role||'');
+          const statusIcon=r.mapped
+            ?'<span style="color:var(--green);font-weight:700;font-size:15px">✓ 已识别</span>'
+            :'<span style="color:#ef4444;font-weight:700">✕ 未识别</span>';
+          return '<tr style="border-bottom:1px solid rgba(148,163,184,.10)" id="agrow_'+esc(r.role)+'">'
+            +'<td style="padding:6px 8px;font-family:monospace;font-weight:600;color:#e2e8f0">'+esc(r.role)+'</td>'
+            +'<td style="padding:6px;font-family:monospace;font-size:12px;color:#6ee7b7">'+expected+'</td>'
+            +'<td style="padding:6px;text-align:center">'+statusIcon+'</td>'
+            +'</tr>';
+        }).join('');
+        const ocrInfo=(m.ocr_active?' · 当前焦点: <b style="color:#6ee7b7">'+esc(m.ocr_active)+'</b>':'')
+          +(m.ocr_scan_ms?' · OCR '+m.ocr_scan_ms+'ms':'');
+        mapEl.innerHTML='<div style="font-weight:600;margin-bottom:6px;color:#94a3b8;font-size:12px">Agent 映射（切换方式：命令面板文字搜索）'+ocrInfo+'</div>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:8px">'
+          +'<thead><tr style="background:rgba(15,23,42,.6);color:#94a3b8">'
+          +'<th style="text-align:left;padding:6px 8px">角色</th>'
+          +'<th style="text-align:left;padding:6px;color:#fbbf24">命令面板搜索词</th>'
+          +'<th style="padding:6px;text-align:center">OCR识别</th>'
+          +'</tr></thead><tbody>'+tbRows+'</tbody></table>';
+        // 有映射数据 → 显示实测区域
+        const testSec=$('secSwitchTest');
+        if(testSec) testSec.style.display='block';
+      } else {
+        // 没有角色列表（团队未选）
+        mapEl.style.display='block';
+        mapEl.innerHTML='<div style="color:#94a3b8;font-size:12px;padding:6px 0">请先选择团队，系统将根据团队角色进行 Agent 识别</div>';
+        const testSec=$('secSwitchTest');
+        if(testSec) testSec.style.display='none';
+      }
+    }
+  }).catch(()=>{});
+}
+
+function _btnS(c){
+  const m={yellow:'background:rgba(234,179,8,.18);color:#eab308',cyan:'background:rgba(34,211,238,.15);color:#22d3ee',red:'background:rgba(239,68,68,.15);color:#ef4444'};
+  return 'border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;'+(m[c]||'');
+}
+
+function setCursorExe(){
+  fetch('/api/set_cursor_exe',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.ok){addLog('INFO','Cursor.exe 已设置: '+d.cursor_exe_path);runPreflight();}
+    else{addLog('WARN',d.message||'未选择');}
+  }).catch(()=>{});
+}
+
+/* 📍 定位：启动后台监听，用户去侧栏点击 Agent，记录坐标 */
+function agentCalibrate(role){
+  const old=document.getElementById('calibrate_bar'); if(old) old.remove();
+  const bar=document.createElement('div');
+  bar.id='calibrate_bar';
+  bar.style='position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#78350f,#92400e);color:#fef3c7;padding:10px 16px;display:flex;align-items:center;gap:12px;font-size:13px;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+  bar.innerHTML='<span style="font-size:1.3em">&#128205;</span><span>请用鼠标左键点击 Cursor 侧栏中的 Agent：<b style="color:#6ee7b7">'+esc(role)+'</b>，系统记录坐标</span>'+
+    '<span id="calibrate_cd" style="margin-left:auto;font-weight:700;min-width:28px;text-align:right">20</span>'+
+    '<button onclick="document.getElementById(\'calibrate_bar\').remove()" style="margin-left:8px;border:1px solid #a16207;background:transparent;color:#fef3c7;border-radius:5px;padding:2px 10px;cursor:pointer;font-size:12px">取消</button>';
+  document.body.appendChild(bar);
+  let cd=20; const cdEl=document.getElementById('calibrate_cd');
+  const cdT=setInterval(()=>{cd--;if(cdEl)cdEl.textContent=cd;if(cd<=0)clearInterval(cdT);},1000);
+  fetch('/api/agent/calibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role})})
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok){clearInterval(cdT);_calibDone(null,d.message||'启动失败');return;}
+      const token=d.token||role; let tries=0;
+      const poll=setInterval(()=>{
+        tries++;
+        fetch('/api/agent/calibrate_poll?role='+encodeURIComponent(token))
+          .then(r=>r.json()).then(p=>{
+            if(p.status==='done'){clearInterval(poll);clearInterval(cdT);_calibDone(p.xy,null,role,p);}
+            else if(p.status==='timeout'||p.status==='error'||tries>22){clearInterval(poll);clearInterval(cdT);_calibDone(null,p.msg||'超时',role,null);}
+          }).catch(()=>{if(tries>22){clearInterval(poll);clearInterval(cdT);_calibDone(null,'网络错误');}});
+      },900);
+    }).catch(e=>{clearInterval(cdT);_calibDone(null,'请求失败:'+e);});
+}
+function _calibDone(xy, errMsg, role, pollResult){
+  const bar=document.getElementById('calibrate_bar'); if(bar) bar.remove();
+  if(xy){
+    // ── 立刻更新映射表该行 ──
+    const row = document.getElementById('agrow_'+role);
+    if(row){
+      const cells = row.querySelectorAll('td');
+      if(cells.length >= 5){
+        // 状态列：人工定位直接打✓
+        cells[2].innerHTML = '<span style="color:var(--green);font-weight:700">✓</span>';
+        // 坐标列
+        if(cells[4]){
+          cells[4].textContent = xy[0]+','+xy[1];
+          cells[4].style.color = 'var(--green)';
+        }
+      }
+    }
+
+    // ── Toast 提示 ──
+    const toast=document.createElement('div');
+    toast.style='position:fixed;top:0;left:0;right:0;z-index:9999;padding:9px 16px;text-align:center;font-size:13px;background:#14532d;color:#bbf7d0';
+    toast.innerHTML='✅ 坐标已记录：<b>'+esc(role)+'</b> → ('+xy[0]+','+xy[1]+')';
+    document.body.appendChild(toast);
+    setTimeout(()=>toast.remove(), 3000);
+
+    // 延迟刷新一次预检（同步后端最新状态）
+    setTimeout(runPreflight, 800);
+  } else {
+    const err=document.createElement('div');
+    err.style='position:fixed;top:0;left:0;right:0;z-index:9999;background:#7f1d1d;color:#fecaca;padding:9px 16px;text-align:center;font-size:13px;cursor:pointer;';
+    err.innerHTML='❌ 定位失败：'+esc(errMsg||'未知')+'&nbsp;<small>（点击关闭）</small>';
+    err.onclick=()=>err.remove(); document.body.appendChild(err); setTimeout(()=>err.remove(),5000);
+  }
+}
+
+/* ▶ 实测切换 */
+function agentTestSwitch(role,btn){
+  const orig=btn.textContent; btn.textContent='切换中…'; btn.disabled=true;
+  fetch('/api/agent/test_switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role})})
+    .then(r=>r.json()).then(d=>{
+      btn.textContent=orig; btn.disabled=false;
+      if(d.ok){
+        const m2=d.method==='coord_click'?'坐标':d.method==='hotkey'?'热键':'命令面板';
+        btn.style.background='rgba(34,197,94,.2)';btn.style.color='#22c55e';
+        setTimeout(()=>{btn.style.background='';btn.style.color='#22d3ee';},2000);
+        addLog('INFO','切换成功('+m2+') OCR='+( d.ocr_role||'?'));
+      } else {
+        btn.style.background='rgba(239,68,68,.2)';btn.style.color='#ef4444';
+        setTimeout(()=>{btn.style.background='';btn.style.color='#22d3ee';},2000);
+        addLog('WARN','切换失败: '+(d.message||'?'));
+      }
+    }).catch(e=>{btn.textContent=orig;btn.disabled=false;addLog('WARN','请求失败:'+e);});
+}
+
+/* ✕ 删除角色映射 */
+function agentDelete(role){
+  if(!confirm('确定删除角色「'+role+'」的映射？')) return;
+  fetch('/api/agent/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){const row=document.getElementById('agrow_'+role);if(row)row.remove();}
+      else{addLog('WARN','删除失败: '+(d.message||'?'));}
+    });
+}
+
+/* ▶▶ 全部实测：后台逐个切换，轮询实时显示结果 */
+function runTestAll(){
+  const btn=$('btnTestAll');
+  const status=$('testAllStatus');
+  const tbody=$('switchTestBody');
+  if(!btn||!tbody) return;
+  btn.disabled=true; btn.textContent='测试中…';
+  if(status) status.textContent='';
+  tbody.innerHTML='';
+
+  fetch('/api/agent/test_all',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok){
+        btn.disabled=false; btn.textContent='▶ 全部实测';
+        tbody.innerHTML='<tr><td colspan="4" style="padding:10px;color:var(--red)">'+esc(d.message||'失败')+'</td></tr>';
+        return;
+      }
+      // 开始轮询
+      _pollTestAll();
+    }).catch(e=>{
+      btn.disabled=false; btn.textContent='▶ 全部实测';
+      tbody.innerHTML='<tr><td colspan="4" style="padding:10px;color:var(--red)">请求失败: '+esc(String(e))+'</td></tr>';
+    });
+}
+
+function _pollTestAll(){
+  const btn=$('btnTestAll');
+  const status=$('testAllStatus');
+  const tbody=$('switchTestBody');
+
+  fetch('/api/agent/test_all_poll')
+    .then(r=>r.json()).then(d=>{
+      // 诊断：把原始响应显示在状态栏
+      if(status) status.title = JSON.stringify(d).slice(0,200);
+
+      if(d.error){
+        btn.disabled=false; btn.textContent='▶ 全部实测';
+        tbody.innerHTML='<tr><td colspan="3" style="padding:10px;color:var(--red)">'+esc(d.error)+'</td></tr>';
+        return;
+      }
+
+      const steps = d.steps||[];
+      const colorMap = {
+        '扫描中':'#94a3b8', '点击中':'#fbbf24',
+        '成功':'#4ade80', '已点击':'#fbbf24', '失败':'#f87171', '未找到':'#f87171', '错误':'#f87171'
+      };
+      const iconMap = {
+        '扫描中':'🔍', '点击中':'👆', '成功':'✅', '已点击':'👆', '失败':'❌', '未找到':'❓', '错误':'🚫'
+      };
+
+      const rows = steps.map(s=>{
+        const c = colorMap[s.status]||'#94a3b8';
+        const ic = iconMap[s.status]||'·';
+        return '<tr style="border-bottom:1px solid rgba(148,163,184,.08)">'
+          +'<td style="padding:6px 10px;font-family:monospace;font-weight:700;color:#e2e8f0;white-space:nowrap">'+esc(s.label)+'</td>'
+          +'<td style="padding:6px 8px;white-space:nowrap"><span style="color:'+c+';font-weight:600">'+ic+' '+esc(s.status)+'</span></td>'
+          +'<td style="padding:6px 8px;font-size:11px;color:#94a3b8">'+esc(s.detail)+'</td>'
+          +'</tr>';
+      });
+
+      // 当前正在处理的 Agent
+      if(d.running && d.current){
+        rows.push('<tr style="background:rgba(251,191,36,.06)">'
+          +'<td style="padding:6px 10px;font-family:monospace;font-weight:700;color:#fbbf24">⟳ '+esc(d.current)+'</td>'
+          +'<td style="padding:6px 8px;color:#fbbf24;font-weight:600">处理中</td>'
+          +'<td style="padding:6px 8px;font-size:11px;color:#94a3b8">OCR扫描侧栏…</td>'
+          +'</tr>');
+      }
+
+      tbody.innerHTML = rows.length
+        ? rows.join('')
+        : '<tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center">'
+          +(d.running ? '⟳ 运行中，等待步骤数据… (total='+d.total+')' : '等待开始…')
+          +'</td></tr>';
+
+      if(d.running){
+        setTimeout(_pollTestAll, 600);
+      } else {
+        btn.disabled=false; btn.textContent='▶ 全部实测';
+        const pass = steps.filter(s=>s.status==='成功').length;
+        const total = steps.filter(s=>s.status!=='扫描中'&&s.status!=='点击中').length;
+        if(status){ status.textContent=pass+'/'+total+' 通过'; status.style.color=pass===total&&total>0?'var(--green)':'var(--red)'; }
+      }
+    }).catch(()=>{ setTimeout(_pollTestAll, 1000); });
+}
+
+/* Devices */
+function fetchDevices(){
+  fetch('/api/devices').then(r=>r.json()).then(d=>{
+    const devs=d.devices||[];
+    $('devList').innerHTML=devs.length?devs.map(v=>
+      '<div class="dev-row"><span class="dev-dot '+(v.online?'online':'offline')+'"></span>'+
+      '<span class="dev-name">'+(v.device_name||v.device_id)+'</span>'+
+      '<span class="dev-role">'+(v.role||'viewer')+'</span>'+
+      '<span class="dev-unbind" onclick="unbind(\''+v.device_id+'\')">'+t('unbind')+'</span></div>'
+    ).join(''):'<div class="empty">'+t('empty_no_device')+'</div>';
+  }).catch(()=>{});
+}
+function unbind(did){
+  fetch('/api/unbind',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:did})})
+    .then(r=>r.json()).then(()=>fetchDevices());
+}
+function regenKey(){
+  showConfirm(
+    t('confirm_regen_title'),
+    t('confirm_regen_desc'),
+    t('confirm_regen_ok'),'red',
+    ()=>{
+      fetch('/api/regenerate_key',{method:'POST'}).then(r=>r.json()).then(d=>{
+        if(d.room_key)$('roomKey').textContent=d.room_key;
+        addLog('INFO',d.message||'密钥已重新生成');
+        fetchDevices();
+      });
+    }
+  );
+}
+
+/* Setup Wizard */
+let _setupPath='';
+
+const _teamIconsSvg={
+  'dev-team':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+  'media-team':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  'mvp-team':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+  'qa-team':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+};
+const _teamColors={'dev-team':'#22c55e','media-team':'#f59e0b','mvp-team':'#a855f7','qa-team':'#06b6d4'};
+
+function showSetup(){
+  _selTeam='';_setupPath='';
+  $('setupStep0').style.display='';
+  $('setupStep1').style.display='none';
+  $('setupStep2').style.display='none';
+  $('setupPathErr').style.display='none';
+  $('setupPath').value='';
+  if($('btnStep1Next'))$('btnStep1Next').disabled=true;
+  wizSetStep(0);
+  $('setupOv').style.display='flex';
+  _loadTeamOpts();
+  // 预填项目目录
+  fetch('/api/status').then(r=>r.json()).then(d=>{
+    const pd=d.project_dir||'';
+    if(pd){
+      $('setupPath').value=pd;
+      if($('setupPathText')){$('setupPathText').textContent=pd;$('setupPathText').style.color='#f8fafc';}
+      if($('setupPathDisplay'))$('setupPathDisplay').style.borderColor='#22c55e';
+    }
+  }).catch(()=>{});
+  // 自动检测 Cursor
+  _wizCheckCursor();
+}
+
+function _wizCheckCursor(){
+  fetch('/api/status').then(r=>r.json()).then(d=>{
+    const found = d.cursor_found;
+    const path = d.cursor_exe_path||'';
+    const projDir = d.project_dir||'';
+    // 更新项目目录显示
+    if($('wizVersion')) $('wizVersion').textContent = 'v'+(d.version||'') + (projDir?' · '+projDir:'');
+    if(found){
+      // 找到了
+      $('wizCursorIcon').style.background='rgba(34,197,94,0.12)';
+      $('wizCursorTitle').textContent='已找到 Cursor';
+      $('wizCursorPath').textContent=path;
+      $('wizCursorBadge').style.background='rgba(34,197,94,0.15)';
+      $('wizCursorBadge').style.color='#22c55e';
+      $('wizCursorBadge').textContent='✓ 就绪';
+      $('wizNoCursorHint').style.display='none';
+      $('btnStep0Next').disabled=false;
+    } else {
+      $('wizCursorIcon').style.background='rgba(245,158,11,0.12)';
+      $('wizCursorIcon').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+      $('wizCursorTitle').textContent='未找到 Cursor';
+      $('wizCursorPath').textContent='请手动选择 Cursor.exe';
+      $('wizCursorBadge').style.background='rgba(245,158,11,0.15)';
+      $('wizCursorBadge').style.color='#f59e0b';
+      $('wizCursorBadge').textContent='未找到';
+      $('wizNoCursorHint').style.display='';
+      $('btnStep0Next').disabled=true;
+    }
+  }).catch(()=>{
+    $('wizCursorTitle').textContent='检测失败，请重试';
+    $('wizCursorPath').textContent='';
+  });
+}
+
+function wizSelectCursor(){
+  fetch('/api/set_cursor_exe',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.ok){
+      // 保存成功，重启程序
+      $('wizCursorTitle').textContent='已保存，正在重启…';
+      $('wizCursorPath').textContent=d.cursor_exe_path||'';
+      $('wizCursorBadge').style.color='#22c55e';
+      $('wizCursorBadge').textContent='重启中';
+      setTimeout(()=>{
+        fetch('/api/restart',{method:'POST'}).catch(()=>{});
+      },800);
+    } else {
+      alert(d.message||'选择失败');
+    }
+  });
+}
+
+function wizGoStep0(){
+  wizSetStep(0);
+  $('setupStep0').style.display='';
+  $('setupStep1').style.display='none';
+}
+
+function _loadTeamOpts(){
+  const box=$('teamOpts');
+  if(box && box.children.length>0)return;
+  fetch('/api/teams').then(r=>r.json()).then(d=>{
+    if(!box)return;
+    box.innerHTML='';
+    Object.entries(d.teams||{}).forEach(([tid,tm])=>{
+      const color=_teamColors[tid]||'#22c55e';
+      const icon=_teamIconsSvg[tid]||'';
+      const roles=(tm.roles||[]).map(r=>r.label||r.code||r).join(' · ');
+      const card=document.createElement('div');
+      card.className='wiz-team-card';
+      card.innerHTML='<div class="wiz-team-icon" style="color:'+color+'">'+icon+'</div>'
+        +'<div class="wiz-team-name">'+(tm.name||tid)+'</div>'
+        +'<div class="wiz-team-roles">'+roles+'</div>';
+      card.onclick=()=>{
+        _selTeam=tid;
+        document.querySelectorAll('.wiz-team-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        if($('btnStep1Next'))$('btnStep1Next').disabled=false;
+      };
+      box.appendChild(card);
+    });
+  }).catch(()=>{});
+}
+
+function setupStep1Next(){
+  if(!_selTeam)return;
+  wizSetStep(2);
+  $('setupStep1').style.display='none';
+  $('setupStep2').style.display='';
+  if(!$('setupPath').value){
+    const pd=$('projPath')?$('projPath').textContent.trim():'';
+    if(pd&&pd!=='—'&&pd!=='未设置'&&pd!=='Not set')$('setupPath').value=pd;
+  }
+}
+
+function wizGoStep1(fromStep0){
+  wizSetStep(1);
+  if($('setupStep0'))$('setupStep0').style.display='none';
+  $('setupStep2').style.display='none';
+  $('setupStep1').style.display='';
+  if(fromStep0===false) _loadTeamOpts();
+}
+
+function wizSetStep(n){
+  const dots=[$('wizDot0'),$('wizDot1'),$('wizDot2')];
+  const lines=[$('wizLine0'),$('wizLine1')];
+  dots.forEach((d,i)=>{
+    if(!d)return;
+    if(i<n) d.className='wiz-step-dot done';
+    else if(i===n) d.className='wiz-step-dot active';
+    else d.className='wiz-step-dot';
+  });
+  lines.forEach((l,i)=>{
+    if(!l)return;
+    l.className='wiz-step-line'+(i<n?' done':'');
+  });
+}
+
+function wizBrowseFolder(){
+  fetch('/api/browse_folder',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.ok && d.path){
+      $('setupPath').value=d.path;
+      $('setupPathText').textContent=d.path;
+      $('setupPathText').style.color='#f8fafc';
+      $('setupPathDisplay').style.borderColor='#22c55e';
+      if($('setupPathErr'))$('setupPathErr').style.display='none';
+    }
+  }).catch(()=>{});
+}
+
+function doSetup(){
+  if(!_selTeam)return;
+  const p=$('setupPath').value.trim();
+  const errEl=$('setupPathErr'),errMsg=$('setupPathErrMsg');
+  if(!p){
+    if(errEl){errEl.style.display='flex';}
+    if(errMsg)errMsg.textContent='请先选择项目目录';
+    return;
+  }
+  if(errEl)errEl.style.display='none';
+  $('btnSetup').disabled=true;
+  $('btnSetup').textContent='保存中…';
+  _setupPath=p;
+
+  const afterTeam=()=>{
+    fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({team:_selTeam})})
+      .then(r=>r.json()).then(d=>{
+        if(d.ok){
+          $('btnSetup').textContent='✓ 配置完成';
+          addLog('INFO',d.message);
+          // 显示完成提示，轮询等待后台 Nudger 启动完毕后刷新页面
+          setTimeout(()=>{
+            const ov=document.getElementById('setupOv');
+            if(ov){
+              ov.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:28px;background:#0a0e1a">
+                <div style="width:72px;height:72px;border-radius:50%;background:rgba(34,197,94,0.15);display:flex;align-items:center;justify-content:center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" width="36" height="36"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style="color:#f8fafc;font-size:1.5rem;font-weight:700">配置已保存</div>
+                <div style="color:#94a3b8;font-size:1rem;text-align:center;line-height:1.8">请关闭此页面，重启 CodeFlow 程序即可正常使用。</div>
+                <div style="color:#22c55e;font-size:.9rem">✓ 团队环境初始化完成，程序即将退出</div>
+              </div>`;
+            }
+            // 3秒后尝试关闭标签
+            setTimeout(()=>{ try{window.close();}catch(e){} }, 3000);
+          }, 600);
+        } else {
+          alert(d.message);
+          $('btnSetup').disabled=false;
+          $('btnSetup').textContent='保存设置';
+        }
+      });
+  };
+
+  if(_setupPath){
+    fetch('/api/change_project',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:_setupPath})})
+      .then(r=>r.json()).then(d=>{
+        if(d.ok){addLog('INFO',d.message);afterTeam();}
+        else{alert(d.message);$('btnSetup').disabled=false;$('btnSetup').textContent='保存设置';}
+      });
+  } else {
+    afterTeam();
+  }
+}
+
+/* Confirm dialog */
+let _confirmCb=null;
+function showConfirm(title,desc,okText,okClass,cb){
+  $('confirmTitle').textContent=title;
+  $('confirmDesc').innerHTML=desc;
+  $('confirmOk').textContent=okText;
+  $('confirmOk').className='btn '+(okClass||'red');
+  _confirmCb=cb;
+  $('confirmOv').style.display='flex';
+}
+function confirmCancel(){$('confirmOv').style.display='none';_confirmCb=null;}
+function confirmOk(){$('confirmOv').style.display='none';if(_confirmCb)_confirmCb();_confirmCb=null;}
+
+/* Reset */
+function doReset(){
+  showConfirm(
+    t('confirm_reset_title'),
+    t('confirm_reset_desc'),
+    t('confirm_reset_ok'),'red',
+    ()=>{
+      fetch('/api/reset',{method:'POST'}).then(r=>r.json()).then(d=>{
+        addLog('INFO',d.message||'已重置');
+        showSetup();
+      });
+    }
+  );
+}
+
+/* Quit */
+function doQuit(){
+  showConfirm(
+    t('confirm_quit_title'),
+    t('confirm_quit_desc'),
+    t('confirm_quit_ok'),'red',
+    ()=>{
+      fetch('/api/quit',{method:'POST'}).then(()=>{
+        document.title='码流（CodeFlow）- 已退出';
+        document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#94a3b8;font-size:1.2rem;">码流（CodeFlow）已退出，可关闭此页面。</div>';
+      }).catch(()=>{});
+    }
+  );
+}
+window.addEventListener('beforeunload',function(e){e.preventDefault();e.returnValue='';});
+
+/* API */
+function api(u){fetch(u,{method:'POST'}).then(r=>r.json()).then(d=>{addLog('INFO',d.message||'OK');fetchStatus();});}
+function syncRoleTemplates(){
+  fetch('/api/copy_templates',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){
+        addLog('INFO',d.message||t('team_sync_ok'));
+        alert(t('team_sync_ok'));
+        fetchStatus();
+        setTimeout(runPreflight,400);
+      }else{
+        addLog('WARNING',d.message||'');
+        alert(d.message||'');
+      }
+    }).catch(e=>{addLog('ERROR',String(e));alert(String(e));});
+}
+
+/* Log */
+function addLog(lv,txt){
+  const b=$('logBox');
+  const cls=lv==='ERROR'?'error':(lv==='WARNING'?'warn':'info');
+  const now=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  b.insertAdjacentHTML('beforeend','<div class="'+cls+'">['+now+'] '+txt+'</div>');
+  if(b.children.length>300)b.removeChild(b.firstChild);
+  b.scrollTop=b.scrollHeight;
+}
+function connectSSE(){
+  if(_sse)_sse.close();
+  _sse=new EventSource('/api/logs');
+  _sse.onmessage=e=>{const t=e.data||'';if(!t)return;let l='INFO';if(t.includes('ERROR'))l='ERROR';else if(t.includes('WARNING'))l='WARNING';addLog(l,t);};
+  _sse.onerror=()=>setTimeout(connectSSE,3000);
+}
+
+/* QR Code */
+let _lastQR='';
+function renderQR(relay,key,mc,did){
+  if(!key)return;
+  const data='cf:'+(mc||'')+'|'+(did||'')+'|'+key;
+  if(data===_lastQR)return;
+  _lastQR=data;
+  try{
+    const qr=qrcode(0,'M');
+    qr.addData(data);
+    qr.make();
+    const canvas=$('qrCanvas');
+    const ctx=canvas.getContext('2d');
+    const size=canvas.width;
+    const mods=qr.getModuleCount();
+    const cell=Math.floor(size/mods);
+    const off=Math.floor((size-cell*mods)/2);
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(0,0,size,size);
+    ctx.fillStyle='#0f172a';
+    for(let r=0;r<mods;r++)for(let c=0;c<mods;c++)
+      if(qr.isDark(r,c))ctx.fillRect(off+c*cell,off+r*cell,cell,cell);
+  }catch(e){console.warn('QR error:',e);}
+}
+
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function fetchPatrolTrace(){
+  fetch('/api/patrol_trace?limit=80').then(r=>r.json()).then(d=>{
+    const evs=d.events||[];
+    const tb=$('traceRows');const badge=$('traceBadge');
+    if(badge)badge.textContent=String(evs.length);
+    if(!tb)return;
+    if(!evs.length){tb.innerHTML='<tr><td colspan="4" class="empty">'+t('empty_no_trace')+'</td></tr>';return;}
+    tb.innerHTML=evs.slice().reverse().map(e=>{
+      const keys=['filename','recipient','role','task_id','reason','preview','title','keyword','attempt','poll_interval','file_watcher'];
+      const extras=[];
+      keys.forEach(k=>{if(e[k]!=null&&e[k]!=='')extras.push(k+'='+esc(e[k]));});
+      Object.keys(e).forEach(k=>{
+        if(['t','ts','stage','detail'].indexOf(k)>=0)return;
+        if(keys.indexOf(k)>=0)return;
+        if(e[k]!=null&&e[k]!=='')extras.push(k+'='+esc(String(e[k]).substring(0,80)));
+      });
+      return '<tr style="border-bottom:1px solid rgba(148,163,184,.15)"><td style="padding:6px 4px;white-space:nowrap;color:var(--muted)">'+esc(e.t)+'</td>'+
+        '<td style="padding:6px 4px;font-family:ui-monospace,monospace;color:var(--cyan)">'+esc(e.stage)+'</td>'+
+        '<td style="padding:6px 4px">'+esc(e.detail)+'</td>'+
+        '<td style="padding:6px 4px;color:var(--muted);word-break:break-all">'+esc(extras.join(' '))+'</td></tr>';
+    }).join('');
+  }).catch(()=>{});
+}
+
+/* Init */
+_lang=localStorage.getItem('bf_lang')||'zh';
+applyLang();
+fetchStatus();fetchFiles('tasks');fetchPipeline();fetchDevices();connectSSE();
+fetchPatrolTrace();
+setTimeout(runPreflight,600);
+setTimeout(fetchRepos,800);
+setTimeout(fetchSkills,1000);
+setInterval(fetchStatus,4000);setInterval(()=>fetchFiles(_dir),8000);setInterval(fetchPipeline,6000);setInterval(fetchDevices,10000);
+setInterval(fetchPatrolTrace,3000);
+</script>
+</body>
+</html>
+
+
+
+
+
+
+

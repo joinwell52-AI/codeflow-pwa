@@ -632,14 +632,29 @@ def _fmt_tpl(tpl_str: str, **kwargs) -> str:
 
 def build_nudge_message(filename: str, directory: str, recipient: str = "",
                         lang: str = "zh", minutes: int = 0) -> str:
-    role_code = re.sub(r'\d+$', '', recipient.upper()) if recipient else ""
+    # 去掉前缀数字（"03-WRITER" → "WRITER"，"WRITER01" → "WRITER"，"COLLECTOR" → "COLLECTOR"）
+    role_code = re.sub(r'^\d+[-_\s]*', '', recipient.upper()).strip() if recipient else ""
+    role_code = re.sub(r'\d+$', '', role_code).strip()  # 再去末尾数字（PM01 → PM）
     _ROLE_TO_FILE = {
-        "PM": "docs/agents/PM-01.md",
-        "DEV": "docs/agents/DEV-01.md",
-        "OPS": "docs/agents/OPS-01.md",
-        "QA": "docs/agents/QA-01.md",
+        # dev 团队
+        "PM":         "docs/agents/PM-01.md",
+        "DEV":        "docs/agents/DEV-01.md",
+        "OPS":        "docs/agents/OPS-01.md",
+        "QA":         "docs/agents/QA-01.md",
+        "E2E":        "docs/agents/E2E-01.md",
+        "ADMIN":      "docs/agents/README.md",
+        # 媒体团队
+        "WRITER":     "docs/agents/WRITER.md",
+        "EDITOR":     "docs/agents/EDITOR.md",
+        "PUBLISHER":  "docs/agents/PUBLISHER.md",
+        "COLLECTOR":  "docs/agents/COLLECTOR.md",
+        # MVP 团队
+        "BUILDER":    "docs/agents/BUILDER.md",
+        "DESIGNER":   "docs/agents/DESIGNER.md",
+        "MARKETER":   "docs/agents/MARKETER.md",
+        "RESEARCHER": "docs/agents/RESEARCHER.md",
     }
-    role_file = _ROLE_TO_FILE.get(role_code, f"{role_code}.md") if role_code else ""
+    role_file = _ROLE_TO_FILE.get(role_code, f"docs/agents/{role_code}.md") if role_code else ""
     tpl = _MSG_TEMPLATES.get(lang, _MSG_TEMPLATES["zh"])
 
     if minutes > 0:

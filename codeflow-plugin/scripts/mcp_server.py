@@ -1,4 +1,4 @@
-"""
+﻿"""
 CodeFlow MCP Server — core tools for multi-agent collaboration (产品中文名：码流).
 
 Provides tools for:
@@ -36,7 +36,7 @@ def _env(*names: str, default: str = "") -> str:
     return default
 
 
-PROJECT_DIR = Path(_env("CODEFLOW_PROJECT_DIR", "BRIDGEFLOW_PROJECT_DIR", default=".")).resolve()
+PROJECT_DIR = Path(_env("CODEFLOW_PROJECT_DIR", "CODEFLOW_PROJECT_DIR", default=".")).resolve()
 AGENTS_DIR = PROJECT_DIR / "docs" / "agents"
 TASKS_DIR = AGENTS_DIR / "tasks"
 REPORTS_DIR = AGENTS_DIR / "reports"
@@ -46,7 +46,7 @@ LOG_DIR = AGENTS_DIR / "log"
 
 def _team_config_path_read() -> Path | None:
     primary = AGENTS_DIR / "codeflow.json"
-    legacy = AGENTS_DIR / "bridgeflow.json"
+    legacy = AGENTS_DIR / "CodeFlow.json"
     if primary.exists():
         return primary
     if legacy.exists():
@@ -608,8 +608,8 @@ def resource_status_codeflow() -> str:
     return _resource_status_impl()
 
 
-@mcp.resource("bridgeflow://status")
-def resource_status_bridgeflow_alias() -> str:
+@mcp.resource("CodeFlow://status")
+def resource_status_codeflow_alias() -> str:
     """Alias URI for older integrations."""
     return _resource_status_impl()
 
@@ -627,8 +627,8 @@ def resource_config_codeflow() -> str:
     return _resource_config_impl()
 
 
-@mcp.resource("bridgeflow://config")
-def resource_config_bridgeflow_alias() -> str:
+@mcp.resource("CodeFlow://config")
+def resource_config_codeflow_alias() -> str:
     """Alias URI for older integrations."""
     return _resource_config_impl()
 
@@ -637,3 +637,4 @@ def resource_config_bridgeflow_alias() -> str:
 
 if __name__ == "__main__":
     mcp.run()
+

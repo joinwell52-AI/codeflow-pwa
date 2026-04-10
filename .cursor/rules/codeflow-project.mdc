@@ -1,4 +1,4 @@
----
+﻿---
 description: CodeFlow 项目规范 - 所有 session 全局生效
 alwaysApply: true
 ---
@@ -26,8 +26,8 @@ alwaysApply: true
 ## 目录结构规范
 
 ```
-D:\BridgeFlow\
-├── bridgeflow-nudger/   # PC Desktop（目录名历史遗留，产品名为 CodeFlow Desktop）
+D:\\CodeFlow\\
+├── codeflow-desktop/    # PC Desktop（CodeFlow Desktop）
 ├── codeflow-plugin/     # Cursor MCP 插件
 ├── web/pwa/             # PWA 源码，改完同步到 codeflow-pwa 仓库并升版本号
 ├── docs/                # 项目文档，改代码时同步更新
@@ -85,3 +85,26 @@ D:\BridgeFlow\
 - 不要在中继传大文件（限制 8KB）
 - 不要修改 `docs/agents/tasks/` 和 `reports/` 下已有的任务文件（只追加）
 - 不要引入第二套"只聊天不落文件"的协议
+
+## 文件编辑规范（强制）
+
+### 修改 HTML / 含中文的文件，必须用 Python，严禁 PowerShell
+
+**PowerShell 的 `-replace`、`Set-Content`、`Get-Content` 默认以 GBK/CP936 编码写文件，会把 UTF-8 中文变成乱码。**
+
+✅ 正确做法：写一个 `.py` 脚本，用 Python 读写文件：
+```python
+with open(path, encoding='utf-8') as f:
+    html = f.read()
+html = html.replace('旧内容', '新内容')
+with open(path, 'w', encoding='utf-8', newline='\n') as f:
+    f.write(html)
+```
+
+❌ 严禁：
+```powershell
+# 以下操作会破坏 UTF-8 文件编码，永远不要用于含中文的文件
+(Get-Content "file.html" -Raw) -replace 'old','new' | Set-Content "file.html"
+```
+
+适用范围：`panel/index.html`、所有 `.md`、`.html`、`.py`、`.json` 等含中文的文件。

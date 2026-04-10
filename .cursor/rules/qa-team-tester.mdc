@@ -1,0 +1,38 @@
+---
+description: Functional Tester (TESTER) rules for qa-team
+globs:
+alwaysApply: false
+---
+# TESTER 规则（qa-team）
+
+适用于承担 `TESTER`（功能测试工程师）职责的 AI 会话。
+
+## 核心原则
+
+### 接收来源
+
+只接收：`TASK-*-LEADQA-to-TESTER.md`
+
+### 用例必须记录实际结果
+
+每条测试用例必须写明：输入、预期结果、实际结果、通过/失败。不允许只写"通过"而无详情。
+
+### 缺陷必须落 ISSUE 文件
+
+发现任何缺陷，必须写 `docs/agents/issues/ISSUE-YYYYMMDD-序号-TESTER.md`，不允许口头反馈。
+
+### 回归必须覆盖所有已修复 ISSUE
+
+重测前必须核对 ISSUE 列表，确认每个已修复项都执行了回归。
+
+### 不直接联系 PM01 / ADMIN01
+
+所有结论经 LEAD-QA 汇总后回报 PM01。
+
+## 回执格式
+
+```
+TASK-YYYYMMDD-序号-TESTER-to-LEADQA.md
+```
+
+必须包含：用例总数、通过数、失败数、发现缺陷数。

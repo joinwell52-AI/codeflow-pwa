@@ -1,10 +1,10 @@
-# 码流（CodeFlow）
+﻿# 码流（CodeFlow）
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-GitHub%20Pages-green)](https://joinwell52-ai.github.io/codeflow-pwa/)
 [![GitHub](https://img.shields.io/badge/GitHub-codeflow--pwa-black)](https://github.com/joinwell52-AI/codeflow-pwa)
 
-本仓库在 GitHub 上为 **`joinwell52-AI/codeflow-pwa`**（曾用仓库名 `bridgeflow-pwa`，已重命名；克隆地址请用当前名）。**GitHub Pages：** [joinwell52-ai.github.io/codeflow-pwa](https://joinwell52-ai.github.io/codeflow-pwa/)。版本与变更见 [CHANGELOG.md](CHANGELOG.md)。
+本仓库在 GitHub 上为 **`joinwell52-AI/codeflow-pwa`**（曾用仓库名 `CodeFlow-pwa`，已重命名；克隆地址请用当前名）。**GitHub Pages：** [joinwell52-ai.github.io/codeflow-pwa](https://joinwell52-ai.github.io/codeflow-pwa/)。版本与变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ### GitHub 网页「About」设置（复制即用）
 
@@ -46,7 +46,7 @@
 
 | 模块 | 说明 | 位置 |
 |------|------|------|
-| **Desktop** | PC 端 EXE（Nudger 唤醒器 + Web Panel + Relay Client） | `bridgeflow-nudger/` |
+| **Desktop** | PC 端 EXE（Nudger 唤醒器 + Web Panel + Relay Client） | `codeflow-desktop/` |
 | **Plugin** | Cursor MCP 插件（MCP Tools + 可选中继桥接） | `codeflow-plugin/` |
 | **PWA** | 手机端（扫码绑定 + 任务管理 + 远程控制） | `web/pwa/`（**主源**；根目录同名文件为同步副本） |
 
@@ -62,7 +62,7 @@
 | **media-team** | PUBLISHER + COLLECTOR + WRITER + EDITOR | 自媒体内容 |
 | **mvp-team** | MARKETER + RESEARCHER + DESIGNER + BUILDER | 创业 MVP |
 
-选完后客户项目自动生成（规则文件名以模板为准；新项目可为 `codeflow-*.mdc`，旧项目可能仍为 `bridgeflow-*.mdc`）：
+选完后客户项目自动生成（规则文件名以模板为准；新项目可为 `codeflow-*.mdc`，旧项目可能仍为 `CodeFlow-*.mdc`）：
 
 ```
 客户项目/
@@ -70,7 +70,7 @@
 │   ├── rules/          ← 协作协议 + 巡检规则（.mdc）
 │   └── skills/file-protocol/SKILL.md
 ├── docs/agents/
-│   ├── codeflow.json   ← 团队配置（兼容旧名 bridgeflow.json）
+│   ├── codeflow.json   ← 团队配置（兼容旧名 CodeFlow.json）
 │   ├── PM.md / PM.en.md
 │   ├── tasks/ reports/ issues/ log/
 ```
@@ -81,15 +81,15 @@
 
 ```powershell
 # 方式一：运行打包好的 EXE（推荐）
-bridgeflow-nudger\dist\CodeFlow-Desktop.exe
+codeflow-desktop\dist\CodeFlow-Desktop.exe
 
 # 方式二：从源码运行（建议 Python 3.12）
-cd bridgeflow-nudger
+cd codeflow-desktop
 pip install -r requirements.txt
 python main.py
 ```
 
-可选：在项目根放置 **`codeflow-nudger.json`** 微调巡检（兼容旧名 `bridgeflow-nudger.json`），与 `main.py` 自动加载。
+可选：在项目根放置 **`codeflow-nudger.json`** 微调巡检（兼容旧名 `codeflow-nudger.json`），与 `main.py` 自动加载。
 
 `use_file_watcher: true` 时需已 `pip install watchdog`。
 
@@ -135,11 +135,11 @@ TASK-20260403-001-PM-to-DEV.md
 ## 目录结构（节选）
 
 ```text
-D:\BridgeFlow\                          # 仓库根（文件夹名可仍为 BridgeFlow）
+D:\\CodeFlow\\                          # 仓库根（文件夹名可仍为 CodeFlow）
 ├── README.md
 ├── CHANGELOG.md
 ├── index.html / config.js / sw.js / manifest.json   # 与 web/pwa 同步的静态副本
-├── bridgeflow-nudger/                  # PC Desktop 源码与打包
+├── codeflow-desktop/                   # PC Desktop 源码与打包
 ├── codeflow-plugin/                    # Cursor MCP 插件
 ├── web/pwa/                            # PWA 【主源】
 ├── server/relay/server.py              # 本地联调中继

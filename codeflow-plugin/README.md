@@ -1,4 +1,4 @@
-# 码流（CodeFlow）— Multi-AI Agent Collaboration Plugin
+﻿# 码流（CodeFlow）— Multi-AI Agent Collaboration Plugin
 
 让多个 Cursor Agent 像团队一样协作。
 
@@ -27,7 +27,7 @@
 ```bash
 # 克隆本仓库后，将插件目录链到 Cursor 插件目录（示例）
 # Windows
-mklink /D "%USERPROFILE%\.cursor\plugins\local\codeflow" "D:\BridgeFlow\codeflow-plugin"
+mklink /D "%USERPROFILE%\.cursor\plugins\local\codeflow" "D:\\CodeFlow\\codeflow-plugin"
 # macOS/Linux
 ln -s /path/to/codeflow-plugin ~/.cursor/plugins/local/codeflow
 ```
@@ -73,22 +73,52 @@ docs/agents/
 └── log/       ← 历史归档
 ```
 
-团队配置优先写入 **`docs/agents/codeflow.json`**（兼容旧版 **`bridgeflow.json`**）。
+团队配置优先写入 **`docs/agents/codeflow.json`**（兼容旧版 **`CodeFlow.json`**）。
 
 ## 中继桥接（Phase 2）
 
-未设置 `CODEFLOW_ROOM_KEY`（或旧名 `BRIDGEFLOW_ROOM_KEY`）时，MCP 仅操作本地 `docs/agents/`，不连中继。
+未设置 `CODEFLOW_ROOM_KEY`（或旧名 `CODEFLOW_ROOM_KEY`）时，MCP 仅操作本地 `docs/agents/`，不连中继。
 
 要与手机端 PWA 同步，请在 MCP 配置的 `env` 中设置：
 
 | 变量 | 说明 |
 |------|------|
-| `CODEFLOW_PROJECT_DIR` 或 `BRIDGEFLOW_PROJECT_DIR` | 项目根目录（含 `docs/agents/`） |
-| `CODEFLOW_ROOM_KEY` 或 `BRIDGEFLOW_ROOM_KEY` | 非空即启用后台线程连接中继 |
-| `CODEFLOW_RELAY_WS_URL` 或 `BRIDGEFLOW_RELAY_WS_URL` | 中继 WebSocket，默认 `ws://127.0.0.1:5252` |
-| `CODEFLOW_DEVICE_ID` 或 `BRIDGEFLOW_DEVICE_ID` | 本机 MCP 设备 ID，默认 `codeflow-mcp` |
+| `CODEFLOW_PROJECT_DIR` 或 `CODEFLOW_PROJECT_DIR` | 项目根目录（含 `docs/agents/`） |
+| `CODEFLOW_ROOM_KEY` 或 `CODEFLOW_ROOM_KEY` | 非空即启用后台线程连接中继 |
+| `CODEFLOW_RELAY_WS_URL` 或 `CODEFLOW_RELAY_WS_URL` | 中继 WebSocket，默认 `ws://127.0.0.1:5252` |
+| `CODEFLOW_DEVICE_ID` 或 `CODEFLOW_DEVICE_ID` | 本机 MCP 设备 ID，默认 `codeflow-mcp` |
 
 依赖：`pip install -r codeflow-plugin/requirements.txt`（含 `websockets`）。
+
+## 可选：轻量 MCP「只打开本机控制面板」（`http://127.0.0.1:18765/`）
+
+与主服务 `scripts/mcp_server.py` **分开** 的独立脚本：`scripts/codeflow_mcp.py`。  
+**实现原理**：MCP 工具被调用后，用 **pyautogui** 激活标题含 `Cursor` 的窗口 → **Ctrl+Shift+P**（macOS 为 **⌘⇧P**）→ 输入 `Simple Browser` → 回车 → 输入面板 URL → 回车。与你在聊天里手动操作一致，**不依赖**未文档化的 ACP JSON-RPC 端口。
+
+**依赖**（单独安装即可）：
+
+```bash
+cd codeflow-plugin
+pip install -r requirements-codeflow-mcp.txt
+```
+
+**Cursor `mcp.json` 示例**（`args` 改为本机绝对路径）：
+
+```json
+{
+  "mcpServers": {
+    "codeflow-panel": {
+      "command": "python",
+      "args": ["D:/CodeFlow/codeflow-plugin/scripts/codeflow_mcp.py"],
+      "env": {}
+    }
+  }
+}
+```
+
+保存后重启 Cursor。Agent 中可描述「打开 CodeFlow 面板」「刷新 CodeFlow 面板」等，对应工具名：`open_codeflow_panel`、`refresh_codeflow_panel`。
+
+**注意**：须先运行 **CodeFlow-Desktop.exe**，保证 `127.0.0.1:18765` 已监听；命令面板语言为英文时，`Simple Browser` 命令名与 Cursor 内置一致。若焦点被其它窗口抢走，请先手动点一下 Cursor 再试。
 
 ## License
 

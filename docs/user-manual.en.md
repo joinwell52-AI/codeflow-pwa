@@ -1,4 +1,4 @@
-# CodeFlow User Manual (码流)
+﻿# CodeFlow User Manual (码流)
 
 **Version:** v2.0.0 | **Updated:** 2026-04-04
 
@@ -77,11 +77,11 @@ Click **Save**. The system auto-generates:
 ```
 Your project folder/
 ├── .cursor/
-│   ├── rules/codeflow-core.mdc (legacy: bridgeflow-core.mdc)
-│   ├── rules/codeflow-patrol.mdc (legacy: bridgeflow-patrol.mdc)
+│   ├── rules/codeflow-core.mdc (legacy: CodeFlow-core.mdc)
+│   ├── rules/codeflow-patrol.mdc (legacy: CodeFlow-patrol.mdc)
 │   └── skills/file-protocol/SKILL.md
 ├── docs/agents/
-│   ├── codeflow.json (legacy: bridgeflow.json)
+│   ├── codeflow.json (legacy: codeflow.json)
 │   ├── PM.md / PM.en.md              ← Role docs (bilingual)
 │   ├── DEV.md / DEV.en.md
 │   ├── QA.md / QA.en.md
@@ -225,7 +225,7 @@ Click the **Reset** button at bottom-right of the panel (requires confirmation),
 | File | Description |
 |------|-------------|
 | `CodeFlow-Desktop.exe` | Main program, double-click to run, ~50MB |
-| `docs/agents/codeflow.json` | Team config (roles, room key, relay URL; legacy `bridgeflow.json`) |
+| `docs/agents/codeflow.json` | Team config (roles, room key, relay URL; legacy `codeflow.json`) |
 | `docs/agents/tasks/*.md` | Task files |
 | `docs/agents/reports/*.md` | Completion reports |
 | `docs/agents/issues/*.md` | Issue records |

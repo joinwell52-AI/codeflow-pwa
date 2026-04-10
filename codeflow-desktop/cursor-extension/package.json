@@ -1,0 +1,21 @@
+{
+  "name": "codeflow-panel-launcher",
+  "displayName": "CodeFlow Panel Launcher",
+  "description": "在 Cursor / VS Code 内一键打开码流控制面板 http://127.0.0.1:18765/",
+  "version": "0.1.0",
+  "publisher": "codeflow",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeflow.openPanel",
+        "title": "CodeFlow: 打开控制面板"
+      }
+    ]
+  }
+}

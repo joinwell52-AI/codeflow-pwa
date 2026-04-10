@@ -1,4 +1,4 @@
-# 仓库协作与整洁约定
+﻿# 仓库协作与整洁约定
 
 多人改同一仓库时，按下面约定可减少分叉、冲突和杂文件。
 
@@ -29,7 +29,7 @@ git push origin main
 ## 命名（历史兼容）
 
 - **产品名**：**码流（CodeFlow）**。
-- **目录名**：`bridgeflow-nudger/`、`bridgeflow.json` 等为历史遗留文件名；新配置优先 **`codeflow.json`**、**`codeflow-nudger.json`**（见配置参考）。
+- **目录名**：`codeflow-desktop/`、`CodeFlow.json` 等为历史遗留文件名；新配置优先 **`codeflow.json`**、**`codeflow-nudger.json`**（见配置参考）。
 
 ## 冲突多时以谁为准
 

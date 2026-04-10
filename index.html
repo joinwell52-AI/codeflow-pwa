@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.json?v=2.0.1" />
-  <link rel="apple-touch-icon" href="./logo-BridgeFlow-125.png" />
+  <link rel="apple-touch-icon" href="./logo-CodeFlow-125.png" />
   <title>码流 CodeFlow · 工作台</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" async></script>
   <style>
@@ -509,7 +509,7 @@
   <!-- ════ 固定顶部 Header（两行） ════ -->
   <header class="app-header">
     <div class="header-row1">
-      <img class="header-logo" src="./logo-BridgeFlow-125.png" alt="logo" />
+      <img class="header-logo" src="./logo-CodeFlow-125.png" alt="logo" />
       <span id="headerBrand" class="header-brand">码流 CodeFlow</span>
       <div class="header-right">
         <span id="statusLight" class="status-light"></span>
@@ -1728,7 +1728,7 @@
       appendLog(savedVersion ? `检测到新版本 ${APP_VERSION}，正在刷新页面资源` : `当前版本 ${APP_VERSION}`);
       if ("caches" in window) {
         const keys = await caches.keys();
-        await Promise.all(keys.filter((key) => (key.startsWith("codeflow-pwa-") || key.startsWith("bridgeflow-pwa-")) && key !== `codeflow-pwa-${APP_VERSION}` && key !== `bridgeflow-pwa-${APP_VERSION}`).map((key) => caches.delete(key)));
+        await Promise.all(keys.filter((key) => (key.startsWith("codeflow-pwa-") || key.startsWith("codeflow-pwa-")) && key !== `codeflow-pwa-${APP_VERSION}` && key !== `codeflow-pwa-${APP_VERSION}`).map((key) => caches.delete(key)));
       }
       if (savedVersion) setTimeout(() => window.location.reload(), 300);
     }
@@ -2501,8 +2501,8 @@
               machineCode = params.get('machine_code') || params.get('mc') || '';
               deviceId = params.get('device_id') || params.get('did') || '';
               matched = true;
-            } else if (raw.startsWith('bridgeflow://bind?')) {
-              const params = new URLSearchParams(raw.replace('bridgeflow://bind?', ''));
+            } else if (raw.startsWith('codeflow://bind?')) {
+              const params = new URLSearchParams(raw.replace('codeflow://bind?', ''));
               machineCode = params.get('machine_code') || params.get('mc') || '';
               deviceId = params.get('device_id') || params.get('did') || '';
               matched = true;

@@ -1,4 +1,4 @@
-# ── Python ──
+﻿# ── Python ──
 __pycache__/
 *.py[cod]
 *$py.class
@@ -54,11 +54,13 @@ dist/
 .cursor/cache/
 
 # ── 运行时 ──
-.bridgeflow/runtime/
+.codeflow/runtime/
+.CodeFlow/runtime/
 *.log
 *.tmp
 
 # ── 配置文件（含敏感信息，不提交） ──
+codeflow_config.json
 bridgeflow_config.json
 .env
 .env.*
@@ -80,13 +82,13 @@ _commit_msg*.txt
 # ── 本地快照 / 多人杂项（勿提交）──
 _pages_tmp/
 
-# ── bridgeflow-nudger 调试与测试产物 ──
-bridgeflow-nudger/_*.png
-bridgeflow-nudger/test_*.png
-bridgeflow-nudger/cursor_screenshot.png
-bridgeflow-nudger/cursor_vision_report.json
-bridgeflow-nudger/_test_layout.py
+# ── codeflow-desktop 调试与测试产物 ──
+codeflow-desktop/_*.png
+codeflow-desktop/test_*.png
+codeflow-desktop/cursor_screenshot.png
+codeflow-desktop/cursor_vision_report.json
+codeflow-desktop/_test_layout.py
 
 # PyInstaller 命令行生成的 spec（日常以 build.spec、pack.cmd 为准）
-bridgeflow-nudger/CodeFlow-Desktop.spec
-bridgeflow-nudger/BridgeFlow-Desktop.spec
+codeflow-desktop/CodeFlow-Desktop.spec
+codeflow-desktop/CodeFlow-Desktop.spec

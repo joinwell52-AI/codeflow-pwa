@@ -1,0 +1,38 @@
+---
+description: Automation Tester (AUTO-TESTER) rules for qa-team
+globs:
+alwaysApply: false
+---
+# AUTO-TESTER 规则（qa-team）
+
+适用于承担 `AUTO-TESTER`（自动化测试工程师）职责的 AI 会话。
+
+## 核心原则
+
+### 接收来源
+
+只接收：`TASK-*-LEADQA-to-AUTOTESTER.md`
+
+### 脚本必须可重复运行
+
+不允许依赖特定本地路径或手动配置的环境变量，所有依赖必须文档化。
+
+### 覆盖率数据必须附报告
+
+回执必须包含代码覆盖率百分比，并说明未覆盖的关键路径。
+
+### CI 路径必须说明
+
+报告中必须指明测试脚本路径，方便 OPS-01 接入 CI/CD。
+
+### 不直接联系 PM01 / ADMIN01
+
+所有结论经 LEAD-QA 汇总后回报 PM01。
+
+## 回执格式
+
+```
+TASK-YYYYMMDD-序号-AUTOTESTER-to-LEADQA.md
+```
+
+必须包含：用例总数、通过数、失败数、覆盖率、CI 脚本路径。

@@ -1,4 +1,4 @@
-# 码流（CodeFlow）用户操作手册
+﻿# 码流（CodeFlow）用户操作手册
 
 **版本：** v2.0.0 ｜ **更新日期：** 2026-04-04
 
@@ -77,11 +77,11 @@ http://127.0.0.1:18765
 ```
 你的项目文件夹/
 ├── .cursor/
-│   ├── rules/codeflow-core.mdc          ← Agent 协作协议（旧版可能为 bridgeflow-core.mdc）
-│   ├── rules/codeflow-patrol.mdc        ← 自动巡检规则（旧版可能为 bridgeflow-patrol.mdc）
+│   ├── rules/codeflow-core.mdc          ← Agent 协作协议（旧版可能为 CodeFlow-core.mdc）
+│   ├── rules/codeflow-patrol.mdc        ← 自动巡检规则（旧版可能为 CodeFlow-patrol.mdc）
 │   └── skills/file-protocol/SKILL.md    ← 文件协议技能
 ├── docs/agents/
-│   ├── codeflow.json                    ← 团队配置（兼容旧名 bridgeflow.json）
+│   ├── codeflow.json                    ← 团队配置（兼容旧名 codeflow.json）
 │   ├── PM.md / PM.en.md                 ← 角色定义（中英双语）
 │   ├── DEV.md / DEV.en.md
 │   ├── QA.md / QA.en.md
@@ -105,7 +105,7 @@ http://127.0.0.1:18765
 | Cursor 窗口 | 是否检测到 Cursor 正在运行 | 先打开 Cursor |
 | 快捷键 | Ctrl+Alt+1~4 是否已配置 | 自动写入 |
 
-**6 项全绿 = 环境就绪。**
+**6 项全绿 = 环境就绪。** 须全部通过后才能点击面板上的「启动巡检」；若有红项，先在 Cursor / 项目中按上表修正，再重新预检直至全绿。
 
 ### 步骤 5：用 Cursor 打开项目文件夹
 
@@ -228,7 +228,7 @@ https://joinwell52-ai.github.io/codeflow-pwa/
 | 文件 | 说明 |
 |------|------|
 | `CodeFlow-Desktop.exe` | 主程序，双击运行，约 50MB |
-| `docs/agents/codeflow.json` | 团队配置（角色、房间密钥、中继地址；兼容 `bridgeflow.json`） |
+| `docs/agents/codeflow.json` | 团队配置（角色、房间密钥、中继地址；兼容 `codeflow.json`） |
 | `docs/agents/tasks/*.md` | 任务单文件 |
 | `docs/agents/reports/*.md` | 完成报告文件 |
 | `docs/agents/issues/*.md` | 问题记录文件 |

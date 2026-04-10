@@ -1,4 +1,4 @@
----
+﻿---
 description: CodeFlow Project Rules — applies globally to all sessions
 alwaysApply: true
 ---
@@ -26,8 +26,8 @@ alwaysApply: true
 ## Directory layout
 
 ```
-BridgeFlow/
-├── bridgeflow-nudger/   # PC Desktop (historical folder name; product: CodeFlow Desktop)
+CodeFlow/
+├── codeflow-desktop/    # PC Desktop (CodeFlow Desktop)
 ├── codeflow-plugin/     # Cursor MCP plugin
 ├── web/pwa/             # PWA source — sync to codeflow-pwa repo and bump version after changes
 ├── docs/
@@ -85,3 +85,26 @@ Outgoing events must include:
 - Do not send large payloads over relay (8KB limit)
 - Do not modify existing task files under `docs/agents/tasks/` and `reports/` (append only)
 - Do not introduce a secondary chat-only protocol
+
+## File Editing Rules (Mandatory)
+
+### Always use Python to edit HTML or any file containing Chinese. Never use PowerShell -replace.
+
+**PowerShell's `-replace`, `Set-Content`, `Get-Content` write files in GBK/CP936 by default, corrupting UTF-8 Chinese characters into garbage.**
+
+✅ Correct — write a `.py` script:
+```python
+with open(path, encoding='utf-8') as f:
+    html = f.read()
+html = html.replace('old', 'new')
+with open(path, 'w', encoding='utf-8', newline='\n') as f:
+    f.write(html)
+```
+
+❌ Forbidden:
+```powershell
+# This destroys UTF-8 encoding — never use on files containing Chinese
+(Get-Content "file.html" -Raw) -replace 'old','new' | Set-Content "file.html"
+```
+
+Applies to: `panel/index.html`, all `.md`, `.html`, `.py`, `.json` files containing Chinese text.

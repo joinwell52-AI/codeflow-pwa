@@ -1,4 +1,4 @@
-# codeflow-pwa 仓库 · GitHub Actions 失败说明
+﻿# codeflow-pwa 仓库 · GitHub Actions 失败说明
 
 ## 现象（与通知一致）
 
@@ -9,14 +9,14 @@
 
 `joinwell52-ai/codeflow-pwa` 是 **PWA 静态站仓库**（根目录一般为 `index.html`、`config.js`、`sw.js`、`manifest.json` 等），**没有** `web/pwa/` 目录，也**没有** 可发布的 Python 包（无根目录 `pyproject.toml`）。
 
-若把 **主仓库 `BridgeFlow`** 里的工作流 **原样复制** 到 `codeflow-pwa`，会出现：
+若把 **主仓库 `CodeFlow`** 里的工作流 **原样复制** 到 `codeflow-pwa`，会出现：
 
-| 工作流 | 在主仓库 BridgeFlow 里的作用 | 放到 codeflow-pwa 后的问题 |
+| 工作流 | 在主仓库 CodeFlow 里的作用 | 放到 codeflow-pwa 后的问题 |
 |--------|-------------------------------|----------------------------|
 | `deploy-pwa.yml` | 把 `web/pwa/` **推送到外仓** `codeflow-pwa` | 在 codeflow-pwa 内 **`publish_dir: ./web/pwa` 不存在** → 部署失败 |
 | `publish.yml` | `python -m build` **发布 PyPI** | 无 `pyproject.toml` → **构建/上传失败** |
 
-另外：若 **`PAGES_DEPLOY_TOKEN`** 未配置或无权访问 `codeflow-pwa`，主仓库侧的「部署 PWA」也会失败（需在 **BridgeFlow** 仓库 Secrets 里配置）。
+另外：若 **`PAGES_DEPLOY_TOKEN`** 未配置或无权访问 `codeflow-pwa`，主仓库侧的「部署 PWA」也会失败（需在 **CodeFlow** 仓库 Secrets 里配置）。
 
 ## 推荐修复（在 GitHub 上手动操作）
 
@@ -30,7 +30,7 @@
 
 > 静态 PWA **只开 Pages 即可**；不必在 codeflow-pwa 里再跑一遍「从 web/pwa 部署到外仓」的流程。
 
-### B. 仓库 `BridgeFlow`（主仓库，若你要从主仓推送到 codeflow-pwa）
+### B. 仓库 `CodeFlow`（主仓库，若你要从主仓推送到 codeflow-pwa）
 
 1. **Settings → Secrets and variables → Actions**  
 2. 配置 **`PAGES_DEPLOY_TOKEN`**：PAT 需对 **`joinwell52-ai/codeflow-pwa`** 有 **push** 权限。  
@@ -47,6 +47,6 @@
 | 仓库 | 建议 |
 |------|------|
 | **codeflow-pwa** | 删掉 **PyPI** 与 **错误的「web/pwa 部署」** 工作流；用 **Pages 分支发布** 即可。 |
-| **BridgeFlow** | 保留「推送到 codeflow-pwa」的 deploy（若仍用）；配好 **PAGES_DEPLOY_TOKEN**。 |
+| **CodeFlow** | 保留「推送到 codeflow-pwa」的 deploy（若仍用）；配好 **PAGES_DEPLOY_TOKEN**。 |
 
 排查时请看失败 job 日志里是否出现 **`No such file or directory: web/pwa`** 或 **`python -m build` / `pyproject.toml` 缺失** —— 与上文一致则可按上表处理。

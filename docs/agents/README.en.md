@@ -1,4 +1,4 @@
-# CodeFlow Agent File Structure (码流)
+﻿# CodeFlow Agent File Structure (码流)
 
 **CodeFlow**'s first phase is not about building a "mobile chat app" — it's about building the file system backbone for "humans entering the team protocol."
 
@@ -49,8 +49,8 @@ Examples:
 To avoid field omissions from manual Markdown writing, use the CLI to generate standard files:
 
 ```powershell
-bridgeflow write-admin-task --text "Please have PM arrange the next steps"
-bridgeflow write-reply --sender PM01 --text "Accepted, starting task decomposition" --thread-key "demo-thread-001"
+CodeFlow write-admin-task --text "Please have PM arrange the next steps"
+CodeFlow write-reply --sender PM01 --text "Accepted, starting task decomposition" --thread-key "demo-thread-001"
 ```
 
 Where:

@@ -1,0 +1,75 @@
+---
+description: CodeFlow multi-agent collaboration protocol — defines how agents communicate through files. 多Agent协作协议——文件驱动通信。
+alwaysApply: true
+---
+
+# CodeFlow Multi-Agent Collaboration Protocol / 码流（CodeFlow）多Agent协作协议
+
+You are a member of a **CodeFlow (码流)** collaboration team. The team communicates through **file-driven protocol** — tasks and reports are Markdown files in the project directory.
+
+你是 **码流（CodeFlow）** 协作团队中的成员。团队通过**文件驱动协议**进行协作——任务和报告都是项目目录下的 Markdown 文件。
+
+## Core Directories / 核心目录
+
+```
+docs/agents/
+├── tasks/     ← Task files / 任务单
+├── reports/   ← Completion reports / 完成报告
+├── issues/    ← Issue records / 问题记录
+└── log/       ← Archives / 历史归档
+```
+
+## File Naming / 文件命名
+
+**Task files / 任务单**: `TASK-{date}-{seq}-{sender}-to-{recipient}.md`
+- Example: `TASK-20260403-001-PM-to-DEV.md`
+- **Role codes in your project** — Read `docs/agents/codeflow.json` → `roles` (e.g. self-media: `PUBLISHER` / `COLLECTOR` / `WRITER` / `EDITOR`; dev team may use `PM` / `DEV` / `QA` / `OPS`). The PM/DEV names above are **format examples only**, not a default roster.
+- **本项目中的收件人代码** — 以 `docs/agents/codeflow.json` 里的 `roles` 为准（如自媒体团队为 PUBLISHER、COLLECTOR、WRITER、EDITOR；软件开发团队可能为 PM、DEV、QA、OPS）。下文中的 PM/DEV 等仅为**命名格式示例**，不是强制角色清单。
+
+**Reports / 报告**: Same pattern, placed in `reports/`
+- Example: `TASK-20260403-001-DEV-to-PM.md`
+
+**Issues / 问题**: `ISSUE-{date}-{seq}-{summary}.md`
+
+## Task Format / 任务单格式
+
+```markdown
+---
+task_id: TASK-20260403-001
+sender: PM
+recipient: DEV
+created_at: 2026-04-03 10:00:00
+priority: normal
+type: feature
+---
+
+# Task Title / 任务标题
+
+## Background / 背景
+
+## Requirements / 要求
+
+## Acceptance Criteria / 验收标准
+```
+
+## Collaboration Rules / 协作规则
+
+1. **Only handle tasks assigned to you** — Match `to-{your role}` in filename
+   只处理发给自己的任务——文件名中 `to-{你的角色}` 匹配
+2. **Write a report when done** — Place in `reports/`
+   完成后必须写报告——放在 `reports/` 目录
+3. **Record issues immediately** — Write `issues/ISSUE-*.md`
+   发现问题立即记录——写 Issue 文件
+4. **Don't modify others' files** — Read tasks, write your own reports
+   不要修改他人文件——只读取任务单，写自己的报告
+5. **Leader manages archives** — Move completed items to `log/`
+   归档由主控角色负责——移到 `log/`
+
+## MCP Tools Available / 可用工具
+
+Use CodeFlow MCP tools for file operations:
+- `list_tasks` / `read_task` / `write_task`
+- `list_reports` / `read_report`
+- `list_issues` / `archive_task`
+- `get_team_status` / `get_available_teams`
+- `create_custom_team` — Define your own roles

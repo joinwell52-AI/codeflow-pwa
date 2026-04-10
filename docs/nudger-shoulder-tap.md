@@ -1,4 +1,4 @@
-# 巡检器「拍肩膀」技术方案与精准化指南
+﻿# 巡检器「拍肩膀」技术方案与精准化指南
 
 > 角色：架构 / 产品 / 实现统一说明  
 > 目标：在 **无 Cursor 跨会话 API** 的前提下，用桌面自动化 **可靠通知** 各 Agent 窗口「有新任务文件，请处理」。
@@ -42,7 +42,7 @@
 
 ### 2.2 架构层：快捷键为主，OCR 为辅
 
-1. **第一性路径**：`Ctrl+Alt+1..4`（或 `codeflow.json`（兼容 `bridgeflow.json`）/ `codeflow-nudger.json`（兼容 `bridgeflow-nudger.json`）配置的键）切 Tab → **成功标准应是「快捷键 + 短延迟」**，而不是「整屏 OCR 认字」。  
+1. **第一性路径**：`Ctrl+Alt+1..4`（或 `codeflow.json`（兼容 `CodeFlow.json`）/ `codeflow-nudger.json`（兼容 `codeflow-desktop.json`）配置的键）切 Tab → **成功标准应是「快捷键 + 短延迟」**，而不是「整屏 OCR 认字」。  
 2. **OCR 用途收窄**：  
    - 优先用于 **验证当前 Tab 是否为目标角色**（小 ROI 优于全屏）。  
    - 失败时再 **点击角色名兜底**（已有逻辑方向正确）。  
@@ -65,7 +65,7 @@
 | P0 | **预检面板** 一键检查：项目路径、`docs/agents`、快捷键是否写入 `keybindings.json`、Relay 连通 | 减少「根本没配置好」导致的无效拍肩。 |
 | P0 | **固定 Cursor 使用习惯**：单窗口、Agents 栏可见、避免多 Cursor 实例抢焦点 | 运维约束比改代码更能提成功率。 |
 | P1 | **文件监听**：用 `watchdog`（或 Windows `ReadDirectoryChangesW`）替代纯轮询，缩短「落盘→第一次尝试拍肩」延迟，并降低空转 | 实现时注意编辑器保存的多次写入，需 **去抖**。 |
-| P1 | **可配置延迟**：`codeflow-nudger.json`（兼容旧名 `bridgeflow-nudger.json`）中 `post_hotkey_delay_ms`、`after_ctrl_l_delay_ms` 等，适配慢机器 | 精准 often = 可调。 |
+| P1 | **可配置延迟**：`codeflow-nudger.json`（兼容旧名 `codeflow-desktop.json`）中 `post_hotkey_delay_ms`、`after_ctrl_l_delay_ms` 等，适配慢机器 | 精准 often = 可调。 |
 | P2 | **ROI OCR**：只对 Tab 条或输入框附近截图识别，减少干扰 | 提升准确率、降延迟。 |
 | P2 | **结构化日志 + 面板轨迹**：`patrol_trace` 阶段键 + `/api/patrol_trace` + 面板「巡检轨迹」表，与 `[巡检]` 日志同源 | 精确知道巡检器做了什么。 |
 
