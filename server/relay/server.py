@@ -43,6 +43,8 @@ ALLOWED_EVENTS = {
     "execute_desktop_action",
     "desktop_action_result",
     "task_created",
+    "patrol_trace",
+    "conn_error_reload",
 }
 MAX_MESSAGE_BYTES = 8 * 1024
 TRANSPORT_MAX_BYTES = 16 * 1024
