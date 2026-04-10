@@ -764,7 +764,13 @@
         <span class="muted" style="font-size:12px;margin-left:auto;">轮次：</span>
         <span id="patrolRoundValue" style="font-size:12px;color:var(--text);">0</span>
       </div>
-      <div id="patrolLogBox" style="background:rgba(0,0,0,.3);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-family:'Fira Code',monospace;font-size:11px;line-height:1.5;color:var(--text3);max-height:200px;overflow-y:auto;white-space:pre-wrap;min-height:40px;"></div>
+      <div id="patrolLogBox" style="display:none;background:rgba(0,0,0,.3);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-family:'Fira Code',monospace;font-size:11px;line-height:1.5;color:var(--text3);max-height:120px;overflow-y:auto;white-space:pre-wrap;min-height:40px;"></div>
+      <!-- 巡检轨迹列表 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px;">
+        <span style="font-size:12px;color:var(--text2);font-weight:600;">巡检轨迹</span>
+        <button id="traceRefreshBtn" type="button" style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.07);border:1px solid var(--card-border);color:var(--text3);cursor:pointer;">刷新</button>
+      </div>
+      <div id="patrolTraceList" style="background:rgba(0,0,0,.25);border:1px solid var(--card-border);border-radius:8px;max-height:280px;overflow-y:auto;min-height:48px;"></div>
     </div>
 
     <div class="card">
@@ -2157,6 +2163,74 @@
       updateHeaderStatus();
     }
 
+    // ── 巡检轨迹 ──────────────────────────────────────────────────────
+    const patrolTraceList = document.getElementById("patrolTraceList");
+    const traceRefreshBtn = document.getElementById("traceRefreshBtn");
+    let _tracePollingTimer = null;
+
+    const _stageConf = {
+      scan:          { label: "扫描", color: "#3b82f6" },
+      nudge:         { label: "催办", color: "#a855f7" },
+      nudge_ok:      { label: "已送达", color: "#22c55e" },
+      defer:         { label: "延后", color: "#f59e0b" },
+      giveup:        { label: "放弃", color: "#ef4444" },
+      send_fail:     { label: "发送失败", color: "#ef4444" },
+      cursor_reload: { label: "重载", color: "#f59e0b" },
+      switch_role:   { label: "切角色", color: "#06b6d4" },
+      busy_wait:     { label: "等待忙", color: "#94a3b8" },
+    };
+
+    function _traceStageHtml(stage) {
+      const c = _stageConf[stage] || { label: stage, color: "#64748b" };
+      return `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:${c.color}22;color:${c.color};border:1px solid ${c.color}44;white-space:nowrap;">${c.label}</span>`;
+    }
+
+    function renderPatrolTrace(events) {
+      if (!patrolTraceList) return;
+      if (!events || events.length === 0) {
+        patrolTraceList.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:12px;color:var(--text3);">暂无轨迹</div>';
+        return;
+      }
+      const rows = [...events].reverse().map(ev => {
+        const t = ev.ts ? ev.ts.slice(11, 19) : "";
+        const fname = ev.filename ? `<span style="color:var(--text2);font-size:10px;word-break:break-all;">${ev.filename}</span>` : "";
+        const detail = ev.detail || "";
+        const extra = Object.entries(ev)
+          .filter(([k]) => !["ts","stage","detail","filename"].includes(k))
+          .map(([k,v]) => `<span style="color:#64748b;">${k}=</span><span style="color:#94a3b8;">${v}</span>`)
+          .join("  ");
+        return `<div style="display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);">
+          <span style="color:var(--text3);font-size:10px;white-space:nowrap;min-width:54px;padding-top:2px;">${t}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${_traceStageHtml(ev.stage)}${fname}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">${detail}</div>
+            ${extra ? `<div style="font-size:10px;margin-top:2px;line-height:1.6;font-family:'Fira Code',monospace;">${extra}</div>` : ""}
+          </div>
+        </div>`;
+      }).join("");
+      patrolTraceList.innerHTML = rows;
+    }
+
+    async function fetchPatrolTrace() {
+      if (!_pcRelayUrl) return;
+      try {
+        const base = _pcRelayUrl.replace(/^ws/, "http").replace(/\/ws\/?$/, "");
+        const r = await fetch(`${base}/api/patrol_trace?limit=60`, { signal: AbortSignal.timeout(4000) });
+        if (r.ok) { const d = await r.json(); renderPatrolTrace(d.events || []); }
+      } catch(_) {}
+    }
+
+    function startTracePolling() {
+      fetchPatrolTrace();
+      if (_tracePollingTimer) clearInterval(_tracePollingTimer);
+      _tracePollingTimer = setInterval(fetchPatrolTrace, 5000);
+    }
+    function stopTracePolling() {
+      if (_tracePollingTimer) { clearInterval(_tracePollingTimer); _tracePollingTimer = null; }
+    }
+
+    if (traceRefreshBtn) traceRefreshBtn.addEventListener("click", fetchPatrolTrace);
+
     let _lastFileListTotal = -1;
     function applyFileList(payload) {
       const tasks = payload.tasks || [];
@@ -2327,6 +2401,7 @@
             requestDashboard();
             requestPatrolStatus();
             if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 30000);
+            startTracePolling();
           } else {
             if (_pcWasOnline) {
               appendLog(currentLang === "en" ? "PC went offline, polling stopped" : "PC 已离线，停止轮询");
@@ -2336,6 +2411,7 @@
             _patrolRunning = false;
             updateHeaderStatus();
             if (patrolPolling) { clearInterval(patrolPolling); patrolPolling = null; }
+            stopTracePolling();
             applyPatrolState({ running: false, round: 0, log: "" });
           }
         }
@@ -2376,6 +2452,7 @@
         updateHeaderStatus();
         if (patrolPolling) { clearInterval(patrolPolling); patrolPolling = null; }
         if (rosterPolling) { clearInterval(rosterPolling); rosterPolling = null; }
+        stopTracePolling();
         applyPatrolState({ running: false, round: 0, log: "" });
         lastDisconnectedAt = formatStamp();
         lastDisconnectReason = manualDisconnect ? (currentLang === "en" ? "Manual disconnect" : "手动断开") : decodeCloseReason(event);
