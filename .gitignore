@@ -1,4 +1,7 @@
-﻿# ── Python ──
+﻿# ── Secrets ──
+.github_token
+
+# ── Python ──
 __pycache__/
 *.py[cod]
 *$py.class

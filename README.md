@@ -103,7 +103,7 @@ python main.py
 
 **主源目录：** `web/pwa/`（`config.js` / `index.html` / `sw.js` / `manifest.json`）。
 
-**GitHub Pages 示例：** https://joinwell52-ai.github.io/codeflow-pwa/
+**GitHub Pages：** https://joinwell52-ai.github.io/codeflow-pwa/（由独立仓库 `joinwell52-AI/codeflow-pwa` 托管，原名 `bridgeflow-pwa`，已改名）
 
 添加到主屏幕后，安装名显示为 **码流**，全名为 **码流（CodeFlow）工作台**。
 
@@ -111,7 +111,22 @@ python main.py
 - 扫码绑定 / 解绑 PC  
 - 远程启停巡检  
 - 任务清单与回复、发送任务  
+- **巡检轨迹**：PC 在线后自动每 5 秒拉取并展示最近 60 条巡检事件（扫描 / 催办 / 延后 / 放弃等）  
 - 与桌面端、中继事件协议一致（`room_key` + JSON 事件）  
+
+### PWA 发布流程
+
+```
+# 1. 修改 web/pwa/ 里的文件
+# 2. 升级版本号
+#    web/pwa/config.js  → appVersion
+#    web/pwa/sw.js      → build 注释行（// build: YYYYMMDD-x.x.x）
+# 3. 运行发布脚本
+py -3 _deploy_pwa.py
+```
+
+> Token 存放在 `.github_token`（已列入 `.gitignore`，不进 git）。  
+> `codeflow-pwa` 仓库只存 PWA 的 5 个文件，不含主仓库代码。
 
 ---
 
