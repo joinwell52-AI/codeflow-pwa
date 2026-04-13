@@ -8,6 +8,156 @@
 
 ---
 
+## [2.9.44] - 2026-04-14
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：巡检器自动检测 "Waiting for extension host" 并 Reload Window
+
+- OCR 检测关键词新增 `waiting for extension host`、`extension host`
+- Cursor Extension Host 卡死时，巡检器自动执行 `Developer: Reload Window` 恢复
+- 与 Connection Error 检测共享 120 秒冷却期，不会反复触发
+
+---
+
+## [2.9.43] - 2026-04-14
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：dashboard_state 消息超过中继 max_size 被拒绝（1009 message too big）
+
+- `MAX_WS_BYTES` 从 14KB 调整为 200KB，匹配中继已放大的 512KB `TRANSPORT_MAX_BYTES`
+- `_build_dashboard` 中 `markdown` / `raw_markdown` 截断长度从 2000 字扩展到 8000 字
+- 14 条任务的 dashboard 约 34KB，不再触发分片截断，markdown 内容完整传递到 PWA
+
+### 中继服务（远程 `120.55.164.16`）
+
+- `MAX_MESSAGE_BYTES`：8KB → **256KB**（业务层消息体积校验）
+- `TRANSPORT_MAX_BYTES`：16KB → **512KB**（WebSocket `max_size` 参数）
+- 重启 `bridgeflow-relay.service` 生效
+
+### PWA（`web/pwa`）v2.2.9
+
+- 版本号升级触发 Service Worker 刷新，配合 PC 端修复
+
+---
+
+## [2.9.42] - 2026-04-14
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：PC 频繁断连与中继 rate limit
+
+- `ping_timeout` 从 20s 调整为 60s，`ping_interval` 从 20s 调整为 30s
+- `_push_interval`（dashboard 轮询频率）从 5s 调整为 15s
+- 心跳只发 `file_list`（不再每次发 `patrol_trace`），减少消息量
+- 连接建立后延迟 3 秒再推初始 `dashboard_state`，避免与 hello 消息一起触发 rate limit
+
+### 中继服务（远程 `120.55.164.16`）
+
+- `RATE_LIMIT_COUNT`：20 → **50**（每 10 秒窗口内允许消息数）
+
+---
+
+## [2.9.41] - 2026-04-14
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：连接后立即推送 dashboard_state
+
+- PC 连接中继后 3 秒自动推送完整 `dashboard_state`（含 markdown），确保 PWA 第一时间收到带内容的数据
+- `_send` 函数增加日志：记录消息类型、大小、异常
+
+### PWA（`web/pwa`）v2.2.8
+
+#### 修复：file_list 不再覆盖 dashboard_state 数据
+
+- `applyFileList` 彻底不操作 `taskItems` / `taskRecords`，仅更新统计数字
+- `dashboard_state` 是带完整 markdown 的权威数据源，不再被 `file_list` 的最小数据覆盖
+- 新增 `_ensureItemMd`：为缺少 markdown 的 item 自动生成合成内容
+
+#### 修复：MD 原文显示
+
+- 打开详情页时先显示"正在加载 MD 内容…"
+- 3 秒内未收到 PC 回复则 fallback 到本地 `taskItems` 数据
+- 点击"MD原文" tab 时自动重新请求 PC 获取完整内容
+
+#### 修复：任务标题 7 层 fallback
+
+1. `item.summary` / `item.body`
+2. `markdown` 首行（去 `#`）
+3. `raw_markdown` 首行（跳过 YAML front matter）
+4. `messages` 中首条非空 body
+5. `filename` 解析（`ADMIN01-to-PM` → `ADMIN01 → PM`）
+6. `task_id`
+7. "未命名任务"
+
+---
+
+## [2.9.40] - 2026-04-14
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：WebSocket 连接稳定性
+
+- `websockets.connect` 的 `max_size` 从 16KB 调整为 1MB
+- `poll_and_push` 异常处理更健壮：不再遇到任何异常就断连，改为连续 5 次异常才重连
+- 新增 WebSocket 分片发送 `_send_chunked`：dashboard_state 超限时自动拆分 items 分批发送
+
+### PWA（`web/pwa`）v2.2.5
+
+#### 新增：任务列表分类 Tabs
+
+- 任务列表页增加"任务单 / 报告 / 问题 / 归档"四个 Tab
+- 对应 PC 端 `tasks` / `reports` / `issues` / `log` 目录
+
+#### 新增：团队名显示
+
+- "我的团队"标题后显示 `codeflow.json` 中配置的 `team_name`
+
+#### 修复：normalizeRole 返回 ADMIN
+
+- 空值、`SYSTEM`、未识别角色统一返回 `ADMIN`（不再显示 `OTHER`）
+
+#### 修复：角色卡片缩写
+
+- 长角色名（>3字符）显示 3 字母缩写 + 全名标签
+
+---
+
+## [2.9.36] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：一键发版脚本 `publish.py`
+
+- 自动化流程：Git tag → PyInstaller 打包 → GitHub Release → Gitee Release → PWA 同步
+- `_github_pub.py` / `_gitee_pub.py` 支持动态读取版本号和 CHANGELOG
+
+#### 修复：dashboard 推送 team_name 和完整团队信息
+
+- `_read_team_info` 同时返回 `roles` 和 `team_name`
+- `_build_dashboard` 扫描 `tasks` / `reports` / `issues` / `log` 四个目录
+- 无 `body`/`summary` 时从 markdown 正文提取首行作为摘要
+
+#### 新增：request_task_detail 处理
+
+- PC 收到 PWA 的 `request_task_detail` 后，读取指定文件返回完整 markdown
+
+### PWA（`web/pwa`）v2.2.0 ~ v2.2.4
+
+#### 新增：团队角色动态同步
+
+- 从 PC `dashboard_state` 接收 `team_roles`，动态更新角色卡片
+- 角色列表缓存到 localStorage，断线时保持显示
+
+#### 新增：统计卡片与角色任务分离
+
+- 今日任务/今日回复/进行中/已完成：显示全部角色任务
+- 点击团队成员卡片：过滤该角色的任务列表
+
+---
+
 ## [2.9.35] - 2026-04-13
 
 ### 桌面端（`codeflow-desktop`）

@@ -1,6 +1,6 @@
 ﻿# 码流（CodeFlow）用户操作手册
 
-**版本：** v2.0.0 ｜ **更新日期：** 2026-04-04
+**版本：** v2.9.44 ｜ **更新日期：** 2026-04-14
 
 ---
 
@@ -44,7 +44,11 @@ D:\my-ai-team\
 
 ### 2.3 获取码流 Desktop（CodeFlow Desktop）
 
-获取 `CodeFlow-Desktop.exe`（约 50MB），放在任意位置。
+获取 `CodeFlow-Desktop.exe`（约 35MB），放在任意位置。支持自动更新：启动后自动检测 GitHub/Gitee 最新版本并后台下载。
+
+下载地址：
+- **国内（推荐）**：https://gitee.com/joinwell52/cursor-ai/releases
+- **GitHub**：https://github.com/joinwell52-AI/codeflow-pwa/releases
 
 ---
 
@@ -161,9 +165,11 @@ https://joinwell52-ai.github.io/codeflow-pwa/
 ### 4.3 手机能做什么
 
 - 远程启动 / 停止巡检
-- 查看任务清单和报告
+- 查看任务清单和报告（分类：任务单 / 报告 / 问题 / 归档）
+- 查看任务 MD 原文内容
 - 发送任务给指定角色
 - 远程桌面操作（聚焦 Cursor / 查看状态 / 开始工作）
+- 查看团队成员状态和任务分布
 
 ---
 
@@ -193,7 +199,24 @@ https://joinwell52-ai.github.io/codeflow-pwa/
 
 ---
 
-## 七、故障排查
+## 七、自动故障恢复
+
+巡检器内置多种自愈机制，大部分异常无需人工干预：
+
+| 检测场景 | 检测方式 | 自动动作 |
+|---|---|---|
+| Cursor Connection Error | OCR 扫描聊天区域 | 自动 Reload Window |
+| Extension Host 卡死 | OCR 检测 "Waiting for extension host" | 自动 Reload Window |
+| Agent 任务卡住 | 任务文件超过 10 分钟未更新 | 先 Reload Window，再发催促消息 |
+| Agent 等待确认 | OCR 检测"要我继续"等关键词 | 自动发送"继续"指令 |
+| WebSocket 断连 | 连接异常检测 | 自动重连（指数退避） |
+| PC 中继限流 | 消息发送频率控制 | 自动降频（15 秒间隔） |
+
+> **Reload Window 冷却期**：120 秒内最多触发一次，避免反复刷新。可在 `codeflow-nudger.json` 中通过 `conn_error_reload_cooldown_s` 调整。
+
+---
+
+## 八、故障排查
 
 ### Cursor 窗口检测不到
 
@@ -223,11 +246,11 @@ https://joinwell52-ai.github.io/codeflow-pwa/
 
 ---
 
-## 八、文件说明
+## 九、文件说明
 
 | 文件 | 说明 |
 |------|------|
-| `CodeFlow-Desktop.exe` | 主程序，双击运行，约 50MB |
+| `CodeFlow-Desktop.exe` | 主程序，双击运行，约 35MB，支持自动更新 |
 | `docs/agents/codeflow.json` | 团队配置（角色、房间密钥、中继地址；兼容 `codeflow.json`） |
 | `docs/agents/tasks/*.md` | 任务单文件 |
 | `docs/agents/reports/*.md` | 完成报告文件 |

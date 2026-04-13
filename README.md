@@ -95,7 +95,11 @@ python main.py
 
 启动后自动打开浏览器面板 `http://127.0.0.1:18765`（**码流（CodeFlow）控制面板**）。
 
-- **桌面端版本**：见 **`CHANGELOG.md`**（当前主线 **2.0.1** 起，面板「团队」含 **「同步角色模板」**，用于把内置模板写入当前项目的 `docs/agents/` 等；**勿用「重置」**仅为了更新角色文件）。
+- **桌面端版本**：当前 **v2.9.44**，见 **`CHANGELOG.md`**。支持自动更新（GitHub + Gitee 双线路智能下载）。
+
+**下载地址：**
+- 国内（推荐）：https://gitee.com/joinwell52/cursor-ai/releases
+- GitHub：https://github.com/joinwell52-AI/codeflow-pwa/releases
 
 ---
 
@@ -110,8 +114,13 @@ python main.py
 **能力概览：**
 - 扫码绑定 / 解绑 PC  
 - 远程启停巡检  
-- 任务清单与回复、发送任务  
-- **巡检轨迹**：PC 在线后自动每 5 秒拉取并展示最近 60 条巡检事件（扫描 / 催办 / 延后 / 放弃等）  
+- 任务清单（分类：任务单 / 报告 / 问题 / 归档）  
+- 任务 MD 原文查看  
+- 团队角色动态同步（从 PC `codeflow.json` 读取，支持 MVP/媒体等多种团队）  
+- 团队名显示、角色卡片缩写  
+- 发送任务给指定角色  
+- 巡检轨迹实时展示  
+- 远程桌面操作（聚焦 Cursor / 查看状态 / 开始工作）  
 - 与桌面端、中继事件协议一致（`room_key` + JSON 事件）  
 
 ### PWA 发布流程
@@ -170,7 +179,19 @@ D:\\CodeFlow\\                          # 仓库根（文件夹名可仍为 Code
 | 本地联调 | `ws://127.0.0.1:5252`（`python server/relay/server.py`） |
 | 公网 / 自部署 | 网关需将路径 **`/codeflow/ws/`** 转到中继进程（与 PWA、Desktop 默认 `relayUrl` 一致） |
 
-中继只转发 JSON 文本，限制单条体积（见代码内 `MAX_MESSAGE_BYTES`）。
+中继只转发 JSON 文本，单条消息限制 256KB（`MAX_MESSAGE_BYTES`），WebSocket 传输帧限制 512KB（`TRANSPORT_MAX_BYTES`）。
+
+---
+
+## 巡检器自愈能力
+
+| 场景 | 动作 |
+|---|---|
+| Cursor Connection Error | 自动 Reload Window |
+| Extension Host 卡死 | 自动 Reload Window |
+| Agent 任务超时卡住 | Reload Window + 催促消息 |
+| Agent 等待确认 | 自动发送"继续"指令 |
+| WebSocket 断连 | 自动重连（指数退避） |
 
 ---
 
@@ -179,7 +200,7 @@ D:\\CodeFlow\\                          # 仓库根（文件夹名可仍为 Code
 - **文件名即协议** — `TASK-...-发件人-to-收件人.md`  
 - **手机只发文本与指令** — 不替代桌面端执行环境  
 - **PC 负责执行** — 桥接、巡检、文件、Cursor 侧唤醒  
-- **中继只传 JSON** — 不传大文件正文  
+- **中继只传 JSON** — 单条限 256KB  
 
 ---
 
