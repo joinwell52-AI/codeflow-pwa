@@ -127,3 +127,9 @@ _pages_tmp/
 # ── 敏感文件 ──
 .github_token
 private/
+
+# ── bridgeflow-nudger（旧版，已被 codeflow-desktop 替代）──
+bridgeflow-nudger/
+
+# ── examples/private（内部文档）──
+examples/private/
