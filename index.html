@@ -2185,7 +2185,22 @@
       updateCurrentTaskSummary();
     }
 
+    function _ensureItemMd(item) {
+      if (!item.markdown && !item.raw_markdown && !item.body && !item.summary) {
+        item.body = item.task_id || item.filename || "";
+        item.markdown = [
+          `# ${item.task_id || item.filename || "Task"}`,
+          `- Sender: ${item.sender || "--"}`,
+          `- Recipient: ${item.recipient || "--"}`,
+          `- Priority: ${item.priority || "--"}`,
+          `- Status: ${item.progress || "--"}`,
+          `- Time: ${item.created_at || item.time || "--"}`,
+        ].join("\n");
+      }
+      return item;
+    }
     function mergeDashboardItems(serverItems) {
+      serverItems.forEach(_ensureItemMd);
       pendingItems = pendingItems.filter((pending) => {
         return !serverItems.some((item) => item.thread_key === pending.thread_key && item.summary === pending.summary && item.recipient === pending.recipient);
       });
@@ -2213,7 +2228,9 @@
       }
       // 分片模式：后续包带 _chunk 标记（items 片段）
       if (payload._chunk && _dashboardChunkBuffer) {
-        _dashboardChunkBuffer.items.push(...(payload.items || []));
+        const _chunkItems = payload.items || [];
+        if (_chunkItems[0]) appendLog(`chunk[0]: ${JSON.stringify(_chunkItems[0]).slice(0,300)}`);
+        _dashboardChunkBuffer.items.push(..._chunkItems);
         mergeDashboardItems(_dashboardChunkBuffer.items);
         renderTaskList();
         renderRolePanel();
