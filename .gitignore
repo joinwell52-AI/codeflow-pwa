@@ -95,6 +95,9 @@ _trigger_deploy.py
 # ── 本地快照 / 多人杂项（勿提交）──
 _pages_tmp/
 
+# ── 第三方外部技能库（本地克隆，不提交到主仓库）──
+external/
+
 # ── codeflow-desktop 调试与测试产物 ──
 codeflow-desktop/build_snap/
 codeflow-desktop/_*.py
