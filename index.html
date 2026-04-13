@@ -2371,11 +2371,20 @@
       const fpMd = document.getElementById("fpMarkdown");
       if (!fpMd || !taskDetailPageEl.classList.contains("open")) return;
       if (fpMd.textContent && !fpMd.textContent.includes("正在加载") && !fpMd.textContent.includes("Loading")) return;
+      appendLog(`fallback开始: fn=${filename}, taskItems=${taskItems.length}`);
+      // 暴力调试：打印第一条 taskItem 的所有 key 和 markdown 长度
+      if (taskItems.length > 0) {
+        const t0 = taskItems[0];
+        appendLog(`taskItems[0]: keys=${Object.keys(t0).join(",")}, fn=${t0.filename}, md=${(t0.markdown||'').length}, raw=${(t0.raw_markdown||'').length}, body=${(t0.body||'').slice(0,30)}`);
+      }
       const local = taskItems.find((item) => item.filename === filename);
       if (local) {
+        appendLog(`找到local: fn=${local.filename}, md=${(local.markdown||'').length}, raw=${(local.raw_markdown||'').length}`);
         const mc = detailMarkdownContent(local);
-        appendLog(`fallback本地MD: fn=${filename}, len=${mc.length}`);
+        appendLog(`fallback本地MD: fn=${filename}, len=${mc.length}, mc50=${mc.slice(0,50)}`);
         if (mc) { fpMd.textContent = mc; return; }
+      } else {
+        appendLog(`taskItems中未找到 fn=${filename}, 所有fn=[${taskItems.map(i=>i.filename).join(",")}]`);
       }
       const rec = getTaskByFilename(filename);
       if (rec) {
@@ -2387,6 +2396,7 @@
           }
         }
         if (mc) { fpMd.textContent = mc; appendLog(`fallback record MD: len=${mc.length}`); return; }
+        appendLog(`rec找到但MD为空: keys=${Object.keys(rec).join(",")}, md=${(rec.markdown||'').length}`);
       }
       fpMd.textContent = currentLang === "en" ? "(No MD content available)" : "（暂无 MD 内容）";
     }
@@ -2657,7 +2667,10 @@
         if (et === "dashboard_state") {
           const p = data.payload || {};
           const _di = (p.items||[])[0];
-          appendLog(`dashboard: items=${(p.items||[]).length}, chunk=${!!p._chunked||!!p._chunk}, body0=${_di?JSON.stringify((_di.body||'').slice(0,40)):'-'}, fn0=${_di?_di.filename:'-'}`);
+          if (_di) {
+            appendLog(`dashboard[0]: ${JSON.stringify(_di).slice(0,300)}`);
+          }
+          appendLog(`dashboard: items=${(p.items||[]).length}, chunk=${!!p._chunked||!!p._chunk}`);
           applyDashboard(p);
         }
         else if (et === "device_roster") {
