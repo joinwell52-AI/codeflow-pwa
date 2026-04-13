@@ -1367,7 +1367,20 @@
         msgHistoryEmpty: "暂无消息",
         msgSent: "发送",
         msgReceived: "收到",
-        agentRailToggleHint: "切换 Agent 栏左右"
+        agentRailToggleHint: "切换 Agent 栏左右",
+        qrStartingCamera: "正在启动摄像头…",
+        qrLoadingLib: "正在加载识别库…",
+        qrLibFailed: "二维码识别库加载失败，请检查网络",
+        qrAimAt: "对准 PC 浏览器里的二维码",
+        qrScanning: "扫描中…",
+        qrSwitchingRoom: "正在切换房间并绑定…",
+        qrBindSuccess: "绑定成功！",
+        qrRelayNotConnected: "未连接中继，请先连接后重试",
+        qrNotCodeFlow: "检测到二维码，但不是 CodeFlow 码",
+        qrCameraFailed: "摄像头启动失败：",
+        noTraceYet: "暂无轨迹",
+        confirmResetPc: "确定重置 PC 端 CodeFlow Desktop 进程？",
+        confirmUnbind: "确认解除绑定？"
       },
       en: {
         brandHeader: "CodeFlow",
@@ -1499,7 +1512,20 @@
         msgHistoryEmpty: "No messages yet",
         msgSent: "Sent",
         msgReceived: "Received",
-        agentRailToggleHint: "Toggle agent bar left/right"
+        agentRailToggleHint: "Toggle agent bar left/right",
+        qrStartingCamera: "Starting camera…",
+        qrLoadingLib: "Loading QR library…",
+        qrLibFailed: "QR library failed to load. Check network.",
+        qrAimAt: "Aim at the QR code on PC browser",
+        qrScanning: "Scanning…",
+        qrSwitchingRoom: "Switching room & binding…",
+        qrBindSuccess: "Bind successful!",
+        qrRelayNotConnected: "Relay not connected. Connect first.",
+        qrNotCodeFlow: "QR code detected, but not a CodeFlow code",
+        qrCameraFailed: "Camera failed: ",
+        noTraceYet: "No trace yet",
+        confirmResetPc: "Reset PC CodeFlow Desktop process?",
+        confirmUnbind: "Unbind this PC?"
       }
     };
 
@@ -1684,7 +1710,7 @@
 
     function resetPC() {
       if (!ws || ws.readyState !== WebSocket.OPEN) { appendLog("未连接中继，无法重置 PC"); return; }
-      if (!confirm(currentLang === "en" ? "Reset PC CodeFlow Desktop process?" : "确定重置 PC 端 CodeFlow Desktop 进程？")) return;
+      if (!confirm(t("confirmResetPc"))) return;
       sendEvent("execute_desktop_action", { action: "restart" });
       appendLog("已发送：重置 PC");
     }
@@ -2495,7 +2521,7 @@
     function renderPatrolTrace(events) {
       if (!patrolTraceList) return;
       if (!events || events.length === 0) {
-        patrolTraceList.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:12px;color:var(--text3);">暂无轨迹</div>';
+        patrolTraceList.innerHTML = `<div style="text-align:center;padding:14px 0;font-size:12px;color:var(--text3);">${t('noTraceYet')}</div>`;
         return;
       }
       const rows = [...events].reverse().map(ev => {
@@ -2598,7 +2624,7 @@
     function requestPcReset() {
       const did = _pcDeviceId();
       if (!did) { appendLog(currentLang === "en" ? "PC not online" : "PC 不在线，无法重置"); return; }
-      if (!confirm(currentLang === "en" ? "Restart CodeFlow Desktop on PC?" : "确定要重置 PC 端 CodeFlow Desktop 吗？")) return;
+      if (!confirm(t("confirmResetPc"))) return;
       sendEvent("execute_desktop_action", { action: "restart", target_device_id: did });
       appendLog(currentLang === "en" ? "Sent: Reset PC" : "已发送: 重置 PC");
       addMsgRecord("pwa", currentLang === "en" ? "Reset PC" : "重置 PC");
@@ -2624,7 +2650,7 @@
     function renderMsgHistory() {
       if (!msgHistoryList) return;
       if (!msgRecords.length) {
-        msgHistoryList.innerHTML = '<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无消息</div>';
+        msgHistoryList.innerHTML = `<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">${t('msgHistoryEmpty')}</div>`;
         return;
       }
       msgHistoryList.innerHTML = msgRecords.slice(-50).reverse().map(r =>
@@ -2847,21 +2873,21 @@
 
     async function startScan() {
       qrScanModal.style.display = 'flex';
-      qrScanStatus.textContent = '正在启动摄像头…';
+      qrScanStatus.textContent = t('qrStartingCamera');
       try {
         scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         qrVideo.srcObject = scanStream;
         await qrVideo.play();
-        qrScanStatus.textContent = '正在加载识别库…';
+        qrScanStatus.textContent = t('qrLoadingLib');
         if (!window.jsQR) {
           const cdns = ['https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js', 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.min.js', 'https://fastly.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'];
           for (const cdn of cdns) {
             try { await new Promise((res, rej) => { const s = document.createElement('script'); s.src = cdn; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); if (window.jsQR) break; } catch(e) {}
           }
         }
-        if (!window.jsQR) { qrScanStatus.textContent = '二维码识别库加载失败，请检查网络'; return; }
+        if (!window.jsQR) { qrScanStatus.textContent = t('qrLibFailed'); return; }
         const ctx = qrCanvas.getContext('2d');
-        qrScanStatus.textContent = '对准 PC 浏览器里的二维码';
+        qrScanStatus.textContent = t('qrAimAt');
         let frameCount = 0;
         scanTimer = setInterval(() => {
           if (qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA) return;
@@ -2870,7 +2896,7 @@
           const img = ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
           const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
           frameCount++;
-          if (frameCount % 10 === 0) { qrScanStatus.textContent = '扫描中… (' + frameCount + ' frames)'; }
+          if (frameCount % 10 === 0) { qrScanStatus.textContent = t('qrScanning') + ' (' + frameCount + ' frames)'; }
           if (code) {
             const raw = code.data || '';
             let machineCode = '', deviceId = '';
@@ -2904,7 +2930,7 @@
               if (needSwitch) {
                 appendLog('房间不同，切换到 PC 房间: ' + scannedRoomKey);
                 ROOM_KEY = scannedRoomKey;
-                qrScanStatus.textContent = '正在切换房间并绑定…';
+                qrScanStatus.textContent = t('qrSwitchingRoom');
                 disconnect();
                 setTimeout(() => {
                   connect();
@@ -2914,7 +2940,7 @@
                       sendEvent('request_bind_code', { target_device_id: deviceId, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
                       bindState = { status: "bound", machine_code: machineCode };
                       renderMyDeviceInfo();
-                      qrScanStatus.textContent = '绑定成功！';
+                      qrScanStatus.textContent = t('qrBindSuccess');
                       appendLog('绑定成功：' + machineCode);
                     }
                   }, 300);
@@ -2925,20 +2951,20 @@
                 if (ok) {
                   bindState = { status: "bound", machine_code: machineCode };
                   renderMyDeviceInfo();
-                  qrScanStatus.textContent = '绑定成功！';
+                  qrScanStatus.textContent = t('qrBindSuccess');
                   appendLog('绑定成功：' + machineCode);
                 } else {
-                  qrScanStatus.textContent = '未连接中继，请先连接后重试';
+                  qrScanStatus.textContent = t('qrRelayNotConnected');
                   appendLog('扫码成功但中继未连接');
                 }
               }
             } else if (raw) {
-              qrScanStatus.textContent = '检测到二维码，但不是 CodeFlow 码';
+              qrScanStatus.textContent = t('qrNotCodeFlow');
               appendLog('非BF码: ' + raw.substring(0, 60));
             }
           }
         }, 200);
-      } catch(e) { qrScanStatus.textContent = '摄像头启动失败：' + e.message; }
+      } catch(e) { qrScanStatus.textContent = t('qrCameraFailed') + e.message; }
     }
 
     if (scanQrBtn) scanQrBtn.onclick = startScan;
@@ -2946,7 +2972,7 @@
     const bindBannerBtn = document.getElementById("bindBannerBtn");
     if (bindBannerBtn) bindBannerBtn.onclick = () => { setActiveTab("my"); };
     const unbindPcBtnEl = document.getElementById("unbindPcBtn");
-    if (unbindPcBtnEl) unbindPcBtnEl.onclick = () => { if (confirm(currentLang === "en" ? "Unbind this PC?" : "确认解除绑定？")) unbindPc(); };
+    if (unbindPcBtnEl) unbindPcBtnEl.onclick = () => { if (confirm(t("confirmUnbind"))) unbindPc(); };
     document.getElementById("sendBtn").onclick = sendMessage;
     if (newThreadBtnEl) newThreadBtnEl.onclick = newThread;
     detailRecordTabBtnEl.onclick = () => setDetailView("record");
