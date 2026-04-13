@@ -1159,10 +1159,13 @@
       };
     });
 
+    let _fpDetailFilename = null;
+
     function openTaskDetailPage(filename) {
       if (!filename) return;
       const item = getTaskByFilename(filename);
       if (!item) return;
+      _fpDetailFilename = filename;
       const roles = taskRoles(item);
       const progress = mapProgress(item.progress);
       taskDetailPageTitleEl.textContent = currentLang === "en" ? "Task Detail" : "任务详情";
@@ -1182,14 +1185,26 @@
           <div>${m.body || m.summary || ""}</div>
         </div>
       `).join("") || `<div class="muted">${currentLang === "en" ? "No records" : "暂无记录"}</div>`;
-      const mdContent = detailMarkdownContent(item);
-      document.getElementById("fpMarkdown").textContent = mdContent || (currentLang === "en" ? "(No markdown content)" : "（暂无 MD 内容）");
+      // 优先从 record 取 markdown，fallback 到原始 taskItems 和 messages
+      let mdContent = detailMarkdownContent(item);
+      if (!mdContent && Array.isArray(item.messages)) {
+        for (const msg of item.messages) {
+          const mc = detailMarkdownContent(msg);
+          if (mc) { mdContent = mc; break; }
+        }
+      }
+      if (!mdContent) {
+        const raw = taskItems.find(t => t.filename === filename);
+        if (raw) mdContent = detailMarkdownContent(raw);
+      }
+      document.getElementById("fpMarkdown").textContent = mdContent || (currentLang === "en" ? "(Loading MD...)" : "（正在加载 MD 内容…）");
       document.getElementById("fpMarkdownFile").textContent = currentLang === "en" ? `Source: ${item.filename || "--"}` : `关联文件：${item.filename || "--"}`;
-      appendLog(`MD原文: len=${mdContent.length}, keys=${Object.keys(item).filter(k=>k.includes("mark")||k==="body"||k==="raw_markdown").join(",")}`);
+      appendLog(`MD原文: len=${mdContent.length}, keys=${Object.keys(item).join(",")}, md50=${(item.markdown||'').slice(0,50)}, body50=${(item.body||'').slice(0,50)}`);
+      _fpDetailFilename = item.primary_filename || item.filename;
       fpViewMode = "record";
       syncFpTabs();
       taskDetailPageEl.classList.add("open");
-      requestTaskDetail(filename);
+      requestTaskDetail(_fpDetailFilename);
     }
 
     function closeTaskDetailPage() { taskDetailPageEl.classList.remove("open"); }
@@ -2292,8 +2307,9 @@
       populateDetailFields(detail, { meta: roleConversationMetaEl, body: roleConversationBodyEl, messages: roleConversationMessagesEl, taskId: roleDetailTaskIdEl, fileName: roleDetailFileNameEl, priority: roleDetailPriorityValueEl, type: roleDetailTypeValueEl, sender: roleDetailSenderValueEl, recipient: roleDetailRecipientValueEl, time: roleDetailTimeValueEl, status: roleDetailStatusValueEl, flow: roleDetailFlowValueEl, markdown: roleMarkdownEl, markdownFile: roleMarkdownFileEl });
       // 同步更新全屏详情页的 MD 原文
       const fpMd = document.getElementById("fpMarkdown");
-      if (fpMd) {
+      if (fpMd && taskDetailPageEl.classList.contains("open")) {
         const mc = detailMarkdownContent(detail);
+        appendLog(`renderDetail更新fpMd: fn=${detail.filename}, want=${_fpDetailFilename}, mc_len=${mc.length}`);
         if (mc) fpMd.textContent = mc;
       }
       if (detail.thread_key) { threadKeyEl.value = detail.thread_key; localStorage.setItem("codeflow_last_thread", detail.thread_key); }
@@ -2317,9 +2333,11 @@
       if (!filename) return;
       const target = currentTargetDevice() || onlineDevices.find((item) => normalizeRole(item.owner_role) === preferredContextRole()) || onlineDevices[0];
       if (target) {
+        appendLog(`requestTaskDetail: 向PC请求 fn=${filename}, dev=${target.device_id}`);
         sendEvent("request_task_detail", { filename, target_device_id: target.device_id });
         return;
       }
+      appendLog(`requestTaskDetail: 无在线PC, fallback本地, fn=${filename}`);
       const local = taskItems.find((item) => item.filename === filename);
       if (local) renderDetail(local);
     }
@@ -2589,7 +2607,8 @@
         if (!_silentEvents.has(et)) appendLog(`收到事件: ${et}`);
         if (et === "dashboard_state") {
           const p = data.payload || {};
-          appendLog(`dashboard: roles=${JSON.stringify(p.team_roles||[])}, items=${(p.items||[]).length}`);
+          const _di = (p.items||[])[0];
+          appendLog(`dashboard: roles=${JSON.stringify(p.team_roles||[])}, items=${(p.items||[]).length}, chunk=${!!p._chunked||!!p._chunk}, md0=${_di?(_di.markdown||'').length:'-'}`);
           applyDashboard(p);
         }
         else if (et === "device_roster") {
@@ -2616,7 +2635,11 @@
             applyPatrolState({ running: false, round: 0, log: "" });
           }
         }
-        else if (et === "task_detail") { renderDetail(data.payload || {}); }
+        else if (et === "task_detail") {
+          const _td = data.payload || {};
+          appendLog(`task_detail收到: fn=${_td.filename}, md=${(_td.markdown||'').length}, raw=${(_td.raw_markdown||'').length}, err=${_td.error||''}`);
+          renderDetail(_td);
+        }
         else if (et === "task_event") { if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("codeflow_last_thread", data.payload.thread_key); } setSendLocked(false); requestDashboard(); }
         else if (et === "bind_state") {
           bindState = data.payload || {};
