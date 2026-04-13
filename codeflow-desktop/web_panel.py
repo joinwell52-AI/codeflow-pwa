@@ -53,11 +53,14 @@ logger = logging.getLogger("codeflow.panel")
 PANEL_PORT = 18765  # 默认端口，实际运行时由 get_panel_port() 按项目动态分配
 
 
-def get_panel_port() -> int:
-    """返回固定端口 18765。"""
-    return 18765
+PANEL_PORT_NORMAL = 18765   # 正常启动端口（Cursor Simple Browser 会记住此端口）
+PANEL_PORT_SETUP  = 18766   # 引导阶段端口（避免 Cursor 会话恢复自动嵌入引导页）
 
-_VERSION = "2.9.25"
+def get_panel_port(setup_mode: bool = False) -> int:
+    """引导阶段用 18766，正常启动用 18765，避免 Cursor 自动恢复旧 Simple Browser 标签。"""
+    return PANEL_PORT_SETUP if setup_mode else PANEL_PORT_NORMAL
+
+_VERSION = "2.9.26"
 
 
 # 面板最后活跃时间（monotonic），用于心跳超时检测

@@ -43,7 +43,7 @@ import webbrowser
 from pathlib import Path
 
 
-VERSION = "2.9.25"
+VERSION = "2.9.26"
 
 
 logger = logging.getLogger("codeflow")
@@ -814,7 +814,8 @@ def main():
 
         config = NudgerConfig(project_dir=project_dir) if project_dir else NudgerConfig()
 
-        _port = get_panel_port()
+        # 引导阶段用专属端口 18766，避免 Cursor Simple Browser 会话恢复自动嵌入引导页
+        _port = get_panel_port(setup_mode=True)
 
         # 引导完成回调：配置已写入，直接退出进程，用户重新启动 CodeFlow
         def _on_setup_complete():
