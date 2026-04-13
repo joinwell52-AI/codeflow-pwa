@@ -85,7 +85,7 @@ CodeFlow uses a **role-code naming convention**: uppercase English code + numeri
 | Team leader | First role in `codeflow.json` | Receives tasks from ADMIN |
 | Task routing | `ADMIN01-to-PM01` | Embedded in filename |
 
-### 4 Built-in Team Templates / 四套内置团队模板
+### 3 Built-in Team Templates / 三套预设团队模板
 
 Choose a template during project initialization. Each template generates bilingual role documents (Chinese + English).
 
@@ -120,24 +120,13 @@ graph TB
         MKT01 --> DES01
         MKT01 --> BLD01
     end
-
-    subgraph qaTeam ["qa-team / 质量保障团队"]
-        LQA01["LEAD-QA-01<br/>测试主管"]
-        TST01["TESTER-01<br/>功能测试"]
-        ATT01["AUTO-TESTER-01<br/>自动化测试"]
-        PFT01["PERF-TESTER-01<br/>性能测试"]
-        LQA01 --> TST01
-        LQA01 --> ATT01
-        LQA01 --> PFT01
-    end
 ```
 
 | Template | Roles | Use Case |
 |----------|-------|----------|
-| **dev-team** | PM + DEV + QA + OPS | Software development |
-| **media-team** | PUBLISHER + COLLECTOR + WRITER + EDITOR | Content / media |
-| **mvp-team** | MARKETER + RESEARCHER + DESIGNER + BUILDER | Startup MVP |
-| **qa-team** | LEAD-QA + TESTER + AUTO-TESTER + PERF-TESTER | Quality assurance |
+| **dev-team** | PM + DEV + QA + OPS | Software development / 软件开发 |
+| **media-team** | PUBLISHER + COLLECTOR + WRITER + EDITOR | Content & media / 自媒体内容 |
+| **mvp-team** | MARKETER + RESEARCHER + DESIGNER + BUILDER | Startup MVP / 创业 MVP |
 
 ### Example: `codeflow.json` (mvp-team)
 
