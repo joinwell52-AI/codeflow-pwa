@@ -1,394 +1,377 @@
 ﻿# 码流（CodeFlow）配置参考
 
-**版本：** v0.2.1（文档内仍保留历史 `CodeFlow` CLI 字段名处，请以当前桌面端/PWA 实际行为为准）
+**适用版本**：Desktop v2.8.75 / PWA v2.0.3  
+**最后更新**：2026-04-10
 
 ---
 
-## 配置文件总览
+## 一、配置文件总览
 
-| 文件 | 位置 | 作用 |
-|------|------|------|
-| `codeflow_config.json` | 旧版 pip CLI 工作目录（若仍使用 `codeflow init`） | PC 执行机运行参数（历史） |
-| `web/pwa/config.js` | PWA 主源 | 手机端中继地址、品牌文案、`appVersion`（改后需同步根目录副本） |
-| `docs/agents/codeflow.json` | 项目内团队配置 | 角色、房间、中继（兼容旧名 `codeflow.json`） |
+| 文件 | 位置 | 作用 | 修改后生效方式 |
+|------|------|------|----------------|
+| `codeflow-nudger.json` | 项目根目录 | PC 巡检器全部高级参数 | 重启 CodeFlow Desktop |
+| `{项目}/.codeflow/config.json` | 项目内隐藏目录 | 项目级：room_key / relay_url | 重启 Desktop |
+| `%APPDATA%\CodeFlow\config.json` | Windows 全局 | cursor_exe_path（跨项目）| 重启 Desktop |
+| `web/pwa/config.js` | PWA 源码 | 手机端中继地址、版本号 | 重新部署 PWA |
+| 环境变量 | 系统/Shell | 中继服务器监听地址和端口 | 重启中继服务 |
 
----
-
-## 一、`codeflow_config.json` 完整参数字典
-
-### 生成与更新
-
-```powershell
-codeflow init                          # 首次生成（默认值）
-codeflow init --relay-url wss://...    # 生成时指定中继
-codeflow init --room-key my-room       # 生成时指定房间
-codeflow init --force                  # 强制覆盖（⚠️ 重置绑定状态）
-```
-
-已有配置时，`codeflow init --relay-url/--room-key` 只更新对应字段，不影响其他配置。
+> `codeflow-nudger.json` 也兼容旧名 `bridgeflow-nudger.json`，两者同时存在时优先读新名。
 
 ---
 
-### `relay` — 中继连接
+## 二、PC 端巡检器（`codeflow-nudger.json`）
 
-| 字段 | 类型 | 默认值 | 必填 | 说明 |
-|------|------|--------|------|------|
-| `url` | `string` | `"wss://ai.chedian.cc/codeflow/ws/"`（旧文档可能写作 `/CodeFlow/ws/`） | ✅ | WebSocket 中继地址。格式必须为 `wss://` 或 `ws://`。网关路径须与客户端一致 |
-| `room_key` | `string` | `"codeflow-default"`（旧默认可能为 `CodeFlow-default`） | ✅ | 房间隔离 key。PC 端和手机端必须填写**完全相同**的值才能互相通信。建议每团队使用独立随机字符串 |
-| `shared_secret` | `string` | `""` | ❌ | 共享密钥（预留扩展字段，当前未启用） |
+放在**项目根目录**（与 `docs/` 同级），不存在则全部使用默认值。
 
-> **`room_key` 安全建议：** 默认公共房间名是公开的，团队使用时请改为随机字符串，例如 `team-abc-2026-x7k`。
-
-```json
-"relay": {
-  "url": "wss://ai.chedian.cc/codeflow/ws/",
-  "room_key": "your-private-room",
-  "shared_secret": ""
-}
-```
-
----
-
-### `device` — 设备标识
-
-| 字段 | 类型 | 默认值 | 必填 | 说明 |
-|------|------|--------|------|------|
-| `device_id` | `string` | 主机名 slug | ✅ | PC 的唯一标识符，用于中继路由。`codeflow init` 根据主机名自动生成，格式如 `my-pc`。多台 PC 时每台不同 |
-| `device_name` | `string` | `"{主机名} AI执行机"` | ✅ | 显示名称，显示在仪表盘和手机端绑定信息中。可手动修改为更易识别的名称 |
-| `owner_role` | `string` | `"PM01"` | ✅ | 本机主要负责的 AI 角色 ID。可选值：`PM01` / `DEV01` / `OPS01` / `QA01` |
-| `machine_code` | `string` | `"BF-{12位哈希}"` | ✅ | 扫码绑定用的机器码，格式 `BF-XXXXXXXX`。由主机名+MAC 地址哈希生成，**不要手动修改** |
-
-```json
-"device": {
-  "device_id": "my-pc",
-  "device_name": "我的 AI 执行机",
-  "owner_role": "PM01",
-  "machine_code": "BF-A3F2C8D1E2F3"
-}
-```
-
----
-
-### `bind` — 设备绑定状态
-
-> ⚠️ 此块由 CLI 命令自动维护，**不建议手动修改**。
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `status` | `string` | `"unbound"` | 绑定状态。可选值：`unbound`（未绑定）/ `pending`（待确认）/ `bound`（已绑定）|
-| `bound_mobile_device_id` | `string` | `""` | 已绑定的手机设备 ID，绑定后自动填入 |
-| `bound_mobile_device_name` | `string` | `""` | 已绑定的手机设备名称 |
-| `bound_at` | `string` | `""` | 绑定时间，格式 `YYYY-MM-DD HH:mm:ss` |
-| `bind_code_ttl_seconds` | `integer` | `600` | 一次性绑定码有效时长（秒）。默认 600 秒（10 分钟） |
-| `pending_bind_code` | `string` | `""` | 待确认的一次性绑定码（6位字母数字） |
-| `pending_bind_expires_at` | `string` | `""` | 绑定码过期时间 |
-| `pending_mobile_device_id` | `string` | `""` | 待确认的手机设备 ID |
-| `pending_mobile_device_name` | `string` | `""` | 待确认的手机设备名称 |
-| `last_bind_code_issued_at` | `string` | `""` | 最后一次发放绑定码的时间 |
-
-```json
-"bind": {
-  "status": "unbound",
-  "bound_mobile_device_id": "",
-  "bound_mobile_device_name": "",
-  "bound_at": "",
-  "bind_code_ttl_seconds": 600,
-  "pending_bind_code": "",
-  "pending_bind_expires_at": "",
-  "pending_mobile_device_id": "",
-  "pending_mobile_device_name": "",
-  "last_bind_code_issued_at": ""
-}
-```
-
----
-
-### `project` — 项目目录
-
-| 字段 | 类型 | 默认值 | 必填 | 说明 |
-|------|------|--------|------|------|
-| `root_dir` | `string` | `.`（工作目录绝对路径） | ✅ | 项目根目录。`codeflow init` 自动设为执行命令时的绝对路径 |
-| `tasks_dir` | `string` | `"docs/agents/tasks"` | ✅ | 任务文件写入目录，相对于 `root_dir`。AI 收到任务时写入此目录 |
-| `reports_dir` | `string` | `"docs/agents/reports"` | ✅ | 回执文件目录，相对于 `root_dir`。AI 完成任务时写入此目录 |
-| `issues_dir` | `string` | `"docs/agents/issues"` | ✅ | 问题记录目录，相对于 `root_dir` |
-
-```json
-"project": {
-  "root_dir": "C:\\Users\\YourName\\my-ai-team",
-  "tasks_dir": "docs/agents/tasks",
-  "reports_dir": "docs/agents/reports",
-  "issues_dir": "docs/agents/issues"
-}
-```
-
-> **说明：** `root_dir` 由 `codeflow init` 根据你运行命令时所在目录自动填写，无需手动设置，可以在任意盘符、任意路径下运行。
-
----
-
-### `runtime` — 运行时参数
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `runtime_dir` | `string` | `".CodeFlow/runtime"` | 运行时状态文件根目录（已在 `.gitignore` 中排除） |
-| `status_dir` | `string` | `".CodeFlow/runtime/status"` | 各角色状态文件目录（JSON 文件，记录在线/忙碌/闲置状态） |
-| `task_details_dir` | `string` | `".CodeFlow/runtime/task_details"` | 任务详情缓存目录（供仪表盘和手机端查询） |
-| `idle_seconds` | `integer` | `180` | 角色超过多少秒无动作，状态判定为"空闲"。单位：秒 |
-| `stale_task_seconds` | `integer` | `900` | 任务超过多少秒无回复，判定为"过期/阻塞"。单位：秒 |
-
-```json
-"runtime": {
-  "runtime_dir": ".CodeFlow/runtime",
-  "status_dir": ".CodeFlow/runtime/status",
-  "task_details_dir": ".CodeFlow/runtime/task_details",
-  "idle_seconds": 180,
-  "stale_task_seconds": 900
-}
-```
-
----
-
-### `patrol` — 巡检参数
-
-巡检是 PC 端定期检查各 AI 角色任务状态并发送提醒的机制。
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `message` | `string` | `"巡检"` | 发送给 Cursor 角色窗口的巡检触发文本 |
-| `poll_interval` | `integer` | `10` | 巡检轮询间隔（秒），每隔多久扫描一次任务状态 |
-| `check_delay` | `integer` | `15` | 发送巡检消息后等待多少秒再检测响应（秒） |
-| `max_retry` | `integer` | `3` | 单次巡检最多重试次数 |
-| `confidence` | `float` | `0.7` | 图像匹配置信度阈值（0.0 ~ 1.0），用于窗口识别 |
-| `templates_dir` | `string` | `"ops/patrol_templates"` | 巡检图像模板目录 |
-| `all_worker_chats` | `array` | `["1-PM", "2-DEV", "3-QA", "4-OPS"]` | 所有参与巡检的角色窗口名称列表（**写死，不可更改**） |
-| `role_to_chat` | `object` | `{"PM01":"1-PM","DEV01":"2-DEV","QA01":"3-QA","OPS01":"4-OPS"}` | 角色 ID 到 Cursor Agent 名称的映射（**写死，不可更改**） |
-
-```json
-"patrol": {
-  "message": "巡检",
-  "poll_interval": 10,
-  "check_delay": 15,
-  "max_retry": 3,
-  "confidence": 0.7,
-  "templates_dir": "ops/patrol_templates",
-  "all_worker_chats": ["1-PM", "2-DEV", "3-QA", "4-OPS"],
-  "role_to_chat": {
-    "PM01": "1-PM",
-    "DEV01": "2-DEV",
-    "QA01": "3-QA",
-    "OPS01": "4-OPS"
-  }
-}
-```
-
----
-
-### `admin` — 真人管理员
-
-| 字段 | 类型 | 默认值 | 必填 | 说明 |
-|------|------|--------|------|------|
-| `sender` | `string` | `"ADMIN01"` | ✅ | 真人角色 ID，固定为 `ADMIN01`，代表手机端操作者 |
-| `target` | `string` | `"PM01"` | ✅ | 默认任务接收角色。发送任务时不指定接收人时，默认发给此角色 |
-| `default_priority` | `string` | `"P1"` | ✅ | 默认任务优先级。可选值：`P0`（紧急）/ `P1`（高）/ `P2`（中）/ `P3`（低）|
-
-```json
-"admin": {
-  "sender": "ADMIN01",
-  "target": "PM01",
-  "default_priority": "P1"
-}
-```
-
----
-
-### `ai_team` — 团队角色配置
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `fixed_roles` | `array<string>` | `["ADMIN01","PM01","DEV01","OPS01","QA01"]` | 团队所有参与角色 ID 列表 |
-| `cursor_only` | `boolean` | `true` | 是否限定 AI 角色只在 Cursor 中运行（当前固定 `true`） |
-
----
-
-### `roles` — 角色显示名称
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `{角色ID}.role_id` | `string` | 角色类型标识：`admin` / `manager` / `dev` / `qa` / `ops` |
-| `{角色ID}.display_names` | `array<string>` | 角色在 PWA 和任务文件中的别名列表，第一个为主显示名 |
-
-```json
-"roles": {
-  "ADMIN01": {
-    "role_id": "admin",
-    "display_names": ["ADMIN", "用户", "手机端"]
-  },
-  "PM01": {
-    "role_id": "manager",
-    "display_names": ["PM", "项目经理", "调度"]
-  },
-  "DEV01": {
-    "role_id": "dev",
-    "display_names": ["DEV", "开发"]
-  },
-  "OPS01": {
-    "role_id": "ops",
-    "display_names": ["OPS", "运维"]
-  },
-  "QA01": {
-    "role_id": "qa",
-    "display_names": ["QA", "测试"]
-  }
-}
-```
-
----
-
-## 二、`web/pwa/config.js` 参数字典
-
-手机端 PWA 通过此文件读取连接参数，**修改后必须推送到 GitHub Pages 才能生效**。
-
-| 字段 | 类型 | 默认值 | 必填 | 说明 |
-|------|------|--------|------|------|
-| `appName` | `string` | `"码流（CodeFlow）"` | ✅ | 应用名称，显示在 PWA 标题和主屏幕图标下 |
-| `appVersion` | `string` | `"2.0.0"` | ✅ | **Service Worker 缓存版本号**。每次修改任何 PWA 文件后必须递增，否则手机端看到旧版 |
-| `relayUrl` | `string` | `"wss://ai.chedian.cc/codeflow/ws/"` | ✅ | 中继 WebSocket 地址，必须与 PC 端、网关路径一致 |
-| `relayLabel` | `string` | `"公网正式中继"` | ❌ | 中继的显示名称，显示在「我的」页面的配置信息中 |
-| `roomKey` | `string` | `"codeflow-default"` | ✅ | 房间 key，必须与 PC 端 `relay.room_key` 完全一致 |
-| `autoConnect` | `boolean` | `true` | ❌ | 打开 PWA 时是否自动连接中继。`true` 推荐，省去手动点连接 |
-| `defaultTarget` | `string` | `"PM"` | ❌ | 任务列表默认显示的角色。可选：`"PM"` / `"DEV"` / `"OPS"` / `"QA"` |
-
-另见：`appTagline` / `appTaglineEn` / `appSubtagline` / `appSubtaglineEn` / `appSummary` / `appSummaryEn`（中英标语与一句话简介）。
-
-```js
-global.CODEFLOW_CONFIG = {
-  appName:       "码流（CodeFlow）",
-  appVersion:    "2.0.0",
-  relayUrl:      "wss://ai.chedian.cc/codeflow/ws/",
-  relayLabel:    "公网正式中继",
-  roomKey:       "codeflow-default",
-  autoConnect:   true,
-  defaultTarget: "PM"
-};
-```
-
-> **关键提示：** `appVersion` 的格式建议与 Python 包版本保持同步，但两者独立，PWA 的功能修改也需要单独递增。
-
----
-
-## 三、`codeflow init` 命令参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--project-root PATH` | `string` | 当前目录 | 配置文件和任务文件的根目录 |
-| `--relay-url URL` | `string` | `wss://ai.chedian.cc/CodeFlow/ws/` | 覆盖中继地址 |
-| `--room-key KEY` | `string` | `CodeFlow-default` | 覆盖房间 key |
-| `--force` | `flag` | `false` | 强制重新生成配置（⚠️ 会重置绑定状态和机器码） |
-
----
-
-## 四、`codeflow run` 命令参数
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--config PATH` | `string` | `./codeflow_config.json` | 指定配置文件路径 |
-
----
-
-## 五、任务优先级枚举
-
-| 值 | 含义 | 响应预期 |
-|----|------|----------|
-| `P0` | 紧急 | 立即处理，1 小时内回复 |
-| `P1` | 高 | 当日完成 |
-| `P2` | 中 | 本周完成 |
-| `P3` | 低 | 有空再做 |
-
----
-
-## 六、角色 ID 枚举
-
-| 角色 ID | 类型 | 说明 |
-|---------|------|------|
-| `ADMIN01` | 真人 | 手机端操作者（你） |
-| `PM01` | AI | 项目经理，负责任务拆解和调度 |
-| `DEV01` | AI | 开发工程师，负责代码实现 |
-| `OPS01` | AI | 运维工程师，负责部署和服务器操作 |
-| `QA01` | AI | 测试工程师，负责测试和质量验证 |
-
----
-
-## 七、完整默认配置示例
+### 完整示例
 
 ```json
 {
-  "version": 1,
-  "relay": {
-    "url": "wss://ai.chedian.cc/CodeFlow/ws/",
-    "room_key": "CodeFlow-default",
-    "shared_secret": ""
+  "relay_url": "wss://ai.chedian.cc/codeflow/ws/",
+  "room_key": "your-private-room-key",
+  "lang": "zh",
+
+  "hotkeys": {
+    "PM":        ["ctrl", "alt", "1"],
+    "DEV":       ["ctrl", "alt", "2"],
+    "QA":        ["ctrl", "alt", "3"],
+    "OPS":       ["ctrl", "alt", "4"]
   },
-  "device": {
-    "device_id": "my-pc",
-    "device_name": "My PC AI执行机",
-    "owner_role": "PM01",
-    "machine_code": "BF-A3F2C8D1E2F3"
-  },
-  "bind": {
-    "status": "unbound",
-    "bound_mobile_device_id": "",
-    "bound_mobile_device_name": "",
-    "bound_at": "",
-    "bind_code_ttl_seconds": 600,
-    "pending_bind_code": "",
-    "pending_bind_expires_at": "",
-    "pending_mobile_device_id": "",
-    "pending_mobile_device_name": "",
-    "last_bind_code_issued_at": ""
-  },
-  "project": {
-    "root_dir": "C:\\Users\\YourName\\my-ai-team",
-    "tasks_dir": "docs/agents/tasks",
-    "reports_dir": "docs/agents/reports",
-    "issues_dir": "docs/agents/issues"
-  },
-  "runtime": {
-    "runtime_dir": ".CodeFlow/runtime",
-    "status_dir": ".CodeFlow/runtime/status",
-    "task_details_dir": ".CodeFlow/runtime/task_details",
-    "idle_seconds": 180,
-    "stale_task_seconds": 900
-  },
-  "patrol": {
-    "message": "巡检",
-    "poll_interval": 10,
-    "check_delay": 15,
-    "max_retry": 3,
-    "confidence": 0.7,
-    "templates_dir": "ops/patrol_templates",
-    "all_worker_chats": ["1-PM", "2-DEV", "3-QA", "4-OPS"],
-    "role_to_chat": {
-      "PM01": "1-PM",
-      "DEV01": "2-DEV",
-      "QA01": "3-QA",
-      "OPS01": "4-OPS"
-    }
-  },
-  "admin": {
-    "sender": "ADMIN01",
-    "target": "PM01",
-    "default_priority": "P1"
-  },
-  "ai_team": {
-    "fixed_roles": ["ADMIN01", "PM01", "DEV01", "OPS01", "QA01"],
-    "cursor_only": true
-  },
-  "roles": {
-    "ADMIN01": { "role_id": "admin", "display_names": ["ADMIN", "用户", "手机端"] },
-    "PM01":    { "role_id": "manager", "display_names": ["PM", "项目经理"] },
-    "DEV01":   { "role_id": "dev", "display_names": ["DEV", "开发"] },
-    "OPS01":   { "role_id": "ops", "display_names": ["OPS", "运维"] },
-    "QA01":    { "role_id": "qa", "display_names": ["QA", "测试"] }
-  }
+
+  "poll_interval": 5,
+  "nudge_cooldown": 15,
+  "idle_check_every_n": 6,
+  "stuck_check_every_n": 30,
+
+  "task_stuck_threshold_s": 600,
+  "task_timeout_threshold_s": 1200,
+  "auto_nudge_interval_s": 300,
+
+  "patrol_ping_zh": "",
+  "patrol_ping_en": "",
+
+  "stuck_reload_window": true,
+  "stuck_reload_min_age_s": 600,
+  "stuck_reload_once_per_task": true,
+  "reload_window_wait_s": 12,
+
+  "use_file_watcher": true,
+
+  "open_panel_in_cursor": true,
+  "launch_cursor_if_absent": true,
+  "cursor_exe_path": "",
+
+  "auto_snap_on_launch": true,
+  "input_offset": [0.80, 55]
 }
 ```
 
+---
+
+### 2.1 连接参数
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `relay_url` | string | `"wss://ai.chedian.cc/codeflow/ws/"` | WebSocket 中继地址，必须与手机端一致 |
+| `room_key` | string | `""` | 房间隔离 Key，PC 与手机**必须完全相同**才能互通；建议每团队设唯一随机字符串 |
+| `lang` | string | `"zh"` | 催办消息语言：`"zh"` 或 `"en"` |
+
+---
+
+### 2.2 Agent 快捷键（`hotkeys`）
+
+```json
+"hotkeys": {
+  "PM":        ["ctrl", "alt", "1"],
+  "DEV":       ["ctrl", "alt", "2"],
+  "QA":        ["ctrl", "alt", "3"],
+  "OPS":       ["ctrl", "alt", "4"]
+}
+```
+
+- **key**：角色名（大写），支持所有团队角色：`PM` / `DEV` / `QA` / `OPS` / `E2E` / `PUBLISHER` / `WRITER` / `EDITOR` / `COLLECTOR` / `BUILDER` / `DESIGNER` / `MARKETER` / `RESEARCHER`
+- **value**：Cursor `keybindings.json` 里配置的 `aichat` 快捷键对应按键数组
+- 必须与 Cursor 实际快捷键绑定一一对应，否则预检不通过
+
+**自媒体团队示例：**
+```json
+"hotkeys": {
+  "PUBLISHER": ["ctrl", "alt", "1"],
+  "WRITER":    ["ctrl", "alt", "2"],
+  "EDITOR":    ["ctrl", "alt", "3"],
+  "COLLECTOR": ["ctrl", "alt", "4"]
+}
+```
+
+---
+
+### 2.3 巡检时间节奏
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `poll_interval` | `5`（秒）| 主循环扫描间隔 |
+| `nudge_cooldown` | `15`（秒）| 同一收件人发完一条后的冷却时间，防止连发 |
+| `idle_check_every_n` | `6`（轮）| 每 N 轮主循环检测一次 idle → 约 30s 一次 |
+| `stuck_check_every_n` | `30`（轮）| 每 N 轮主循环扫描一次卡住任务 → 约 150s 一次 |
+
+**实际频率速查：**
+
+| 行为 | 默认间隔 | 计算方式 |
+|------|----------|----------|
+| 主循环扫文件 | ~5s | `poll_interval` |
+| idle「继续」催促 | ~30s | `poll_interval × idle_check_every_n` |
+| 卡住任务扫描 | ~150s | `poll_interval × stuck_check_every_n` |
+| 同一任务两次催促 | 5 分钟 | `auto_nudge_interval_s` |
+| 同收件人发完后冷却 | 15s | `nudge_cooldown` |
+
+---
+
+### 2.4 卡住任务判定
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `task_stuck_threshold_s` | `600`（10分钟）| `tasks/` 下任务文件自最后修改起超过此时间，视为「可能卡住」 |
+| `task_timeout_threshold_s` | `1200`（20分钟）| 超过此时间升级为「超时」 |
+| `auto_nudge_interval_s` | `300`（5分钟）| 同一 TASK 编号两次自动催促的最小间隔 |
+
+---
+
+### 2.5 催促消息文案
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `patrol_ping_zh` | `""` | 后续催促短句（中文）。空字符串使用内置默认 |
+| `patrol_ping_en` | `""` | 后续催促短句（英文）。空字符串使用内置默认 |
+
+**内置默认文案：**
+```
+中文：【码流巡检】巡检，开工。请自行查看 docs/agents/tasks/ 等待办任务。
+英文：[CodeFlow] Patrol ping — proceed. Open docs/agents/tasks/ for pending items.
+```
+
+> 首次打招呼（`first_hello`）固定包含角色文件路径，不受此配置影响。
+
+---
+
+### 2.6 卡住时自动 Reload Window
+
+当任务长时间未闭环时，先执行 `Developer: Reload Window` 恢复可能卡死的 Cursor UI，再发催促短句。
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `stuck_reload_window` | `true` | 是否启用卡住时自动 Reload Window |
+| `stuck_reload_min_age_s` | `600`（秒）| 触发 Reload 的任务最小年龄，建议与 `task_stuck_threshold_s` 对齐 |
+| `stuck_reload_once_per_task` | `true` | 每个 TASK 编号仅 Reload 一次，避免反复刷窗口 |
+| `reload_window_wait_s` | `12`（秒）| Reload 后等待 Cursor 就绪再发催促的时间 |
+
+---
+
+### 2.7 文件监听
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `use_file_watcher` | `true` | 使用 `watchdog` 监听目录 `.md` 变更并打断睡眠，加快响应新文件。需已安装 `watchdog` 包 |
+
+---
+
+### 2.8 Cursor 集成
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `open_panel_in_cursor` | `true` | 面板优先在 Cursor Simple Browser 内嵌打开（`Ctrl+Shift+B` 方式）|
+| `launch_cursor_if_absent` | `true` | Cursor 未运行时自动启动 |
+| `cursor_exe_path` | `""` | `Cursor.exe` 完整路径，非标准安装路径时填写 |
+| `auto_snap_on_launch` | `true` | 启动后自动 Windows 左右分屏（Cursor 左，面板右）|
+| `cursor_acp_endpoint` | `""` | （实验性）Cursor JSON-RPC 端点，配置后优先用 ACP 打开面板 |
+| `cursor_acp_layout` | `"split-right"` | ACP 分屏布局 |
+| `cursor_acp_width_ratio` | `0.35` | ACP 分屏宽度比例 |
+
+---
+
+### 2.9 输入框偏移
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `input_offset` | `[0.80, 55]` | Agent 输入框位置微调：`[x 比例, y 偏移 px]`。OCR 找不到输入框时的 fallback 估算位置 |
+
+---
+
+## 三、手机端 PWA（`web/pwa/config.js`）
+
+修改后需重新部署才能生效（`py -3 _deploy_pwa.py`）。
+
+### 完整示例
+
+```js
+global.CODEFLOW_CONFIG = {
+  appName:         "码流（CodeFlow）",
+  appNameShort:    "码流 CodeFlow",
+  appTagline:      "指令成流，智能随行",
+  appTaglineEn:    "Commands Flow, Intelligence Follows.",
+  appVersion:      "2.0.3",
+  relayUrl:        "wss://ai.chedian.cc/codeflow/ws/",
+  relayLabel:      "公网正式中继",
+  roomKey:         "codeflow-default",
+  autoConnect:     true,
+  defaultTarget:   "PM"
+};
+```
+
+### 字段说明
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `appVersion` | string | `"2.0.3"` | **每次改动任何 PWA 文件必须递增**，否则 Service Worker 缓存不刷新，用户看到旧版 |
+| `relayUrl` | string | `"wss://ai.chedian.cc/codeflow/ws/"` | 中继地址，必须与 PC 端 `relay_url` 完全一致 |
+| `relayLabel` | string | `"公网正式中继"` | 显示在连接状态栏的标签，仅用于界面展示 |
+| `roomKey` | string | `"codeflow-default"` | 默认房间 Key；用户扫码或在设置页手动修改后，存入 `localStorage` 覆盖此值 |
+| `autoConnect` | boolean | `true` | 打开 PWA 时自动连接中继 |
+| `defaultTarget` | string | `"PM"` | 发消息框默认收件人角色代码 |
+| `appName` 等 | string | 见示例 | 品牌文案，仅影响界面显示，不影响功能 |
+
+### 用户可在 PWA 内直接修改的配置（存 localStorage）
+
+- **房间 Key**：扫码绑定或设置页手动输入，优先级高于 `config.js`
+- **中继地址**：设置页修改，优先级高于 `config.js`
+
+---
+
+## 四、中继服务器（自建）
+
+通过**环境变量**配置，无配置文件。
+
+```bash
+# 监听地址（默认 0.0.0.0，监听所有网卡）
+export CODEFLOW_RELAY_HOST=0.0.0.0
+
+# 监听端口（默认 5252）
+export CODEFLOW_RELAY_PORT=5252
+
+# 启动
+python server/relay/server.py
+```
+
+### 内置限制（需修改源码才能调整）
+
+| 限制项 | 值 | 说明 |
+|--------|-----|------|
+| 单条消息大小 | **8 KB** | 超过则丢弃，禁止在中继传大文件正文 |
+| 传输层帧上限 | 16 KB | WebSocket 帧最大长度 |
+| 频率限制 | 20 条 / 10s | 超速断开连接 |
+| room_key 最大长度 | 64 字符 | |
+
+---
+
+## 五、配置优先级
+
+```
+用户 localStorage（PWA 设置页）
+    ↓ 覆盖
+web/pwa/config.js（PWA 默认值）
+
+────────────────────────────────
+{项目}/.codeflow/config.json    ← 向导保存的 room_key / relay_url
+    ↓ 覆盖
+codeflow-nudger.json            ← 高级参数（hotkeys / 时间节奏 / reload 等）
+    ↓ 覆盖
+NudgerConfig 代码默认值（config.py）
+    ↑ 兜底读取
+%APPDATA%\CodeFlow\config.json  ← 全局：cursor_exe_path
+```
+
+---
+
+## 六、常用场景速查
+
+### 换团队（自媒体 → 开发团队）
+
+```json
+"hotkeys": {
+  "PM":  ["ctrl", "alt", "1"],
+  "DEV": ["ctrl", "alt", "2"],
+  "QA":  ["ctrl", "alt", "3"],
+  "OPS": ["ctrl", "alt", "4"]
+}
+```
+
+### 换自建中继
+
+`codeflow-nudger.json`：
+```json
+"relay_url": "wss://your-server.com/codeflow/ws/"
+```
+`web/pwa/config.js`：
+```js
+relayUrl: "wss://your-server.com/codeflow/ws/"
+```
+两处必须同步，且 `room_key` 也要相同。
+
+### 调快响应速度（任务催促更及时）
+
+```json
+"task_stuck_threshold_s": 300,
+"auto_nudge_interval_s": 120,
+"stuck_check_every_n": 15
+```
+
+### 关闭 Reload Window（不想自动刷新）
+
+```json
+"stuck_reload_window": false
+```
+
+### 自定义催促短句
+
+```json
+"patrol_ping_zh": "【巡检】继续执行，查看 docs/agents/tasks/",
+"patrol_ping_en": "[Patrol] Continue — check docs/agents/tasks/"
+```
+
+### Cursor 不在标准路径
+
+```json
+"cursor_exe_path": "C:\\Program Files\\Cursor\\Cursor.exe"
+```
+
+---
+
+## 七、角色代码枚举
+
+### 开发团队（dev-team）
+
+| 角色代码 | 说明 |
+|----------|------|
+| `PM` | 项目经理 / 任务调度 |
+| `DEV` | 全栈开发工程师 |
+| `QA` | 测试工程师 |
+| `OPS` | 运维部署工程师 |
+| `E2E` | 端到端测试专员 |
+
+### 自媒体团队（media-team）
+
+| 角色代码 | 说明 |
+|----------|------|
+| `PUBLISHER` | 发布统筹 |
+| `WRITER` | 文章撰写 |
+| `EDITOR` | 编辑排版 |
+| `COLLECTOR` | 素材收集 |
+
+### MVP 团队（mvp-team）
+
+| 角色代码 | 说明 |
+|----------|------|
+| `BUILDER` | 产品构建 |
+| `DESIGNER` | 设计 |
+| `MARKETER` | 市场推广 |
+| `RESEARCHER` | 研究调研 |
+
+---
+
+## 八、任务优先级枚举
+
+| 值 | 含义 | 响应预期 |
+|----|------|----------|
+| `P0` | 阻塞 / 紧急 | 立即处理 |
+| `P1` | 高 | 当日完成 |
+| `P2` | 中 | 本周完成 |
+| `P3` | 低 | 有空再做 |
