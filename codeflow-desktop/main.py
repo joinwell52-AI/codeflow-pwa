@@ -43,7 +43,7 @@ import webbrowser
 from pathlib import Path
 
 
-VERSION = "2.9.14"
+VERSION = "2.9.24"
 
 
 logger = logging.getLogger("codeflow")
@@ -54,6 +54,8 @@ _nudger_thread: threading.Thread | None = None
 _relay_thread: threading.Thread | None = None
 
 _nudger_instance = None
+
+_embed_panel_stop = threading.Event()  # 设置后，所有 embed 线程退出循环
 
 
 # 面板无任何连接时的宽限期（秒）。嵌入模式需要时间加载，给足余量。
@@ -652,26 +654,37 @@ def _start_cursor_watchdog():
 # ─── 嵌入 ────────────────────────────────────────────────────────────
 
 
-def _schedule_embed_panel(url: str, config):
-    """后台线程：持续尝试嵌入 Cursor Simple Browser，直到成功。"""
+def _schedule_embed_panel(url: str, config, *, auto_launch_cursor: bool = True):
+    """后台线程：持续尝试嵌入 Cursor Simple Browser，直到成功。
+
+    auto_launch_cursor=False：只嵌入已运行的 Cursor，不自动拉起（引导阶段用，
+    用户刚指定完 cursor_exe_path，不应自动打开 Cursor）。
+    auto_launch_cursor=True：Cursor 未运行时第 1 次自动拉起（正常启动时用）。
+    """
+
+    _embed_panel_stop.clear()
 
     def _run():
         time.sleep(1.5)
         from cursor_embed import embed_panel_after_launch
 
         attempt = 0
-        while True:
+        while not _embed_panel_stop.is_set():
             attempt += 1
+            msg = ""
             try:
                 _exe = None
                 _exe_path = getattr(config, "cursor_exe_path", "")
                 if _exe_path and Path(_exe_path).is_file():
                     _exe = Path(_exe_path)
 
+                # 引导阶段不自动拉起 Cursor；正常启动时第 1 次允许拉起
+                _launch = auto_launch_cursor and (attempt == 1)
+
                 ok, msg = embed_panel_after_launch(
                     url,
                     cursor_exe=_exe,
-                    launch_if_no_window=(attempt == 1),
+                    launch_if_no_window=_launch,
                     project_dir=getattr(config, "project_dir", None),
                 )
 
@@ -684,16 +697,21 @@ def _schedule_embed_panel(url: str, config):
             except Exception as exc:
                 logger.warning("[面板] 嵌入第%d次异常: %s", attempt, exc)
 
-            # 第3次失败：用系统浏览器打开兜底，之后继续等 Cursor 打开
-            if attempt == 3:
-                logger.warning("[面板] 嵌入失败，用系统浏览器打开引导页: %s", url)
+            if _embed_panel_stop.is_set():
+                return
+
+            # 第3次失败且 Cursor 未找到：用系统浏览器打开一次兜底
+            if attempt == 3 and not auto_launch_cursor:
+                # 引导阶段：面板已通过其他方式打开，不再重复打开浏览器
+                pass
+            elif attempt == 3:
+                logger.warning("[面板] 嵌入失败，用系统浏览器打开: %s", url)
                 try:
                     import webbrowser
                     webbrowser.open(url)
                 except Exception:
                     pass
 
-            # 找不到 Cursor 窗口时，提示等待，不触发重启
             if "未找到 Cursor" in msg or "not found" in msg.lower():
                 logger.info("[面板] 未检测到 Cursor，等待用户打开 Cursor 后自动嵌入…")
 
@@ -758,7 +776,20 @@ def main():
 
         project_dir = select_project_dir()
 
-    # ── 无项目目录 或 新项目（尚无 codeflow.json）：启动面板引导配置
+    # ── 检查是否有新版本（超时 5s，有新版则强制进引导页下载更新）
+    _has_update = False
+    try:
+        import updater as _upd
+        logger.info("[updater] 检查新版本（最多等待 5s）…")
+        _has_update = _upd.quick_check(VERSION, timeout=5.0)
+        if _has_update:
+            logger.info("[updater] 发现新版本，进入引导页提示更新")
+        else:
+            logger.info("[updater] 已是最新版本或检测超时，正常启动")
+    except Exception as _ue:
+        logger.debug("[updater] 版本检查异常: %s", _ue)
+
+    # ── 无项目目录 / 新项目（尚无 codeflow.json）/ 发现新版本：启动面板引导配置
 
     _agents_dir = project_dir / "docs" / "agents" if project_dir else None
     _has_config = bool(
@@ -768,7 +799,7 @@ def main():
         )
     )
 
-    if not project_dir or not _has_config:
+    if not project_dir or not _has_config or _has_update:
 
         if project_dir and not _has_config:
             logger.info("新项目目录（尚无 codeflow.json），启动面板引导配置: %s", project_dir)
@@ -785,26 +816,17 @@ def main():
 
         _port = get_panel_port()
 
-        # 引导完成回调：不重启进程，直接在当前进程初始化 Nudger 并嵌入面板
+        # 引导完成回调：配置已写入，直接退出进程，用户重新启动 CodeFlow
         def _on_setup_complete():
-            import time as _t2
-            from nudger import Nudger as _Nudger
-            from web_panel import start_panel as _sp
-            global _nudger_instance
-            # 重新加载项目配置（团队刚写入）
-            _pd = project_dir
-            _setup_config = _load_project_config_into_nudger_config(_pd, config)
-            _nudger_instance = _Nudger(_setup_config)
-            # 更新面板里的 nudger 引用
-            import web_panel as _wp
-            _wp._nudger_ref = _nudger_instance
-            _ensure_poll_thread()
-            start_relay(_setup_config)
-            _start_cursor_watchdog()
-            # 嵌入面板到 Cursor
-            _new_url = f"http://127.0.0.1:{_port}?v={VERSION}&t={int(_t2.time())}"
-            logger.info("引导完成，启动 Nudger 并嵌入面板: %s", _new_url)
-            _schedule_embed_panel(_new_url, _setup_config)
+            logger.info("引导完成，配置已保存，进程退出，请重新启动 CodeFlow")
+            # 停掉 embed 线程
+            _embed_panel_stop.set()
+            # 延迟 1 秒让前端收到响应后再退出
+            def _exit():
+                import time as _t2
+                _t2.sleep(1)
+                shutdown_desktop("setup_complete")
+            threading.Thread(target=_exit, daemon=True, name="setup-exit").start()
 
         srv = start_panel(None, start_nudger, stop_nudger, port=_port,
                           project_dir=project_dir, on_setup_complete=_on_setup_complete)
@@ -817,10 +839,12 @@ def main():
 
         logger.info("面板地址: %s", url)
 
-        # 引导阶段：先尝试嵌入 Cursor Simple Browser，同时立刻用系统浏览器打开兜底
-        import webbrowser as _wb
-        _wb.open(url)
-        _schedule_embed_panel(url, config)
+        # 引导阶段：用系统浏览器打开引导页，不做任何 embed 尝试
+        try:
+            import webbrowser as _wb
+            _wb.open(url)
+        except Exception:
+            pass
 
         _start_panel_watchdog(_PANEL_NO_EVER_GRACE_S)
 
@@ -857,7 +881,7 @@ def main():
 
     from config import NudgerConfig
 
-    from nudger import Nudger, check_keybindings
+    from nudger import Nudger
 
     from web_panel import start_panel
 
@@ -910,22 +934,6 @@ def main():
 
                 config.lang = data["lang"]
 
-            if "roles" in data and isinstance(data["roles"], list):
-
-                new_hotkeys = {}
-
-                for idx, role in enumerate(data["roles"]):
-
-                    code = role.get("code", "").upper()
-
-                    if code:
-
-                        new_hotkeys[code] = ("ctrl", "alt", str(idx + 1))
-
-                if new_hotkeys:
-
-                    config.hotkeys = new_hotkeys
-
             logger.info("已加载团队配置: %s", bf_json)
 
         except Exception as e:
@@ -951,8 +959,6 @@ def main():
             data = json.loads(json_cfg.read_text(encoding="utf-8"))
 
             for key, attr, cast in [
-
-                ("hotkeys",               "hotkeys",               lambda v: {k.upper(): tuple(x) for k, x in v.items()}),
 
                 ("input_offset",          "input_offset",          tuple),
 
@@ -1015,16 +1021,6 @@ def main():
         if global_saved.get("cursor_exe_path"):
             config.cursor_exe_path = global_saved["cursor_exe_path"]
 
-    kb_info = check_keybindings(config.hotkeys)
-
-    if kb_info["ok"]:
-
-        logger.info("keybindings.json 已包含所有 Agent 快捷键")
-
-    else:
-
-        logger.warning("Agent 快捷键需要手动绑定: %s", kb_info.get("detail", ""))
-
     global _nudger_instance
 
     _nudger_instance = Nudger(config)
@@ -1054,6 +1050,13 @@ def main():
     # 中继
 
     start_relay(config)
+
+    # 后台检查更新（延迟 15s，避免影响启动速度）
+    try:
+        import updater as _updater
+        _updater.start_background_check(VERSION)
+    except Exception:
+        pass
 
     # 守护线程
 

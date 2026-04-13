@@ -1,8 +1,6 @@
 """
 CodeFlow Nudger 配置模块
 """
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,13 +50,6 @@ class NudgerConfig:
     open_panel_in_cursor: bool = True
     launch_cursor_if_absent: bool = True
     cursor_exe_path: str = ""
-
-    hotkeys: dict[str, tuple] = field(default_factory=lambda: {
-        "PM":  ("ctrl", "alt", "1"),
-        "DEV": ("ctrl", "alt", "2"),
-        "QA":  ("ctrl", "alt", "3"),
-        "OPS": ("ctrl", "alt", "4"),
-    })
 
     input_offset: tuple[float, float] = (0.80, 55)
 

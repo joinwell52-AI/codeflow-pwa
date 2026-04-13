@@ -82,10 +82,22 @@ _rebuild*.py
 *.bak
 _commit_msg*.txt
 
+# ── 含 Token 的一次性脚本（勿提交）──
+_check_repo.py
+_push_pwa_direct.py
+_push_pwa_ghpages.py
+_reset_pwa_repo.py
+_set_github_secret.py
+_set_secret_fix.py
+_set_secret_main_repo.py
+_trigger_deploy.py
+
 # ── 本地快照 / 多人杂项（勿提交）──
 _pages_tmp/
 
 # ── codeflow-desktop 调试与测试产物 ──
+codeflow-desktop/build_snap/
+codeflow-desktop/_*.py
 codeflow-desktop/_*.png
 codeflow-desktop/test_*.png
 codeflow-desktop/cursor_screenshot.png

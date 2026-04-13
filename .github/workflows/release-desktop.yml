@@ -1,0 +1,87 @@
+name: 发布 CodeFlow Desktop EXE
+
+# 推送 v* tag 时自动触发，在 Windows 上打包并上传 EXE 到 GitHub Releases
+# 使用方式：
+#   git tag v2.9.20 && git push origin v2.9.20
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    name: 打包并发布
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        working-directory: codeflow-desktop
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pyautogui pyperclip pywin32 websockets winocr Pillow watchdog psutil
+
+      - name: 打包 EXE
+        working-directory: codeflow-desktop
+        run: python -m PyInstaller build.spec --noconfirm --clean
+
+      - name: 确认产物
+        working-directory: codeflow-desktop
+        run: dir dist\CodeFlow-Desktop.exe
+
+      - name: 提取 CHANGELOG 当前版本说明
+        id: changelog
+        shell: python
+        run: |
+          import re, os
+          tag = os.environ.get("GITHUB_REF_NAME", "").lstrip("v")
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          # 匹配当前版本到下一个版本之间的内容
+          pattern = rf"## \[{re.escape(tag)}\].*?\n(.*?)(?=\n## \[|\Z)"
+          m = re.search(pattern, text, re.DOTALL)
+          body = m.group(1).strip() if m else "详见 CHANGELOG.md"
+          # 写入 GITHUB_OUTPUT（多行）
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("body<<EOF\n")
+              f.write(body + "\n")
+              f.write("EOF\n")
+
+      - name: 发布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "CodeFlow Desktop v${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## 码流（CodeFlow）Desktop ${{ github.ref_name }}
+
+            > 下载 `CodeFlow-Desktop.exe`，双击运行，无需安装。已安装旧版的用户程序会**自动检测并提示更新**。
+
+            ---
+
+            ${{ steps.changelog.outputs.body }}
+
+            ---
+
+            ### 系统要求
+            - Windows 10 / 11（64位）
+            - 已安装 [Cursor IDE](https://www.cursor.com/)
+
+            ### 快速开始
+            1. 双击 `CodeFlow-Desktop.exe` 启动
+            2. 按引导选择项目目录和团队模板
+            3. 手机打开 [码流 PWA](https://joinwell52-ai.github.io/codeflow-pwa/) 扫码绑定
+
+            ### 更新日志
+            完整历史见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          files: codeflow-desktop/dist/CodeFlow-Desktop.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,6 +8,152 @@
 
 ---
 
+## [2.9.24] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：引导完成后进程彻底退出
+
+- 引导完成（填写完 Cursor 路径、团队、项目目录并保存）后，后端进程 1 秒内自动退出
+- 前端引导页显示"配置已保存"后 3 秒自动关闭页面
+- 不再打开任何额外浏览器标签、不再启动 Cursor、不再尝试嵌入面板
+- 用户需要手动重新启动 CodeFlow 进入正常使用模式
+
+#### 修复：引导阶段不再尝试嵌入 Cursor Simple Browser
+
+- 引导期间只用系统浏览器打开引导页，完全移除对 `_schedule_embed_panel` 的调用
+- 消除了引导期间可能触发 Cursor 自动启动的根源
+
+---
+
+## [2.9.22] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 改进：引导页实时显示启动版本检查状态
+
+- 引导页打开 0.5 秒后立即轮询 `/api/update/check`
+- 启动时版本检查进行中 → 显示「**正在检查版本，请稍候…**」
+- 无新版本 → 提示栏自动隐藏，不打扰用户
+- 发现新版本正在下载 → 显示「**发现新版本 vX.X.X，正在下载… XX%**」
+- 下载完成 → 显示「**↺ 退出并重启安装新版本**」按钮
+- 网络失败静默处理，不显示错误，不影响正常使用
+
+---
+
+## [2.9.21] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 改进：启动时按需进入引导页
+
+- 有新版本 → 启动阶段快速检查（超时 5 秒），发现新版本立即进引导页，后台同步开始下载，引导页 2 秒后轮询即可看到下载进度和重启按钮
+- 无新版本 / 检测超时 → 走原有逻辑（已配置项目直接进主面板，未配置走引导）
+- 引导页不再需要等待 10 秒，因为启动时已触发检查，状态更新更快
+
+---
+
+## [2.9.20] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 改进：引导页支持更新检测与一键重启
+
+引导页左侧版本号区域新增更新提示卡片：
+- 打开引导页 **10 秒后**自动检测新版本（早于主面板的 20 秒）
+- 下载中显示进度百分比
+- 下载完成后显示「**↺ 退出并重启安装新版本**」按钮
+- 点击后调用 `/api/update/apply`，batch 脚本热替换 EXE 并重启
+- 引导页与主面板横幅状态同步，不重复下载
+
+---
+
+## [2.9.19] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：EXE 自动更新
+
+新增 `updater.py` 模块，实现完整的自动更新流程：
+
+- **启动后 15 秒**自动后台检查 GitHub Releases 最新版本（不阻塞启动）
+- 发现新版本后**静默后台下载**新 EXE 到临时目录，显示下载进度
+- 下载完成后面板**顶部绿色横幅**提示用户，点击「立即重启更新」
+- 点击后写入 batch 替换脚本：等旧进程退出 → 复制新 EXE → 启动新版本 → 清理临时文件
+- 新增 API：`GET /api/update/check`（状态轮询）、`POST /api/update/apply`（触发替换）
+- 前端每 15 秒轮询一次更新状态，启动 20 秒后开始轮询
+
+---
+
+## [2.9.18] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：引导阶段指定 Cursor 路径后不再自动拉起 Cursor
+
+`_schedule_embed_panel` 新增 `auto_launch_cursor` 参数。引导阶段（首次设置 `cursor_exe_path`、引导完成回调）一律传 `False`，只嵌入已运行的 Cursor 窗口，不会自动把 Cursor 打开。正常启动路径（已有项目目录）保持原有行为（`True`，Cursor 未运行时第 1 次允许拉起）。
+
+---
+
+## [2.9.17] - 2026-04-13
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：初始化指定 Cursor 路径后不再触发重启
+
+`wizSelectCursor()` 保存路径成功后直接更新引导界面状态并解锁「下一步」，不再调用 `/api/restart`，初始化流程在当前进程内连续完成。
+
+#### 修复：启动时只打开一个面板页
+
+删除引导阶段多余的 `webbrowser.open(url)` 直接调用，面板打开逻辑统一由 `_schedule_embed_panel` 负责（优先嵌入 Cursor Simple Browser，连续失败 3 次后才降级系统浏览器，且只打开一次）。
+
+#### 修复：打包脚本 `pack.cmd` 移除 `>NUL` 重定向
+
+Windows 安全策略在某些机器上把 `>nul`/`>NUL` 重定向拦截为文件操作并弹出警告，改为直接输出，消除误报弹窗。
+
+#### 修复：`config.py` 移除 `from __future__ import annotations`
+
+Python 3.12 + PyInstaller 冻结环境下，`@dataclass` 与 `from __future__ import annotations` 共存可能触发 `typing.ClassVar` 循环初始化错误，删除该导入（3.12 原生支持 `tuple[float, float]` 写法，不需要此声明）。
+
+#### 打包环境升级
+
+`pack.cmd` 打包解释器从 `py -3.10` 升级为 `py -3.12`，与运行环境保持一致。
+
+---
+
+## [2.9.16] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 彻底废弃快捷键机制
+
+OCR 视觉模式下切换 Agent 全程通过侧栏坐标点击完成，快捷键没有任何实际作用，本版本将其完全移除。
+
+**删除的代码/字段：**
+- `config.py`：删除 `hotkeys` 字段（含默认值 `{"PM": ["ctrl","alt","1"], ...}`）
+- `nudger.py`：删除 `_hotkey_from_label()`、`_resolve_role()`、`_switch_and_send_blind()`、`check_keybindings()`、`ensure_keybindings()` 函数
+- `nudger.py`：`_switch_and_send_with_vision()` 删除"降级用热键"分支
+- `nudger.py`：`switch_and_send()` 移除 `hotkeys` 参数，删除 `_resolve_role` 调用，直接规范化 role 名称
+- `main.py`：删除 `check_keybindings` import、启动时快捷键检查日志、从 codeflow.json 构造 `new_hotkeys` 的逻辑、`codeflow-nudger.json` 中 `hotkeys` 键的解析
+- `web_panel.py`：删除"回退到 nudger hotkeys 里的角色"兜底逻辑
+
+**greet_all_roles 角色来源变更：**
+- 原来从 `config.hotkeys.keys()` 读取要打招呼的角色列表
+- 现在从 `_UI_LABELS`（预检时注册的侧栏标签映射）读取，无则从 tasks/ 收件人推断
+
+---
+
+## [2.9.15] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 预检与快捷键说明修正
+- **删除预检里的无用 `check_keybindings` import**：`_api_preflight` 只 import 了该函数但从未调用，删除死代码，避免误导。
+- **预检不再要求配置快捷键**：EXE 内置 `winocr`，`HAS_VISION` 始终为 `True`；切换 Agent 的主路径是 OCR 识别侧栏坐标后鼠标点击，快捷键仅为 OCR 失败时的降级备用，预检无需检查。
+- **文档更新**：`docs/config-reference.md` 和 `codeflow-desktop/BUILD.md` 中的快捷键"必须配置"描述已更正。
+
+---
+
 ## [2.8.75] - 2026-04-10
 
 ### 桌面端（`codeflow-desktop`）

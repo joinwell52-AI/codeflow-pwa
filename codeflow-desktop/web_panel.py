@@ -57,7 +57,7 @@ def get_panel_port() -> int:
     """返回固定端口 18765。"""
     return 18765
 
-_VERSION = "2.9.14"
+_VERSION = "2.9.24"
 
 
 # 面板最后活跃时间（monotonic），用于心跳超时检测
@@ -648,6 +648,8 @@ class PanelHandler(BaseHTTPRequestHandler):
             "/api/skills/list": self._api_skills_list,
             "/api/skills/repos": self._api_skills_repos,
 
+            "/api/update/check": self._api_update_check,
+
         }
 
         if path == "/api/files":
@@ -726,6 +728,8 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             "/api/skills/install": self._api_skills_install,
             "/api/skills/download": self._api_skills_download,
+
+            "/api/update/apply": self._api_update_apply,
 
             "/api/agent/delete": self._api_agent_delete,
 
@@ -940,7 +944,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
     def _api_preflight(self):
 
-        from nudger import find_cursor_window, check_keybindings
+        from nudger import find_cursor_window
 
         checks = []
 
@@ -1083,15 +1087,9 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             logger.warning("preflight team=%s roles=%s", team_id, team_roles)
 
-        # 若团队配置未就绪，回退到 nudger hotkeys 里的角色
-
-        if not team_roles and _nudger_ref:
-
-            for k in sorted(_nudger_ref.config.hotkeys.keys()):
-
-                team_roles.append(k.upper())
-
-                agent_name_hint.append(k.upper())
+        # 若团队配置未就绪，提示用户先选择团队
+        if not team_roles:
+            logger.warning("preflight: 团队配置未就绪，请先在面板选择团队")
 
         # Agent 映射：只要选了团队就先生成角色列表，再尝试 OCR 补充坐标/标签
 
@@ -1542,6 +1540,34 @@ class PanelHandler(BaseHTTPRequestHandler):
             os._exit(0)
 
         threading.Thread(target=_shutdown, daemon=True).start()
+
+    # ── 自动更新 ──────────────────────────────────────────────────────
+    def _api_update_check(self):
+        """GET /api/update/check — 返回当前更新状态；客户端轮询用。"""
+        try:
+            import updater
+            state = updater.get_state()
+            return self._json({"ok": True, **state})
+        except Exception as e:
+            return self._json({"ok": False, "error": str(e)})
+
+    def _api_update_apply(self):
+        """POST /api/update/apply — 用已下载的新 EXE 替换自身并重启。"""
+        try:
+            import updater
+            state = updater.get_state()
+            if state["status"] != "ready":
+                return self._json({"ok": False, "error": "新版本尚未下载完成"})
+            ok, msg = updater.apply_update(state["new_exe"])
+            if ok:
+                self._json({"ok": True, "message": "正在更新，程序将自动重启…"})
+                time.sleep(0.5)
+                import os as _os
+                _os._exit(0)
+            else:
+                return self._json({"ok": False, "error": msg})
+        except Exception as e:
+            return self._json({"ok": False, "error": str(e)})
 
     def _api_restart(self):
         """保存 cursor_exe_path 后重启程序，重新走完整启动流程。"""
@@ -2118,11 +2144,6 @@ class PanelHandler(BaseHTTPRequestHandler):
                         if code:
                             team_roles.append(code)
                             role_index[code] = i
-                if not team_roles and _nudger_ref:
-                    for i, k in enumerate(sorted(_nudger_ref.config.hotkeys.keys()), 1):
-                        team_roles.append(k.upper())
-                        role_index[k.upper()] = i
-
                 # 初始化状态（在读到角色之后再设置，避免 total=0）
                 PanelHandler._test_all_state.update({
                     "running": True, "steps": [], "current": "", "total": len(team_roles)

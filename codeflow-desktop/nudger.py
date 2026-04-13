@@ -167,22 +167,10 @@ def _click_agent_by_coord(role: str, hwnd: int) -> bool:
         return False
 
 
-def _hotkey_from_label(label: str) -> tuple | None:
-    """从侧栏标签推导热键，例如 '01-PM' → ('ctrl','alt','1')。"""
-    if not label:
-        return None
-    m = re.match(r"(\d+)", label.strip())
-    if m:
-        idx = int(m.group(1))
-        if 1 <= idx <= 9:
-            return ("ctrl", "alt", str(idx))
-    return None
-
 
 def build_preflight_agent_mapping(
     state: Any,
     role_codes: list[str],
-    hotkeys: dict[str, tuple] | None = None,
 ) -> tuple[list[dict], bool]:
     """
     一次 vision_scan 后，建立「逻辑角色 ↔ 侧栏 OCR 标签 ↔ 屏幕坐标」映射。
@@ -417,15 +405,6 @@ def focus_window(hwnd: int) -> bool:
         logger.warning("focus_window 失败 hwnd=%s: %s", hwnd, e)
         return False
 
-
-def _resolve_role(role: str, hotkeys: dict[str, tuple]) -> str | None:
-    key = role.upper()
-    if key in hotkeys:
-        return key
-    stripped = re.sub(r'\d+$', '', key)
-    if stripped and stripped in hotkeys:
-        return stripped
-    return None
 
 
 def _normalize_role(ocr_role: str) -> str:
@@ -804,7 +783,6 @@ def reload_cursor_window(config: Any | None = None) -> bool:
 # ─── 核心操作：看→判断→操作→验证 ─────────────────────────
 
 def switch_and_send(hwnd: int, role: str, message,
-                    hotkeys: dict[str, tuple],
                     input_offset: tuple[float, float] = (0, 0),
                     *,
                     greet_strict: bool = False) -> bool:
@@ -814,11 +792,7 @@ def switch_and_send(hwnd: int, role: str, message,
     当传入 callable 时，将在 OCR 确认切换成功、即将粘贴前才调用，
     确保消息内容与当前窗口角色严格一致。
     """
-    resolved = _resolve_role(role, hotkeys)
-    if not resolved:
-        logger.warning("角色 %s 没有配置快捷键，跳过", role)
-        patrol_trace("send_fail", "角色无快捷键映射", role=role)
-        return False
+    resolved = re.sub(r'^\d+[-_\s]*', '', role.upper()).strip() or role.upper()
 
     if not focus_window(hwnd):
         patrol_trace("send_fail", "无法聚焦 Cursor 窗口", role=resolved)
@@ -829,15 +803,10 @@ def switch_and_send(hwnd: int, role: str, message,
     msg_str = "" if msg_factory else (message or "")
 
     vision_sig = ""
-    if HAS_VISION:
-        ok, vision_sig = _switch_and_send_with_vision(
-            hwnd, role, resolved, msg_str, hotkeys,
-            greet_strict=greet_strict, msg_factory=msg_factory,
-        )
-    else:
-        if msg_factory:
-            msg_str = msg_factory(resolved)
-        ok = _switch_and_send_blind(hwnd, resolved, msg_str, hotkeys)
+    ok, vision_sig = _switch_and_send_with_vision(
+        hwnd, role, resolved, msg_str,
+        greet_strict=greet_strict, msg_factory=msg_factory,
+    )
     if ok:
         prev = (msg_str or "").replace("\n", " ").strip()[:48]
         patrol_trace(
@@ -858,44 +827,8 @@ def switch_and_send(hwnd: int, role: str, message,
     return ok
 
 
-def _switch_and_send_blind(hwnd: int, resolved: str, message: str,
-                           hotkeys: dict[str, tuple]) -> bool:
-    """回退模式：无 OCR，盲按快捷键"""
-    try:
-        keys = hotkeys[resolved]
-        pyautogui.hotkey(*keys)
-        time.sleep(0.8)
-
-        pyautogui.hotkey("ctrl", "l")
-        time.sleep(0.5)
-
-        old_clipboard = ""
-        try:
-            old_clipboard = pyperclip.paste()
-        except Exception:
-            pass
-
-        pyperclip.copy(message)
-        time.sleep(0.1)
-        pyautogui.hotkey("ctrl", "v")
-        time.sleep(0.2)
-        pyautogui.press("enter")
-        time.sleep(0.1)
-
-        try:
-            pyperclip.copy(old_clipboard)
-        except Exception:
-            pass
-
-        return True
-    except Exception as e:
-        logger.error("blind switch_and_send 失败: %s", e)
-        return False
-
-
 def _switch_and_send_with_vision(hwnd: int, role: str, resolved: str,
                                  message: str,
-                                 hotkeys: dict[str, tuple],
                                  *,
                                  greet_strict: bool = False,
                                  msg_factory=None) -> tuple[bool, str]:
@@ -969,18 +902,8 @@ def _switch_and_send_with_vision(hwnd: int, role: str, resolved: str,
                         logger.info("vision[点] 第%d次点击(简名) %s", attempt, role)
                         clicked = True
 
-                # OCR 找不到坐标时，降级用 Ctrl+Alt+N 快捷键切换
                 if not clicked:
-                    # 尝试从 hotkeys 找到对应角色的快捷键
-                    role_key_norm = _normalize_role(role).upper()
-                    hk = hotkeys.get(role_key_norm) or hotkeys.get(resolved)
-                    if hk:
-                        logger.info("vision[热键] 第%d次 OCR坐标未找到，降级用热键 %s → %s",
-                                    attempt, full_name, "+".join(hk))
-                        pyautogui.hotkey(*hk)
-                        clicked = True
-                    else:
-                        logger.warning("vision[点] 第%d次未找到 %s 坐标，且无热键配置", attempt, full_name)
+                    logger.warning("vision[点] 第%d次未找到 %s 坐标，等待重试", attempt, full_name)
 
                 # 等待 Cursor 渲染
                 time.sleep(_WAIT_AFTER_CLICK)
@@ -1467,41 +1390,6 @@ def _read_keybindings() -> tuple[Path, list[dict]]:
     return kb_path, existing
 
 
-def check_keybindings(hotkeys: dict[str, tuple]) -> dict:
-    """检查快捷键绑定状态，返回详细信息供预检使用"""
-    kb_path, existing = _read_keybindings()
-    if not kb_path.parent.exists():
-        return {"ok": False, "detail": "Cursor 配置目录不存在"}
-
-    result = {"ok": True, "bound": [], "missing": []}
-    for role, keys in sorted(hotkeys.items(), key=lambda kv: kv[1]):
-        key_str = "+".join(keys)
-        found = any(
-            item.get("key", "").lower() == key_str.lower()
-            and "aichat" in item.get("command", "")
-            for item in existing if isinstance(item, dict)
-        )
-        if found:
-            result["bound"].append({"role": role, "key": key_str})
-        else:
-            result["missing"].append({"role": role, "key": key_str})
-
-    if result["missing"]:
-        result["ok"] = False
-        missing_str = ", ".join(f'{m["key"]}→{m["role"]}' for m in result["missing"])
-        result["detail"] = f"缺少绑定: {missing_str}"
-    return result
-
-
-def ensure_keybindings(hotkeys: dict[str, tuple]):
-    """检查快捷键是否已绑定到 aichat 命令，返回检查结果"""
-    info = check_keybindings(hotkeys)
-    if info["ok"]:
-        logger.info("keybindings.json 已包含所有 Agent 快捷键")
-    else:
-        logger.warning("Agent 快捷键未完全绑定: %s", info.get("detail", ""))
-    return info["ok"]
-
 
 # ─── 唤醒器核心 ───────────────────────────────────────────
 
@@ -1825,7 +1713,7 @@ class Nudger:
                 logger.info("催办 %s ← %s", recipient, filename)
                 patrol_trace("cursor_ok", "已找到 Cursor 窗口", title=(title or "")[:56])
                 if switch_and_send(hwnd, recipient, msg,
-                                   self.config.hotkeys, self.config.input_offset):
+                                   self.config.input_offset):
                     self._notified.add(filename)
                     self._nudge_attempts.pop(filename, None)
                     self._last_nudge_by_recipient[rk] = time.time()
@@ -1930,7 +1818,7 @@ class Nudger:
         kick_msg = tpl["kick"]
 
         if switch_and_send(hwnd, role_std, kick_msg,
-                           self.config.hotkeys, self.config.input_offset):
+                           self.config.input_offset):
             self._kick_times[kick_key] = time.time()
             self.stats["auto_nudge"] += 1
             ev = {
@@ -2022,7 +1910,7 @@ class Nudger:
                 age_min=int(item["age_seconds"] / 60),
             )
             if switch_and_send(hwnd, recipient, auto_msg,
-                               self.config.hotkeys, self.config.input_offset):
+                               self.config.input_offset):
                 self.tracker.mark_nudged(item["task_id"])
                 self.stats["auto_nudge"] += 1
                 did_switch = True
@@ -2069,7 +1957,15 @@ class Nudger:
             m = re.match(r"(\d+)", lbl)
             return int(m.group(1)) if m else 99
 
-        roles_sorted = sorted(self.config.hotkeys.keys(), key=_role_seq)
+        # 从 _UI_LABELS（预检时注册）读取已知角色，按序号排序
+        roles_from_labels = list(_UI_LABELS.keys())
+        if not roles_from_labels:
+            # 兜底：从 tasks/ 中的收件人推断
+            roles_from_labels = list({
+                re.sub(r'^\d+[-_\s]*', '', r.upper()).strip()
+                for r in self._get_active_recipients()
+            })
+        roles_sorted = sorted(roles_from_labels, key=_role_seq)
         patrol_trace("greet_begin", "开始向各 Agent 打招呼", roles=len(roles_sorted))
 
         greeted = 0
@@ -2322,7 +2218,6 @@ class Nudger:
             "reports_count": reports_count,
             "issues_count": issues_count,
             "stats": dict(self.stats),
-            "hotkeys": {k: "+".join(v) for k, v in self.config.hotkeys.items()},
             "has_vision": HAS_VISION,
             "poll_interval_s": float(getattr(self.config, "poll_interval", 5.0)),
             "file_observer_active": bool(self._observer),
@@ -2763,7 +2658,7 @@ def _relay_say_to_cursor(nudger: 'Nudger', config, role: str, text: str):
         return
     hwnd, title = win
     msg = text if text else ("巡检，开工" if config.lang == "zh" else "Patrol, let's go")
-    if switch_and_send(hwnd, role, msg, config.hotkeys, config.input_offset):
+    if switch_and_send(hwnd, role, msg, config.input_offset):
         logger.info("已通知 %s", role)
     else:
         logger.warning("通知 %s 失败", role)

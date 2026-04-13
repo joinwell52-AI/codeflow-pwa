@@ -104,6 +104,7 @@ a = Analysis(
         "win_snap",
         "cursor_acp",
         "cursor_embed",
+        "updater",
         "watchdog",
         "watchdog.observers",
         "watchdog.events",

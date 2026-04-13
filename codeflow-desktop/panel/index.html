@@ -300,13 +300,29 @@ a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
+
+<!-- 自动更新提示横幅 -->
+<div id="update-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;
+  background:linear-gradient(90deg,#14532d,#166534);color:#bbf7d0;
+  padding:9px 16px;display:none;align-items:center;gap:10px;font-size:13px;
+  box-shadow:0 2px 12px rgba(0,0,0,.4)">
+  <span style="font-size:1.2em">⬆️</span>
+  <span id="update-bar-msg">发现新版本，正在下载…</span>
+  <span id="update-bar-progress" style="margin-left:4px;color:#86efac"></span>
+  <button id="update-bar-btn" onclick="applyUpdate()" style="display:none;margin-left:auto;
+    border:1px solid #4ade80;background:rgba(74,222,128,.15);color:#4ade80;
+    border-radius:6px;padding:3px 14px;cursor:pointer;font-size:12px;font-weight:600">
+    立即重启更新
+  </button>
+</div>
+
 <div class="wrap">
 
   <!-- Header -->
   <div class="header">
     <img src="logo-sm.png" alt="CF" onerror="this.style.display='none'">
     <div class="brand"><b>Code</b>Flow</div>
-    <span class="ver" id="ver">PC v2.8.75</span>
+    <span class="ver" id="ver">PC v2.9.16</span>
     <div class="header-right">
       <div class="hd-dot"><span class="dot off" id="dN"></span><span data-i18n="hd_nudger">巡检器</span></div>
       <div class="hd-dot"><span class="dot off" id="dC"></span>Cursor</div>
@@ -931,6 +947,20 @@ a:hover{text-decoration:underline}
     </div>
     <div>
       <div class="wiz-version" id="wizVersion">v2.8.89</div>
+      <!-- 引导页更新提示 -->
+      <div id="wiz-update-bar" style="display:none;margin-top:10px;background:rgba(20,83,45,0.85);
+        border:1px solid #166534;border-radius:10px;padding:10px 14px;color:#bbf7d0;font-size:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span>⬆️</span>
+          <span id="wiz-update-msg" style="font-weight:600">发现新版本</span>
+          <span id="wiz-update-progress" style="color:#86efac;margin-left:2px"></span>
+        </div>
+        <button id="wiz-update-btn" onclick="wizApplyUpdate()" style="display:none;width:100%;
+          border:1px solid #4ade80;background:rgba(74,222,128,.15);color:#4ade80;
+          border-radius:7px;padding:6px 0;cursor:pointer;font-size:12px;font-weight:700">
+          ↺ 退出并重启安装新版本
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1817,17 +1847,80 @@ function _wizCheckCursor(){
   });
 }
 
+/* ── 引导页更新检测 ── */
+(function wizUpdateInit(){
+  const bar   = $('wiz-update-bar');
+  const msg   = $('wiz-update-msg');
+  const prog  = $('wiz-update-progress');
+  const btn   = $('wiz-update-btn');
+  if(!bar) return;
+
+  let _ready = false;
+
+  function poll(){
+    fetch('/api/update/check').then(r=>r.json()).then(d=>{
+      if(!d||!d.ok) return;
+      const s = d.status;
+      if(s==='startup_checking'){
+        // 启动阶段正在检查，显示"正在检查版本"
+        bar.style.display='block';
+        msg.textContent='正在检查版本，请稍候…';
+        prog.textContent='';
+        btn.style.display='none';
+      } else if(s==='checking' || s==='idle'){
+        // 已检查完且无更新，隐藏横幅
+        bar.style.display='none';
+      } else if(s==='no_update'){
+        bar.style.display='none';
+      } else if(s==='downloading'){
+        bar.style.display='block';
+        msg.textContent='发现新版本 v'+d.latest+'，正在下载…';
+        prog.textContent=d.progress+'%';
+        btn.style.display='none';
+      } else if(s==='ready' && !_ready){
+        _ready=true;
+        bar.style.display='block';
+        msg.textContent='新版本 v'+d.latest+' 已下载完成';
+        prog.textContent='';
+        btn.style.display='block';
+        // 同步主面板横幅
+        const mainBar=$('update-bar');
+        if(mainBar){mainBar.style.display='flex';}
+        const mainMsg=$('update-bar-msg');
+        if(mainMsg){mainMsg.textContent='新版本 v'+d.latest+' 已下载完成，点击立即更新';}
+        const mainBtn=$('update-bar-btn');
+        if(mainBtn){mainBtn.style.display='';}
+      } else if(s==='error'){
+        bar.style.display='none'; // 静默失败，不打扰用户
+      }
+    }).catch(()=>{});
+  }
+
+  // 页面打开立刻轮询（启动时已触发检查，0.5s 后就有状态）
+  setTimeout(()=>{ poll(); setInterval(poll, 3000); }, 500);
+})();
+
+function wizApplyUpdate(){
+  const btn=$('wiz-update-btn');
+  if(btn){ btn.textContent='准备重启…'; btn.disabled=true; }
+  fetch('/api/update/apply',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(!d.ok){
+      alert('更新失败: '+(d.error||'未知错误'));
+      if(btn){btn.disabled=false;btn.textContent='↺ 退出并重启安装新版本';}
+    }
+  }).catch(()=>{});
+}
+
 function wizSelectCursor(){
   fetch('/api/set_cursor_exe',{method:'POST'}).then(r=>r.json()).then(d=>{
     if(d.ok){
-      // 保存成功，重启程序
-      $('wizCursorTitle').textContent='已保存，正在重启…';
+      // 保存成功，直接继续引导，无需重启
+      $('wizCursorTitle').textContent='已找到 Cursor';
       $('wizCursorPath').textContent=d.cursor_exe_path||'';
       $('wizCursorBadge').style.color='#22c55e';
-      $('wizCursorBadge').textContent='重启中';
-      setTimeout(()=>{
-        fetch('/api/restart',{method:'POST'}).catch(()=>{});
-      },800);
+      $('wizCursorBadge').textContent='已就绪';
+      $('btnStep0Next').disabled=false;
+      $('wizNoCursorHint').style.display='none';
     } else {
       alert(d.message||'选择失败');
     }
@@ -2104,6 +2197,51 @@ setTimeout(fetchRepos,800);
 setTimeout(fetchSkills,1000);
 setInterval(fetchStatus,4000);setInterval(()=>fetchFiles(_dir),8000);setInterval(fetchPipeline,6000);setInterval(fetchDevices,10000);
 setInterval(fetchPatrolTrace,3000);
+
+/* ── 自动更新轮询 ── */
+(function(){
+  const bar=$('update-bar');
+  const msg=$('update-bar-msg');
+  const prog=$('update-bar-progress');
+  const btn=$('update-bar-btn');
+  let _shownReady=false;
+
+  function checkUpdate(){
+    fetch('/api/update/check').then(r=>r.json()).then(d=>{
+      if(!d.ok) return;
+      const s=d.status;
+      if(s==='downloading'){
+        bar.style.display='flex';
+        msg.textContent='正在下载新版本 v'+d.latest+'…';
+        prog.textContent=d.progress+'%';
+        btn.style.display='none';
+      } else if(s==='ready' && !_shownReady){
+        _shownReady=true;
+        bar.style.display='flex';
+        msg.textContent='新版本 v'+d.latest+' 已下载完成，点击立即更新';
+        prog.textContent='';
+        btn.style.display='';
+      } else if(s==='error'){
+        // 静默失败，不显示横幅
+      }
+    }).catch(()=>{});
+  }
+
+  // 启动 20s 后开始轮询（等后台检查先跑一段时间）
+  setTimeout(()=>{
+    checkUpdate();
+    setInterval(checkUpdate, 15000);
+  }, 20000);
+})();
+
+function applyUpdate(){
+  const btn=$('update-bar-btn');
+  btn.textContent='更新中…';
+  btn.disabled=true;
+  fetch('/api/update/apply',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(!d.ok){alert('更新失败: '+(d.error||'未知错误'));btn.disabled=false;btn.textContent='立即重启更新';}
+  }).catch(()=>{});
+}
 </script>
 </body>
 </html>

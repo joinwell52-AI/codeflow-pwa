@@ -1,6 +1,6 @@
 ﻿# 码流（CodeFlow）配置参考
 
-**适用版本**：Desktop v2.8.75 / PWA v2.0.3  
+**适用版本**：Desktop v2.9.16 / PWA v2.0.3  
 **最后更新**：2026-04-10
 
 ---
@@ -30,13 +30,6 @@
   "relay_url": "wss://ai.chedian.cc/codeflow/ws/",
   "room_key": "your-private-room-key",
   "lang": "zh",
-
-  "hotkeys": {
-    "PM":        ["ctrl", "alt", "1"],
-    "DEV":       ["ctrl", "alt", "2"],
-    "QA":        ["ctrl", "alt", "3"],
-    "OPS":       ["ctrl", "alt", "4"]
-  },
 
   "poll_interval": 5,
   "nudge_cooldown": 15,
@@ -78,34 +71,7 @@
 
 ---
 
-### 2.2 Agent 快捷键（`hotkeys`）
-
-```json
-"hotkeys": {
-  "PM":        ["ctrl", "alt", "1"],
-  "DEV":       ["ctrl", "alt", "2"],
-  "QA":        ["ctrl", "alt", "3"],
-  "OPS":       ["ctrl", "alt", "4"]
-}
-```
-
-- **key**：角色名（大写），支持所有团队角色：`PM` / `DEV` / `QA` / `OPS` / `E2E` / `PUBLISHER` / `WRITER` / `EDITOR` / `COLLECTOR` / `BUILDER` / `DESIGNER` / `MARKETER` / `RESEARCHER`
-- **value**：Cursor `keybindings.json` 里配置的 `aichat` 快捷键对应按键数组
-- 必须与 Cursor 实际快捷键绑定一一对应，否则预检不通过
-
-**自媒体团队示例：**
-```json
-"hotkeys": {
-  "PUBLISHER": ["ctrl", "alt", "1"],
-  "WRITER":    ["ctrl", "alt", "2"],
-  "EDITOR":    ["ctrl", "alt", "3"],
-  "COLLECTOR": ["ctrl", "alt", "4"]
-}
-```
-
----
-
-### 2.3 巡检时间节奏
+### 2.2 巡检时间节奏
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -126,7 +92,7 @@
 
 ---
 
-### 2.4 卡住任务判定
+### 2.3 卡住任务判定
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -136,7 +102,7 @@
 
 ---
 
-### 2.5 催促消息文案
+### 2.4 催促消息文案
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -153,7 +119,7 @@
 
 ---
 
-### 2.6 卡住时自动 Reload Window
+### 2.5 卡住时自动 Reload Window
 
 当任务长时间未闭环时，先执行 `Developer: Reload Window` 恢复可能卡死的 Cursor UI，再发催促短句。
 
@@ -166,7 +132,7 @@
 
 ---
 
-### 2.7 文件监听
+### 2.6 文件监听
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -174,7 +140,7 @@
 
 ---
 
-### 2.8 Cursor 集成
+### 2.7 Cursor 集成
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
@@ -272,7 +238,7 @@ web/pwa/config.js（PWA 默认值）
 ────────────────────────────────
 {项目}/.codeflow/config.json    ← 向导保存的 room_key / relay_url
     ↓ 覆盖
-codeflow-nudger.json            ← 高级参数（hotkeys / 时间节奏 / reload 等）
+codeflow-nudger.json            ← 高级参数（时间节奏 / reload 等）
     ↓ 覆盖
 NudgerConfig 代码默认值（config.py）
     ↑ 兜底读取
@@ -283,16 +249,9 @@ NudgerConfig 代码默认值（config.py）
 
 ## 六、常用场景速查
 
-### 换团队（自媒体 → 开发团队）
+### 换团队
 
-```json
-"hotkeys": {
-  "PM":  ["ctrl", "alt", "1"],
-  "DEV": ["ctrl", "alt", "2"],
-  "QA":  ["ctrl", "alt", "3"],
-  "OPS": ["ctrl", "alt", "4"]
-}
-```
+在面板 → 团队选择 → 切换团队即可，无需修改配置文件。
 
 ### 换自建中继
 
