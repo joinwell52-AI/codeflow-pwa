@@ -2060,12 +2060,8 @@
         const state = roleStateInfo(role);
         const roleItems = tasksForRole(role);
         const offlineCls = state.offline ? " offline" : "";
-        // 缩写：≤4字符直接显示，否则取前2字母+末1字母（如 MARKETER→MER，PUBLISHER→PER）
-        const abbr = role.length <= 4 ? role
-          : role.length <= 6 ? role.slice(0, 3)
-          : role.slice(0, 2) + role.slice(-2);
-        // 全称仅在 role 较长时在 icon 下方额外显示
-        const showLabel = role.length > 4;
+        const abbr = role.length <= 4 ? role : role.slice(0, 3);
+        const showLabel = role.length > 3;
         return `
           <div class="role-card team-icon-card${offlineCls} ${selectedRole === role ? "active" : ""}" data-role="${role}">
             <div class="team-icon">${abbr}</div>
