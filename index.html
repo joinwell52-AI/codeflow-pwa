@@ -439,6 +439,10 @@
     .fullscreen-page-title { font-family:"Fira Code",monospace; font-weight:700; font-size:15px; color:var(--text); flex:1; }
     .fullscreen-page-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 12px 24px; }
 
+    .task-list-tabs { display:flex; gap:0; margin-bottom:10px; border-radius:10px; overflow:hidden; background:rgba(30,40,60,.5); }
+    .tl-tab { flex:1; padding:8px 0; text-align:center; font-size:12px; font-weight:600; color:var(--text3); background:transparent; border:none; cursor:pointer; transition:all .2s; }
+    .tl-tab.active { color:var(--blue); background:rgba(59,130,246,.15); }
+
     /* ══ 我的：全屏覆盖页 ══ */
     .my-page {
       display:none; position:fixed; inset:0; z-index:100;
@@ -678,6 +682,12 @@
     <span id="taskListPageTitle" class="fullscreen-page-title">任务列表</span>
   </header>
   <div class="fullscreen-page-content">
+    <div id="taskListTabs" class="task-list-tabs">
+      <button class="tl-tab active" data-dir="tasks">任务单</button>
+      <button class="tl-tab" data-dir="reports">报告</button>
+      <button class="tl-tab" data-dir="issues">问题</button>
+      <button class="tl-tab" data-dir="log">归档</button>
+    </div>
     <div id="fullTaskList" class="task-stack"></div>
   </div>
 </div>
@@ -1081,24 +1091,27 @@
       en: { today: "Today Tasks", reply: "Today Replies", progress: "In Progress", done: "Completed", all: "All Tasks" }
     };
 
-    function openTaskListPage(filter, roleFilter) {
+    let _taskListFilter = null;
+    let _taskListRoleFilter = null;
+    let _taskListDirFilter = "tasks";
+
+    function _renderTaskListItems() {
       const filterLabel = STAT_FILTER_LABELS[currentLang] || STAT_FILTER_LABELS.zh;
-      let allItems, titlePrefix;
-      if (roleFilter) {
-        allItems = tasksForRole(roleFilter);
-        titlePrefix = roleFilter;
+      let allItems;
+      if (_taskListRoleFilter) {
+        allItems = tasksForRole(_taskListRoleFilter);
       } else {
         allItems = [...taskRecords];
-        titlePrefix = currentLang === "en" ? "All" : "全部";
       }
-      let title = filterLabel.all;
-      if (filter === "today") { allItems = allItems.filter(isTaskToday); title = filterLabel.today; }
-      else if (filter === "reply") { allItems = allItems.filter(i => isTaskToday(i) && isTaskReply(i)); title = filterLabel.reply; }
-      else if (filter === "progress") { allItems = allItems.filter(isTaskInProgress); title = filterLabel.progress; }
-      else if (filter === "done") { allItems = allItems.filter(isTaskDone); title = filterLabel.done; }
-      taskListPageTitleEl.textContent = `${titlePrefix} · ${title}`;
-      const items = allItems;
-      fullTaskListEl.innerHTML = items.length ? items.map((item) => {
+      const f = _taskListFilter;
+      if (f === "today") allItems = allItems.filter(isTaskToday);
+      else if (f === "reply") allItems = allItems.filter(i => isTaskToday(i) && isTaskReply(i));
+      else if (f === "progress") allItems = allItems.filter(isTaskInProgress);
+      else if (f === "done") allItems = allItems.filter(isTaskDone);
+
+      allItems = allItems.filter(item => (item.dir || "tasks") === _taskListDirFilter);
+
+      fullTaskListEl.innerHTML = allItems.length ? allItems.map((item) => {
         const progress = mapProgress(item.progress);
         const roles = taskRoles(item);
         return `<div class="full-task-row" data-file="${item.primary_filename || item.filename}">
@@ -1114,10 +1127,37 @@
       fullTaskListEl.querySelectorAll(".full-task-row").forEach((node) => {
         node.onclick = () => openTaskDetailPage(node.dataset.file);
       });
+    }
+
+    function openTaskListPage(filter, roleFilter) {
+      _taskListFilter = filter || null;
+      _taskListRoleFilter = roleFilter || null;
+      _taskListDirFilter = "tasks";
+      const filterLabel = STAT_FILTER_LABELS[currentLang] || STAT_FILTER_LABELS.zh;
+      const prefix = roleFilter || (currentLang === "en" ? "All" : "全部");
+      let title = filterLabel.all;
+      if (filter === "today") title = filterLabel.today;
+      else if (filter === "reply") title = filterLabel.reply;
+      else if (filter === "progress") title = filterLabel.progress;
+      else if (filter === "done") title = filterLabel.done;
+      taskListPageTitleEl.textContent = `${prefix} · ${title}`;
+      // 激活 tab
+      document.querySelectorAll("#taskListTabs .tl-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.dir === _taskListDirFilter);
+      });
+      _renderTaskListItems();
       taskListPageEl.classList.add("open");
     }
 
     function closeTaskListPage() { taskListPageEl.classList.remove("open"); }
+
+    document.querySelectorAll("#taskListTabs .tl-tab").forEach(btn => {
+      btn.onclick = () => {
+        _taskListDirFilter = btn.dataset.dir;
+        document.querySelectorAll("#taskListTabs .tl-tab").forEach(b => b.classList.toggle("active", b === btn));
+        _renderTaskListItems();
+      };
+    });
 
     function openTaskDetailPage(filename) {
       if (!filename) return;
@@ -1900,6 +1940,11 @@
 
     // 动态角色列表：优先用 PC 端 dashboard 下发的 team_roles，否则降级为本地缓存，最后才用默认值
     let _dynamicTeamRoles = JSON.parse(localStorage.getItem("codeflow_team_roles") || "null");
+    const _cachedTeamName = localStorage.getItem("codeflow_team_name") || "";
+    if (_cachedTeamName) {
+      const _ttEl = document.getElementById("teamTitle");
+      if (_ttEl) _ttEl.textContent = (currentLang === "en" ? "My Team" : "我的团队") + "：" + _cachedTeamName;
+    }
     function fixedTeamRoles() {
       return (_dynamicTeamRoles && _dynamicTeamRoles.length > 0)
         ? _dynamicTeamRoles
@@ -1912,11 +1957,17 @@
       const prev = JSON.stringify(_dynamicTeamRoles);
       _dynamicTeamRoles = cleaned;
       localStorage.setItem("codeflow_team_roles", JSON.stringify(cleaned));
-      // 角色变化时刷新团队面板和发送目标下拉
       if (JSON.stringify(cleaned) !== prev) {
         renderTeam(onlineDevices, typeof targetRoleEl !== "undefined" ? targetRoleEl.value : "");
         if (typeof refreshTargetOptions === "function") refreshTargetOptions();
       }
+    }
+
+    function applyTeamName(name) {
+      if (!name) return;
+      localStorage.setItem("codeflow_team_name", name);
+      const el = document.getElementById("teamTitle");
+      if (el) el.textContent = (currentLang === "en" ? "My Team" : "我的团队") + "：" + name;
     }
 
     function buildTaskRecords(items) {
@@ -2110,10 +2161,10 @@
       // 分片模式：第一包带 _chunked 标记（meta + 空 items）
       if (payload._chunked) {
         _dashboardChunkBuffer = { meta: payload, items: [] };
-        // 立即应用 meta（team_roles、stats）
         if (Array.isArray(payload.team_roles) && payload.team_roles.length > 0) {
           applyTeamRoles(payload.team_roles);
         }
+        if (payload.team_name) applyTeamName(payload.team_name);
         if (payload.stats) {
           document.getElementById("todayTasks").textContent = String(payload.stats.today_tasks || 0);
           document.getElementById("todayReplies").textContent = String(payload.stats.today_replies || 0);
@@ -2136,6 +2187,7 @@
       if (Array.isArray(payload.team_roles) && payload.team_roles.length > 0) {
         applyTeamRoles(payload.team_roles);
       }
+      if (payload.team_name) applyTeamName(payload.team_name);
       mergeDashboardItems(payload.items || []);
       document.getElementById("todayTasks").textContent = String(payload.stats?.today_tasks || 0);
       document.getElementById("todayReplies").textContent = String(payload.stats?.today_replies || 0);
