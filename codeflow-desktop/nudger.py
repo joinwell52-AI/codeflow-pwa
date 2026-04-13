@@ -718,6 +718,45 @@ def _wait_while_agent_busy(phase: str) -> None:
     )
 
 
+def _check_cursor_connection_error(config: Any | None = None) -> bool:
+    """
+    截图 Cursor 窗口，OCR 检测是否出现 Connection Error / Try again 提示。
+    返回 True 表示检测到错误需要 Reload。
+    """
+    try:
+        from cursor_vision import capture_cursor_tab_strip
+        import winocr
+        win = find_cursor_window(config)
+        if not win:
+            return False
+        hwnd, _ = win
+        import ctypes
+        rect = ctypes.wintypes.RECT()
+        ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+        w = rect.right - rect.left
+        h = rect.bottom - rect.top
+        if w < 100 or h < 100:
+            return False
+        # 截取窗口中间区域（Composer 区域，避免标题栏干扰）
+        import pyautogui
+        region = (rect.left, rect.top + h // 3, w, h // 2)
+        img = pyautogui.screenshot(region=region)
+        import io
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        result = winocr.recognize_pil_sync(img, lang="en")
+        text = result.text if hasattr(result, "text") else str(result)
+        text_lower = text.lower()
+        keywords = ["connection error", "connection failed", "try again", "please try again"]
+        found = any(kw in text_lower for kw in keywords)
+        if found:
+            logger.info("_check_cursor_connection_error: OCR 发现错误关键词: %r", text[:200])
+        return found
+    except Exception as e:
+        logger.debug("_check_cursor_connection_error 异常: %s", e)
+        return False
+
+
 def reload_cursor_window(config: Any | None = None) -> bool:
     """
     通过命令面板执行 Developer: Reload Window，用于长时间无进展时恢复卡死的 Cursor UI。
@@ -744,6 +783,9 @@ def reload_cursor_window(config: Any | None = None) -> bool:
             time.sleep(0.06)
             pyautogui.hotkey("ctrl", "v")
             time.sleep(0.35)
+            pyautogui.press("enter")
+            # 等待确认对话框弹出，按回车选默认项（通常是"确认重载"）
+            time.sleep(1.2)
             pyautogui.press("enter")
         finally:
             try:
@@ -1647,7 +1689,22 @@ class Nudger:
         return merged
 
     def _schedule_retry(self, filename: str, dir_name: str, full_path: str, reason: str) -> bool:
-        """返回 True 表示已加入重试；False 表示超过重试上限，放弃并记入 _notified。"""
+        """返回 True 表示已加入重试；False 表示超过重试上限，放弃并记入 _notified。
+        agent_busy 不消耗重试次数，只延后等待。
+        """
+        # agent_busy 不计入失败次数，直接加队列等下一轮
+        if reason == "agent_busy":
+            self._nudge_pending.append((filename, dir_name, full_path))
+            _defer_reason_zh = {"agent_busy": "Agent 正忙，下一轮再试"}
+            patrol_trace(
+                "defer",
+                _defer_reason_zh["agent_busy"],
+                filename=filename,
+                reason=reason,
+                attempt=self._nudge_attempts.get(filename, 0),
+                max_attempts=_MAX_NUDGE_ATTEMPTS_PER_FILE,
+            )
+            return True
         n = self._nudge_attempts.get(filename, 0) + 1
         self._nudge_attempts[filename] = n
         if n >= _MAX_NUDGE_ATTEMPTS_PER_FILE:
@@ -2162,9 +2219,25 @@ class Nudger:
             "轮询线程已就绪（间隔 %.1fs，idle 每 %d 轮，stuck 每 %d 轮）",
             scan_s, idle_n, stuck_n,
         )
+        # Connection Error 检测：连续多少轮不动才 reload
+        _conn_err_n = max(1, int(getattr(self.config, "conn_error_check_every_n", 1)))
+        _last_reload_t: float = 0.0
+        _reload_cooldown = float(getattr(self.config, "conn_error_reload_cooldown_s", 120.0))
+
         try:
             while True:
                 if self._running:
+                    # ── Connection Error 检测（每轮都检查）──────────────
+                    if self._tick_count % _conn_err_n == 0:
+                        now = time.time()
+                        if now - _last_reload_t > _reload_cooldown:
+                            if _check_cursor_connection_error(self.config):
+                                logger.warning("检测到 Cursor Connection Error，执行 Reload Window")
+                                patrol_trace("conn_error_reload", "检测到 Connection Error，自动 Reload Window")
+                                reload_cursor_window(self.config)
+                                _last_reload_t = time.time()
+                                time.sleep(float(getattr(self.config, "reload_window_wait_s", 12.0)))
+                    # ────────────────────────────────────────────────────
                     self.check_and_nudge()
                     self._tick_count += 1
                     if self._tick_count % stuck_n == 0:

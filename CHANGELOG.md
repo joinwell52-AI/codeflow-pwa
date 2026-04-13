@@ -8,6 +8,70 @@
 
 ---
 
+## [2.8.75] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 打招呼消息"先找角色，后生成内容"根本修复
+- **`msg_factory` 延迟消息生成机制**：`switch_and_send` 支持 `message` 传入 `callable(role) -> str`；消息内容推迟到 OCR 三重校验（侧栏 + author + title）全部通过、粘贴前一刻才调用生成，从根本上杜绝"消息是 WRITER 的却发到 COLLECTOR 窗口"的窗口串台问题。
+- **`_switch_and_send_with_vision` 新增 `msg_factory` 参数**：在 `vision[粘贴前] 角色再确认通过` 日志之后、`_wait_while_agent_busy` 之前调用工厂函数生成消息，确保消息内容与当前已确认窗口角色严格绑定。
+- **`greet_all_roles` 改为传 callable**：不再预先生成消息字符串，而是在循环里定义 `_make_greet_msg(confirmed_role)` 工厂函数传入 `switch_and_send`，彻底解决预生成内容与实际切换窗口不符的竞态问题。
+
+---
+
+## [2.8.74] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 打招呼无限重试直至成功
+- **打招呼是强制初始化，不设重试上限**：原来最多重试 2 次后放弃（记 `greet_fail`），改为 `while True` 循环，直到 `switch_and_send` 返回 `True` 才继续下一个角色。
+- **指数退避等待**：失败后等待时间从 10s 开始，每次翻倍（10→20→40→60s 封顶），避免频繁触发 Cursor 界面。
+- **可中断**：每轮循环开始检查 `self._running`，面板点「停止巡检」时立即退出，不阻塞。
+- **日志事件**：重试中记 `greet_fail_retry`（含 attempt 次数和 wait_s），成功后才记 `greet_ok`。
+
+---
+
+## [2.8.73] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 打招呼角色文件路径修复 + `_greeted_roles` 状态污染修复
+- **新增 `_role_to_file()` 函数**：统一映射角色代码到 `docs/agents/` 路径，覆盖标准团队（PM/DEV/OPS/QA/E2E）和媒体团队（WRITER/EDITOR/PUBLISHER/COLLECTOR）及 MVP 团队（BUILDER/DESIGNER/MARKETER/RESEARCHER）；同时正确处理 `03-WRITER` 格式（剥离前缀数字）。
+- **`build_nudge_message` 新增 `mark_greeted=False` 参数**：打招呼时生成消息不再同步标记 `_greeted_roles`；`switch_and_send` 返回 `True` 后才调用 `mark_role_greeted(role)` 正式标记，避免发送失败时角色被错误标为"已打招呼"导致后续只发短句。
+- **新增 `mark_role_greeted()` 独立函数**：供确认发送成功后显式调用。
+
+---
+
+## [2.8.72] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### `greet_strict` 等待时间大幅延长（保持严格校验不降标准）
+- **`greet_strict` 模式专用慢速参数**：切换后等待从 6s → **12s**，复核前等待从 2.2s → **4s**，每轮复核间隔从 2.8s → **4s**，粘贴前终检等待从 1.85s → **3s**；给 Cursor UI（author/title）充足时间完成渲染，三重校验在 UI 完全稳定后进行。
+- **严格校验规则不变**：仍要求 `sidebar + author` 一致，或 `sidebar + title` 一致，或顶部 Tab 命中；任一组内部不一致（如 sidebar=EDITOR 但 author=PUBLISHER）仍拒绝。
+
+---
+
+## [2.8.71] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 打招呼失败后重试（最多 2 次）
+- **`greet_all_roles` 加重试循环**：`greet_strict` 校验失败后最多重试 2 次，每次重试前额外等待 10s（让 Cursor UI 稳定），全部失败才记 `greet_fail`。
+
+---
+
+## [2.8.70] - 2026-04-10
+
+### 桌面端（`codeflow-desktop`）
+
+#### 技能市场：根目录型仓库安装修复 + 安装完成显示「重新安装」
+- **根目录型 skill 安装按钮修复**：`smart-illustrator` 等 SKILL.md 在仓库根目录的仓库，前端过滤条件原来要求路径含 `/repoId/`（末尾有斜杠），根目录型路径末尾无斜杠导致匹配失败、不显示「安装全部」按钮。修复：同时检查 `endsWith('/repoId')`，`fetchRepos` 和 `installRepoAll` 均已修正。
+- **安装完成显示「重新安装」**：当仓库下所有 skill 均已安装（`installed === total`）时，按钮文字改为「重新安装」，边框变绿色；计数标签颜色同步变绿。
+- **进度完成后 3 秒自动刷新**：`installRepoAll` 完成后延迟 3s 调用 `fetchRepos()`，按钮状态同步更新为「重新安装」。
+
+---
+
 ## [2.9.04] - 2026-04-10
 
 ### 桌面端（`codeflow-desktop`）

@@ -57,7 +57,7 @@ def get_panel_port() -> int:
     """返回固定端口 18765。"""
     return 18765
 
-_VERSION = "2.9.04"
+_VERSION = "2.9.14"
 
 
 # 面板最后活跃时间（monotonic），用于心跳超时检测

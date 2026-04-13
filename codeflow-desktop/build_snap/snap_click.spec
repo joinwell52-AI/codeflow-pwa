@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['D:\\BridgeFlow\\codeflow-desktop\\snap_click.py'],
+    ['D:\\Bridgeflow\\codeflow-desktop\\snap_click.py'],
     pathex=[],
     binaries=[],
     datas=[],

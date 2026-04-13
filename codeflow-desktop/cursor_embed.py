@@ -45,7 +45,8 @@ def try_launch_cursor(exe: Path, project_dir: Path | None = None) -> tuple[bool,
                 subprocess.Popen(["open", "-a", "Cursor"])
         else:
             # 传入项目目录，让 Cursor 直接打开对应工作区
-            cmd = [str(exe)]
+            # --remote-debugging-port=9222 让 Playwright 可以通过 CDP 协议连接
+            cmd = [str(exe), "--remote-debugging-port=9222"]
             if project_dir and project_dir.is_dir():
                 cmd.append(str(project_dir))
             subprocess.Popen(cmd, cwd=str(exe.parent), shell=False)
@@ -284,7 +285,7 @@ def _palette_hotkey() -> tuple[str, ...]:
 
 
 def _embed_palette_command() -> str:
-    return (os.environ.get("CODEFLOW_EMBED_PALETTE_TEXT") or "").strip() or "Simple Browser"
+    return (os.environ.get("CODEFLOW_EMBED_PALETTE_TEXT") or "").strip() or "Simple Browser: Show"
 
 
 def _do_embed(hwnd: int, url: str, wait_s: float = 0.28) -> tuple[bool, str]:
@@ -308,7 +309,6 @@ def _do_embed(hwnd: int, url: str, wait_s: float = 0.28) -> tuple[bool, str]:
     pyautogui.FAILSAFE = False  # 嵌入过程中移动鼠标到角落不应中断
     pyautogui.PAUSE = 0.05
 
-    cmd = _embed_palette_command()
     url_s = (url or "").strip()
     if not url_s:
         return False, "url 为空"
@@ -323,41 +323,27 @@ def _do_embed(hwnd: int, url: str, wait_s: float = 0.28) -> tuple[bool, str]:
     try:
         # Step 1: 最大化并置前台
         _ensure_maximized_and_focus(hwnd)
+        time.sleep(0.6)  # 等焦点彻底切到 Cursor
 
-        # Step 2: 打开命令面板
-        pyautogui.hotkey(*_palette_hotkey())
-        time.sleep(wait_s + 0.2)
+        # Step 2: 用 Ctrl+Shift+B 直接打开内嵌浏览器（Open Browser 命令）
+        pyautogui.hotkey("ctrl", "shift", "b")
+        time.sleep(wait_s + 1.5)  # 等待 URL 输入框完全弹出
 
-        # Step 3: 清空并输入命令
-        pyautogui.hotkey("ctrl", "a")
-        time.sleep(0.06)
-        if pyperclip:
-            pyperclip.copy(cmd)
-            time.sleep(0.05)
-            pyautogui.hotkey("ctrl", "v")
-        else:
-            pyautogui.write(cmd, interval=0.02)
-        time.sleep(0.15)
-        pyautogui.press("enter")
-        time.sleep(wait_s + 0.6)
-
-        # Step 4: 输入 URL
-        pyautogui.hotkey("ctrl", "a")
-        time.sleep(0.06)
+        # Step 3: 地址栏焦点已在，直接粘贴 URL，回车
         if pyperclip:
             pyperclip.copy(url_s)
-            time.sleep(0.05)
+            time.sleep(0.1)
             pyautogui.hotkey("ctrl", "v")
         else:
             pyautogui.write(url_s, interval=0.012)
-        time.sleep(0.1)
+        time.sleep(0.2)
         pyautogui.press("enter")
         time.sleep(0.8)
 
-        # Step 5: 嵌入完成后强制最大化（解除贴靠+全屏）
+        # Step 4: 嵌入完成后强制最大化（解除贴靠+全屏）
         _force_maximize(hwnd)
 
-        logger.info("[Cursor 嵌入] 已发送: %r → %r", cmd, url_s[:80])
+        logger.info("[Cursor 嵌入] Ctrl+Shift+B → %r", url_s[:80])
         return True, "ok"
     except Exception as e:
         return False, str(e)
@@ -396,6 +382,7 @@ def embed_panel_after_launch(
     hwnd = _find_cursor_main_hwnd()
     if hwnd:
         logger.info("[Cursor 嵌入] Cursor 已运行，直接嵌入 hwnd=%s", hwnd)
+        time.sleep(1.5)  # Cursor 已在运行时，等焦点稳定再嵌入
         return _do_embed(hwnd, url, wait_s=wait_s)
 
     # 情况2：Cursor 未运行

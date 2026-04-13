@@ -345,7 +345,7 @@ a:hover{text-decoration:underline}
   <div class="sec" id="secPreflight">
     <div class="sec-head" onclick="toggle('pfBody')"><span class="sec-title" data-i18n="sec_preflight">预检状态</span><span class="sec-badge" id="pfBadge">--</span><span class="sec-toggle" id="pfToggle">&#9660;</span></div>
     <div class="sec-body" id="pfBody" style="max-height:4000px;overflow:visible">
-      <div id="pfProbe" style="font-size:12px;color:var(--muted);padding:0 4px 8px;display:none"></div>
+      <div id="pfProbe" style="font-size:12px;color:#cbd5e1;padding:0 4px 8px;display:none"></div>
       <div id="pfList"><div class="empty" data-i18n="empty_loading">加载中...</div></div>
       <div id="pfAgentMap" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(15,23,42,.5);border-radius:8px;border:1px solid var(--border);overflow-x:auto"></div>
 
@@ -1631,6 +1631,7 @@ function runTestAll(){
   const tbody=$('switchTestBody');
   if(!btn||!tbody) return;
   btn.disabled=true; btn.textContent='测试中…';
+  btn.style.background='#ca8a04'; btn.style.borderColor='#ca8a04'; btn.style.color='#fff';
   if(status) status.textContent='';
   tbody.innerHTML='';
 
@@ -1638,6 +1639,7 @@ function runTestAll(){
     .then(r=>r.json()).then(d=>{
       if(!d.ok){
         btn.disabled=false; btn.textContent='▶ 全部实测';
+        btn.style.background=''; btn.style.borderColor=''; btn.style.color='';
         tbody.innerHTML='<tr><td colspan="4" style="padding:10px;color:var(--red)">'+esc(d.message||'失败')+'</td></tr>';
         return;
       }
@@ -1661,6 +1663,7 @@ function _pollTestAll(){
 
       if(d.error){
         btn.disabled=false; btn.textContent='▶ 全部实测';
+        btn.style.background=''; btn.style.borderColor=''; btn.style.color='';
         tbody.innerHTML='<tr><td colspan="3" style="padding:10px;color:var(--red)">'+esc(d.error)+'</td></tr>';
         return;
       }
@@ -1705,7 +1708,11 @@ function _pollTestAll(){
         btn.disabled=false; btn.textContent='▶ 全部实测';
         const pass = steps.filter(s=>s.status==='成功').length;
         const total = steps.filter(s=>s.status!=='扫描中'&&s.status!=='点击中').length;
-        if(status){ status.textContent=pass+'/'+total+' 通过'; status.style.color=pass===total&&total>0?'var(--green)':'var(--red)'; }
+        const allPass = pass===total && total>0;
+        btn.style.background = allPass ? 'var(--green)' : '';
+        btn.style.borderColor = allPass ? 'var(--green)' : '';
+        btn.style.color = allPass ? '#fff' : '';
+        if(status){ status.textContent=pass+'/'+total+' 通过'; status.style.color=allPass?'var(--green)':'var(--red)'; }
       }
     }).catch(()=>{ setTimeout(_pollTestAll, 1000); });
 }
