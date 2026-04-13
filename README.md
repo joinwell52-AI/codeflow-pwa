@@ -53,8 +53,13 @@
 <details>
 <summary><b>PWA Mobile — English UI / 手机端 PWA 英文界面</b></summary>
 <p align="center">
-  <img src="docs/images/pwa-en-workspace.png" width="400" alt="PWA: Workspace (English)" />
-  <img src="docs/images/pwa-en-settings.png" width="400" alt="PWA: Settings (English)" />
+  <img src="docs/images/pwa-0.jpg" width="220" alt="PWA: Workspace — Stats, Team, Tasks" />
+  <img src="docs/images/pwa-1.jpg" width="220" alt="PWA: Send Task" />
+  <img src="docs/images/pwa-2.jpg" width="220" alt="PWA: Task Detail & MD Source" />
+</p>
+<p align="center">
+  <img src="docs/images/pwa-3.jpg" width="220" alt="PWA: My — Device Binding" />
+  <img src="docs/images/pwa-4.jpg" width="220" alt="PWA: Config, First-Time Steps, Patrol" />
 </p>
 </details>
 
