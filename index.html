@@ -1142,8 +1142,10 @@
           <div>${m.body || m.summary || ""}</div>
         </div>
       `).join("") || `<div class="muted">${currentLang === "en" ? "No records" : "暂无记录"}</div>`;
-      document.getElementById("fpMarkdown").textContent = detailMarkdownContent(item);
+      const mdContent = detailMarkdownContent(item);
+      document.getElementById("fpMarkdown").textContent = mdContent || (currentLang === "en" ? "(No markdown content)" : "（暂无 MD 内容）");
       document.getElementById("fpMarkdownFile").textContent = currentLang === "en" ? `Source: ${item.filename || "--"}` : `关联文件：${item.filename || "--"}`;
+      appendLog(`MD原文: len=${mdContent.length}, keys=${Object.keys(item).filter(k=>k.includes("mark")||k==="body"||k==="raw_markdown").join(",")}`);
       fpViewMode = "record";
       syncFpTabs();
       taskDetailPageEl.classList.add("open");
@@ -1850,14 +1852,14 @@
     }
 
     function normalizeRole(value) {
-      const raw = String(value || "").toUpperCase();
-      if (!raw) return "OTHER";
+      const raw = String(value || "").toUpperCase().trim();
+      if (!raw || raw === "SYSTEM") return "ADMIN";
       if (raw.includes("ADMIN")) return "ADMIN";
       if (raw.includes("PM")) return "PM";
       if (raw.includes("DEV")) return "DEV";
       if (raw.includes("OPS") || raw.includes("OA")) return "OPS";
       if (raw.includes("QA") || raw.includes("TEST")) return "QA";
-      return raw.replace(/[^A-Z]/g, "") || "OTHER";
+      return raw.replace(/[^A-Z0-9]/g, "") || "ADMIN";
     }
 
     function inferTaskType(item) {
@@ -2236,6 +2238,12 @@
       }
       populateDetailFields(detail, { meta: detailMetaEl, body: detailBodyEl, messages: detailMessagesEl, taskId: detailTaskIdEl, fileName: detailFileNameEl, priority: detailPriorityValueEl, type: detailTypeValueEl, sender: detailSenderValueEl, recipient: detailRecipientValueEl, time: detailTimeValueEl, status: detailStatusValueEl, flow: detailFlowValueEl, markdown: detailMarkdownEl, markdownFile: detailMarkdownFileEl });
       populateDetailFields(detail, { meta: roleConversationMetaEl, body: roleConversationBodyEl, messages: roleConversationMessagesEl, taskId: roleDetailTaskIdEl, fileName: roleDetailFileNameEl, priority: roleDetailPriorityValueEl, type: roleDetailTypeValueEl, sender: roleDetailSenderValueEl, recipient: roleDetailRecipientValueEl, time: roleDetailTimeValueEl, status: roleDetailStatusValueEl, flow: roleDetailFlowValueEl, markdown: roleMarkdownEl, markdownFile: roleMarkdownFileEl });
+      // 同步更新全屏详情页的 MD 原文
+      const fpMd = document.getElementById("fpMarkdown");
+      if (fpMd) {
+        const mc = detailMarkdownContent(detail);
+        if (mc) fpMd.textContent = mc;
+      }
       if (detail.thread_key) { threadKeyEl.value = detail.thread_key; localStorage.setItem("codeflow_last_thread", detail.thread_key); }
       updateMeta();
       updateCurrentTaskSummary(detail);
