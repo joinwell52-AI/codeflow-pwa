@@ -3,6 +3,14 @@
 > The tool that turns [the Cursor AI team methodology](https://joinwell52-ai.github.io/joinwell52/) into a real product.
 > Just download, run, and command your AI team from your phone.
 
+<p align="center">
+  <img src="docs/images/product-1.png" width="260" alt="CodeFlow — Commands Flow" />
+  &nbsp;
+  <img src="docs/images/product-2.png" width="260" alt="CodeFlow — Collaboration Hub" />
+  &nbsp;
+  <img src="docs/images/product.png" width="260" alt="CodeFlow — AI-powered" />
+</p>
+
 ---
 
 ## What is CodeFlow?
@@ -104,6 +112,59 @@ The Desktop monitors Cursor IDE and fixes common problems automatically:
 | WebSocket disconnected | Auto-reconnect |
 
 You don't need to babysit the agents. Go grab that coffee.
+
+---
+
+## Screenshots
+
+### Desktop Panel (PC)
+
+The control center that runs on your PC:
+
+<p align="center">
+  <img src="docs/images/term-0.png" width="600" alt="Desktop: Header with status lights" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-0.png" width="400" alt="Desktop: Preflight Check & Agent Guide" />
+  <img src="docs/images/codeflow-1.png" width="400" alt="Desktop: Agent Mapping & OCR" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-3.png" width="400" alt="Desktop: Task Pipeline & File Browser" />
+  <img src="docs/images/codeflow-2.png" width="400" alt="Desktop: Patrol Trace Log" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-4.png" width="400" alt="Desktop: Skills Market & QR Bind" />
+  <img src="docs/images/codeflow-5.png" width="400" alt="Desktop: Real-time Log & Config" />
+</p>
+
+### Cursor IDE — AI Agents at Work
+
+What it looks like when AI agents are working in Cursor:
+
+<p align="center">
+  <img src="docs/images/cursor-0.png" width="720" alt="Cursor: Full workspace — Desktop Panel + Agent chat" />
+</p>
+<p align="center">
+  <img src="docs/images/cursor-1.png" width="720" alt="Cursor: Agent patrol with panel side by side" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-6.png" width="400" alt="Cursor: DEV agent conversation — reading tasks, writing code" />
+  <img src="docs/images/term-1.png" width="200" alt="Cursor: Agent sidebar — PM, DEV, QA, OPS pinned" />
+</p>
+
+### PWA Mobile
+
+Command your team from your phone:
+
+<p align="center">
+  <img src="docs/images/pwa-0.jpg" width="200" alt="PWA: Workspace — stats, team, task list" />
+  <img src="docs/images/pwa-1.jpg" width="200" alt="PWA: Send Task to a role" />
+  <img src="docs/images/pwa-2.jpg" width="200" alt="PWA: Task Detail with MD Source" />
+</p>
+<p align="center">
+  <img src="docs/images/pwa-3.jpg" width="200" alt="PWA: My — device binding, status" />
+  <img src="docs/images/pwa-4.jpg" width="200" alt="PWA: Config, first-time steps, patrol" />
+</p>
 
 ---
 

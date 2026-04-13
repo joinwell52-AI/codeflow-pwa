@@ -3,6 +3,14 @@
 > 把 [Cursor AI 自动化团队方法论](https://joinwell52-ai.github.io/joinwell52/) 变成了一个真正能用的产品。
 > 下载、运行，然后用手机指挥你的 AI 团队。
 
+<p align="center">
+  <img src="docs/images/product-1.png" width="260" alt="码流 — 指令成流，智能随行" />
+  &nbsp;
+  <img src="docs/images/product-2.png" width="260" alt="码流 — AI 驱动协作中枢" />
+  &nbsp;
+  <img src="docs/images/product.png" width="260" alt="码流 — 手机驭 AI" />
+</p>
+
 ---
 
 ## 码流是什么？
@@ -104,6 +112,59 @@
 | WebSocket 断连 | 自动重连 |
 
 不用盯着 Agent 干活。去喝咖啡吧。
+
+---
+
+## 产品截图
+
+### PC 桌面端控制面板
+
+在你的电脑上运行的控制中心：
+
+<p align="center">
+  <img src="docs/images/term-0.png" width="600" alt="桌面端：顶栏状态灯" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-0.png" width="400" alt="桌面端：环境预检 + Agent 引导" />
+  <img src="docs/images/codeflow-1.png" width="400" alt="桌面端：Agent 映射 + OCR 识别" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-3.png" width="400" alt="桌面端：任务流水线 + 文件浏览器" />
+  <img src="docs/images/codeflow-2.png" width="400" alt="桌面端：巡检轨迹日志" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-4.png" width="400" alt="桌面端：技能市场 + 扫码绑定" />
+  <img src="docs/images/codeflow-5.png" width="400" alt="桌面端：实时日志 + 配置" />
+</p>
+
+### Cursor IDE — AI Agent 工作中
+
+AI 角色在 Cursor 里工作时的样子：
+
+<p align="center">
+  <img src="docs/images/cursor-0.png" width="720" alt="Cursor：全屏 — 桌面面板 + Agent 对话" />
+</p>
+<p align="center">
+  <img src="docs/images/cursor-1.png" width="720" alt="Cursor：Agent 巡检 + 面板并排" />
+</p>
+<p align="center">
+  <img src="docs/images/codeflow-6.png" width="400" alt="Cursor：DEV Agent 对话 — 读取任务、写代码" />
+  <img src="docs/images/term-1.png" width="200" alt="Cursor：Agent 侧栏 — PM、DEV、QA、OPS 置顶" />
+</p>
+
+### 手机端 PWA
+
+用手机指挥你的团队：
+
+<p align="center">
+  <img src="docs/images/pwa-0.jpg" width="200" alt="PWA：工作台 — 统计、团队、任务列表" />
+  <img src="docs/images/pwa-1.jpg" width="200" alt="PWA：发送任务" />
+  <img src="docs/images/pwa-2.jpg" width="200" alt="PWA：任务详情 + MD 原文" />
+</p>
+<p align="center">
+  <img src="docs/images/pwa-3.jpg" width="200" alt="PWA：我的 — 设备绑定" />
+  <img src="docs/images/pwa-4.jpg" width="200" alt="PWA：配置、首次使用、巡检控制" />
+</p>
 
 ---
 

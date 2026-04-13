@@ -24,9 +24,11 @@ We published the methodology — [**How to Build an Automated AI Development Tea
 **码流（CodeFlow）** 就是这套方法论的产品化落地。它把"文件名即协议"的理念变成了完整的人机协作系统：手机主控台 + PC 执行机 + 多角色自动调度。
 
 <p align="center">
-  <img src="docs/images/product-1.png" width="360" alt="CodeFlow — Commands Flow, Intelligence Follows" />
-  &nbsp;&nbsp;
-  <img src="docs/images/product-2.png" width="360" alt="CodeFlow — AI-powered Collaboration Hub" />
+  <img src="docs/images/product-1.png" width="260" alt="CodeFlow — Commands Flow, Intelligence Follows" />
+  &nbsp;
+  <img src="docs/images/product-2.png" width="260" alt="CodeFlow — AI-powered Collaboration Hub" />
+  &nbsp;
+  <img src="docs/images/product.png" width="260" alt="CodeFlow — Command AI from Mobile" />
 </p>
 
 ---
