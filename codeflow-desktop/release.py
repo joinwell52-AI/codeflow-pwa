@@ -26,8 +26,12 @@ CHANGELOG    = "../CHANGELOG.md"   # 相对于脚本所在目录
 
 
 # ── 工具函数 ─────────────────────────────────────────────────────────
+GH_CLI = r"C:\Program Files\GitHub CLI\gh.exe"
+
+
 def get_github_token() -> str:
-    result = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True)
+    gh = GH_CLI if os.path.isfile(GH_CLI) else "gh"
+    result = subprocess.run([gh, "auth", "token"], capture_output=True, text=True)
     token = result.stdout.strip()
     if not token:
         print("错误：gh CLI 未登录，请先运行 gh auth login")

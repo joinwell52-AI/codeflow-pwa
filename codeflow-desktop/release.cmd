@@ -1,22 +1,34 @@
 @echo off
-:: CodeFlow Desktop 一键发版脚本
-:: 用法：release.cmd <版本号>
-:: 示例：release.cmd 2.9.22
+:: ══════════════════════════════════════════════════════════════
+::  CodeFlow Desktop 一键发版脚本（一条龙）
 ::
-:: 效果：
-::   1. 检查 CHANGELOG 是否有对应版本说明
-::   2. 打包 EXE
-::   3. git commit + tag + push（触发代码同步）
-::   4. 用 gh CLI 创建 GitHub Release 并上传 EXE
-::      （若 gh 未登录，先执行 gh auth login）
+::  用法：release.cmd <版本号>
+::  示例：release.cmd 2.10.0
+::
+::  执行步骤：
+::    [1/8] 前置检查（VERSION / CHANGELOG / gh / gitee token）
+::    [2/8] 打包 EXE（PyInstaller）
+::    [3/8] 提取版本说明
+::    [4/8] git commit + tag
+::    [5/8] git push origin（GitHub 主仓）
+::    [6/8] GitHub Release + 上传 EXE
+::    [7/8] Gitee 代码同步 + Release + 上传 EXE
+::    [8/8] backup 仓库同步
+::
+::  前置条件：
+::    - gh CLI 已安装并登录（gh auth login）
+::    - .gitee_token 文件存在（或 GITEE_TOKEN 环境变量）
+::    - git remote: origin / gitee / backup 已配置
+:: ══════════════════════════════════════════════════════════════
 
 cd /d "%~dp0"
 setlocal enabledelayedexpansion
 
+:: ── 参数校验 ─────────────────────────────────────────────────
 if "%~1"=="" (
     echo.
-    echo 用法: release.cmd ^<版本号^>
-    echo 示例: release.cmd 2.9.22
+    echo  用法: release.cmd ^<版本号^>
+    echo  示例: release.cmd 2.10.0
     echo.
     exit /b 1
 )
@@ -25,99 +37,126 @@ set VERSION=%~1
 set TAG=v%VERSION%
 set REPO=joinwell52-AI/codeflow-pwa
 set EXE=dist\CodeFlow-Desktop.exe
+set GH_CLI="C:\Program Files\GitHub CLI\gh.exe"
 
 echo.
-echo ╔══════════════════════════════════════════╗
-echo   CodeFlow Desktop 发版  %TAG%
-echo ╚══════════════════════════════════════════╝
+echo  ╔════════════════════════════════════════════════════╗
+echo  ║  CodeFlow Desktop 发版  %TAG%                     ║
+echo  ╚════════════════════════════════════════════════════╝
 echo.
 
-:: ── 1. 检查 CHANGELOG ─────────────────────────────────────────────
-echo [1/5] 检查 CHANGELOG...
-findstr /C:"## [%VERSION%]" ..\CHANGELOG.md
+:: ══════════════════════════════════════════════════════════════
+::  [1/8] 前置检查
+:: ══════════════════════════════════════════════════════════════
+echo [1/8] 前置检查...
+
+:: 检查 main.py 中的版本号是否匹配
+findstr /C:"VERSION = \"%VERSION%\"" main.py >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo [错误] CHANGELOG.md 中未找到版本 [%VERSION%] 的条目！
-    echo 请先在 CHANGELOG.md 中补充本版发版说明，格式：
-    echo   ## [%VERSION%] - YYYY-MM-DD
+    echo  [错误] main.py 中的 VERSION 不是 "%VERSION%"
+    echo  请先修改 main.py: VERSION = "%VERSION%"
     echo.
     exit /b 1
 )
-echo [1/5] CHANGELOG 检查通过 ✓
+echo   √ main.py VERSION = "%VERSION%"
 
-:: ── 2. 打包 ───────────────────────────────────────────────────────
+:: 检查 CHANGELOG
+findstr /C:"## [%VERSION%]" ..\CHANGELOG.md >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo  [错误] CHANGELOG.md 中未找到 [%VERSION%] 条目！
+    echo  请先补充：## [%VERSION%] - YYYY-MM-DD
+    echo.
+    exit /b 1
+)
+echo   √ CHANGELOG.md 包含 [%VERSION%]
+
+:: 检查 gh CLI
+if not exist %GH_CLI% (
+    echo.
+    echo  [错误] gh CLI 未找到: %GH_CLI%
+    echo  请安装 GitHub CLI: https://cli.github.com/
+    echo.
+    exit /b 1
+)
+echo   √ gh CLI 已就绪
+
+:: 检查 Gitee token
+set GITEE_TOKEN_FILE=.gitee_token
+if exist "%GITEE_TOKEN_FILE%" (
+    set /p GITEE_TK=<"%GITEE_TOKEN_FILE%"
+    echo   √ Gitee token 已就绪
+) else (
+    echo   ! Gitee token 未找到，Gitee 发布将跳过
+    set GITEE_TK=
+)
+
+echo [1/8] 前置检查通过 ✓
 echo.
-echo [2/5] 打包 EXE...
+
+:: ══════════════════════════════════════════════════════════════
+::  [2/8] 打包 EXE
+:: ══════════════════════════════════════════════════════════════
+echo [2/8] 打包 EXE...
 call pack.cmd
-:: pack.cmd 因 snap_click 编码问题会返回 1，但 EXE 实际已生成，检查文件
 if not exist "%EXE%" (
-    echo [错误] 打包失败，%EXE% 不存在！
+    echo  [错误] 打包失败，%EXE% 不存在！
     exit /b 1
 )
-echo [2/5] 打包完成 ✓  (%EXE%)
-
-:: ── 3. 提取 CHANGELOG 当前版本说明（写入临时文件）────────────────
+for %%A in (%EXE%) do set EXE_SIZE=%%~zA
+set /a EXE_MB=%EXE_SIZE% / 1048576
+echo [2/8] 打包完成 ✓  (%EXE%, ~%EXE_MB% MB)
 echo.
-echo [3/5] 提取版本说明...
-py -3.12 -c "
-import re, sys
-ver = '%VERSION%'
-text = open('../CHANGELOG.md', encoding='utf-8').read()
-m = re.search(r'## \[' + re.escape(ver) + r'\].*?\n(.*?)(?=\n## \[|\Z)', text, re.DOTALL)
-body = m.group(1).strip() if m else ''
-header = '''## 码流（CodeFlow）Desktop v%VERSION%
 
-> 下载 `CodeFlow-Desktop.exe`，双击运行，无需安装。
-> 已安装旧版的用户程序会**自动检测并提示更新**，无需手动下载。
-
----
-
-'''
-footer = '''
-
----
-
-### 系统要求
-- Windows 10 / 11（64 位）
-- 已安装 [Cursor IDE](https://www.cursor.com/)
-
-### 快速开始
-1. 双击 `CodeFlow-Desktop.exe` 启动
-2. 按引导选择项目目录和团队模板
-3. 手机打开 [码流 PWA](https://joinwell52-ai.github.io/codeflow-pwa/) 扫码绑定
-
-### 完整更新日志
-见 [CHANGELOG.md](https://github.com/joinwell52-AI/codeflow-pwa/blob/main/CHANGELOG.md)
-'''
-open('_release_notes.md', 'w', encoding='utf-8').write(header + body + footer)
-print('OK')
-"
+:: ══════════════════════════════════════════════════════════════
+::  [3/8] 提取版本说明
+:: ══════════════════════════════════════════════════════════════
+echo [3/8] 提取版本说明...
+py -3.12 -c "import re;ver='%VERSION%';text=open('../CHANGELOG.md',encoding='utf-8').read();m=re.search(r'## \['+re.escape(ver)+r'\].*?\n(.*?)(?=\n## \[|\Z)',text,re.DOTALL);body=m.group(1).strip() if m else '';header='## CodeFlow Desktop v%VERSION%\n\n> 下载 `CodeFlow-Desktop.exe`，双击运行，无需安装。\n> 已安装旧版会**自动检测并提示更新**。\n\n---\n\n';footer='\n\n---\n\n### 系统要求\n- Windows 10 / 11（64 位）\n- [Cursor IDE](https://www.cursor.com/)\n\n### 快速开始\n1. 双击 `CodeFlow-Desktop.exe` 启动\n2. 选择项目目录和团队模板\n3. 手机打开 [码流 PWA](https://joinwell52-ai.github.io/codeflow-pwa/) 扫码绑定\n\n### 完整更新日志\n见 [CHANGELOG.md](https://github.com/joinwell52-AI/codeflow-pwa/blob/main/CHANGELOG.md)\n';open('_release_notes.md','w',encoding='utf-8').write(header+body+footer);print('OK')"
 if errorlevel 1 (
-    echo [错误] 提取版本说明失败
+    echo  [错误] 提取版本说明失败
     exit /b 1
 )
-echo [3/5] 版本说明已生成 ✓
-
-:: ── 4. git commit + tag + push ────────────────────────────────────
+echo [3/8] 版本说明已生成 ✓
 echo.
-echo [4/5] 提交代码并打 tag %TAG%...
+
+:: ══════════════════════════════════════════════════════════════
+::  [4/8] git commit + tag
+:: ══════════════════════════════════════════════════════════════
+echo [4/8] 提交代码并打 tag %TAG%...
 cd /d "%~dp0\.."
 git add -A
 git commit -m "release: CodeFlow Desktop %TAG%"
-git tag -a %TAG% -m "CodeFlow Desktop %TAG%"
+if errorlevel 1 (
+    echo   提示：无新改动需要提交，继续...
+)
+git tag -a %TAG% -m "CodeFlow Desktop %TAG%" 2>nul
+if errorlevel 1 (
+    echo   提示：tag %TAG% 已存在，继续...
+)
+echo [4/8] 代码已提交 ✓
+echo.
+
+:: ══════════════════════════════════════════════════════════════
+::  [5/8] git push origin（GitHub 主仓）
+:: ══════════════════════════════════════════════════════════════
+echo [5/8] 推送到 GitHub (origin)...
 git push origin main
 git push origin %TAG%
 if errorlevel 1 (
-    echo [警告] git push 可能失败，请检查网络和权限
+    echo  [警告] origin push 可能失败，请检查网络
 )
-echo [4/5] 代码已推送 ✓
-
-:: ── 5. 创建 GitHub Release 并上传 EXE ────────────────────────────
+echo [5/8] GitHub 推送完成 ✓
 echo.
-echo [5/5] 发布 GitHub Release...
+
+:: ══════════════════════════════════════════════════════════════
+::  [6/8] GitHub Release + 上传 EXE
+:: ══════════════════════════════════════════════════════════════
+echo [6/8] 发布 GitHub Release...
 cd /d "%~dp0"
 
-gh release create %TAG% ^
+%GH_CLI% release create %TAG% ^
     "%EXE%#CodeFlow-Desktop.exe" ^
     --repo %REPO% ^
     --title "CodeFlow Desktop %TAG%" ^
@@ -125,20 +164,62 @@ gh release create %TAG% ^
 
 if errorlevel 1 (
     echo.
-    echo [错误] GitHub Release 创建失败！
-    echo 可能原因：
-    echo   1. gh 未登录 → 先运行: gh auth login
-    echo   2. tag 已存在 → git tag -d %TAG% 删除后重试
-    echo   3. 网络问题
-    del /q "_release_notes.md" 2>nul
-    exit /b 1
+    echo  [警告] GitHub Release 创建失败（可能已存在）
+    echo  手动检查: https://github.com/%REPO%/releases/tag/%TAG%
+)
+echo [6/8] GitHub Release 完成 ✓
+echo.
+
+:: ══════════════════════════════════════════════════════════════
+::  [7/8] Gitee 同步 + Release
+:: ══════════════════════════════════════════════════════════════
+echo [7/8] 同步到 Gitee (国内镜像)...
+cd /d "%~dp0\.."
+
+:: 推送代码和 tag
+git push gitee main --tags 2>nul
+if errorlevel 1 (
+    echo   [警告] gitee push 部分失败（可能有已存在的 tag）
 )
 
+:: 创建 Gitee Release + 上传 EXE
+cd /d "%~dp0"
+if not "%GITEE_TK%"=="" (
+    echo   创建 Gitee Release 并上传 EXE...
+    py -3.12 release.py %VERSION% %EXE%
+    if errorlevel 1 (
+        echo   [警告] Gitee Release 发布失败，可手动操作
+    )
+) else (
+    echo   跳过 Gitee Release（无 token）
+)
+echo [7/8] Gitee 同步完成 ✓
+echo.
+
+:: ══════════════════════════════════════════════════════════════
+::  [8/8] backup 仓库同步
+:: ══════════════════════════════════════════════════════════════
+echo [8/8] 同步到 backup 仓库...
+cd /d "%~dp0\.."
+git push backup main --tags 2>nul
+if errorlevel 1 (
+    echo   [警告] backup push 部分失败
+)
+echo [8/8] backup 同步完成 ✓
+echo.
+
+:: ══════════════════════════════════════════════════════════════
+::  清理 + 完成
+:: ══════════════════════════════════════════════════════════════
+cd /d "%~dp0"
 del /q "_release_notes.md" 2>nul
 
 echo.
-echo ╔══════════════════════════════════════════╗
-echo   发版成功！ %TAG%
-echo   https://github.com/%REPO%/releases/tag/%TAG%
-echo ╚══════════════════════════════════════════╝
+echo  ╔════════════════════════════════════════════════════╗
+echo  ║  发版完成！ %TAG%                                 ║
+echo  ╠════════════════════════════════════════════════════╣
+echo  ║  GitHub:  github.com/%REPO%/releases/tag/%TAG%    ║
+echo  ║  Gitee:   gitee.com/joinwell52/cursor-ai/releases ║
+echo  ║  Backup:  github.com/joinwell52-AI/codehouse      ║
+echo  ╚════════════════════════════════════════════════════╝
 echo.
