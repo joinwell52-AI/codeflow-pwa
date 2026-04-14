@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeFlow — Command AI Teams from Your Phone | 码流 — 用手机指挥 AI 团队</title>
+<meta name="description" content="CodeFlow: AI-powered human-AI collaboration hub. Desktop EXE + Mobile PWA + MCP Plugin. Command your AI team from phone, review from anywhere.">
+<meta name="keywords" content="CodeFlow, Cursor, AI agent, multi-agent, developer tools, PWA, desktop app, human-AI collaboration">
+<meta property="og:title" content="CodeFlow — Command AI Teams from Your Phone">
+<meta property="og:description" content="Desktop EXE + Mobile PWA + MCP Plugin. One person, one AI team, shipping real products.">
+<meta property="og:image" content="https://joinwell52-ai.github.io/codeflow-pwa/docs/images/product-1.png">
+<meta property="og:url" content="https://joinwell52-ai.github.io/codeflow-pwa/promotion/">
+<link rel="icon" href="../logo-192.png" type="image/png">
+<link rel="canonical" href="https://joinwell52-ai.github.io/codeflow-pwa/promotion/">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:linear-gradient(135deg,#0d1117 0%,#161b22 50%,#0d1117 100%);color:#e6edf3;min-height:100vh}
+.container{max-width:1000px;margin:0 auto;padding:40px 20px}
+a{color:#58a6ff;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.hero{text-align:center;padding:40px 0 30px}
+.hero-banner{width:100%;max-width:800px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 40px rgba(88,166,255,0.15)}
+.hero h1{font-size:2.6em;font-weight:700;background:linear-gradient(135deg,#58a6ff,#bc8cff,#f778ba);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.3;margin-bottom:6px}
+.hero h2{font-size:1.3em;font-weight:400;color:#8b949e;margin-bottom:24px}
+.hero .tagline{font-size:1.1em;color:#8b949e;font-style:italic;margin-bottom:24px;line-height:1.6}
+
+.badges{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:30px}
+.badges img{height:22px}
+
+.stats-row{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:40px}
+.stat-card{background:rgba(56,139,253,0.08);border:1px solid rgba(56,139,253,0.25);border-radius:12px;padding:16px 28px;text-align:center}
+.stat-card .num{font-size:1.8em;font-weight:700;color:#58a6ff}
+.stat-card .label{font-size:0.85em;color:#8b949e;margin-top:4px}
+
+.cta-row{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:50px}
+.cta-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:12px;font-size:1.05em;font-weight:600;text-decoration:none!important;transition:all .3s}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,0.3)}
+.cta-desktop{background:linear-gradient(135deg,#238636,#2ea043);color:#fff}
+.cta-pwa{background:linear-gradient(135deg,#1f6feb,#388bfd);color:#fff}
+.cta-github{background:rgba(110,118,129,0.2);border:1px solid #30363d;color:#e6edf3}
+
+.section{margin-bottom:50px}
+.section-title{text-align:center;font-size:1.5em;font-weight:700;color:#e6edf3;margin-bottom:8px}
+.section-sub{text-align:center;font-size:1em;color:#8b949e;margin-bottom:28px}
+
+.arch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.arch-card{background:rgba(22,27,34,0.8);border:1px solid #30363d;border-radius:14px;padding:28px 20px;text-align:center;transition:all .3s}
+.arch-card:hover{border-color:#58a6ff;transform:translateY(-4px)}
+.arch-card .icon{font-size:2.4em;margin-bottom:12px}
+.arch-card h3{font-size:1.1em;margin-bottom:6px;color:#e6edf3}
+.arch-card p{font-size:0.88em;color:#8b949e;line-height:1.5}
+
+.feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.feature-item{background:rgba(22,27,34,0.6);border:1px solid #30363d;border-radius:12px;padding:20px 24px;transition:border-color .3s}
+.feature-item:hover{border-color:#bc8cff}
+.feature-item h4{font-size:1em;color:#bc8cff;margin-bottom:6px}
+.feature-item p{font-size:0.88em;color:#8b949e;line-height:1.5}
+
+.screenshots{text-align:center}
+.screenshots .tabs{display:flex;justify-content:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.screenshots .tab{padding:8px 20px;border:1px solid #30363d;border-radius:8px;color:#8b949e;cursor:pointer;transition:all .2s;background:transparent;font-size:0.95em}
+.screenshots .tab:hover,.screenshots .tab.active{border-color:#58a6ff;color:#58a6ff;background:rgba(56,139,253,0.08)}
+.screenshots .panel{display:none}
+.screenshots .panel.active{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.screenshots .panel img{border-radius:10px;border:1px solid #30363d;cursor:pointer;transition:transform .3s}
+.screenshots .panel img:hover{transform:scale(1.03)}
+.screenshots .panel img.desktop-img{height:240px}
+.screenshots .panel img.cursor-img{height:280px}
+.screenshots .panel img.pwa-img{height:320px}
+
+.innovation{background:rgba(56,139,253,0.05);border:1px solid rgba(56,139,253,0.2);border-radius:16px;padding:36px;text-align:center;margin-bottom:50px}
+.innovation h3{font-size:1.3em;color:#58a6ff;margin-bottom:16px}
+.innovation .filename{font-family:'SFMono-Regular',Consolas,monospace;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:16px 24px;font-size:1em;color:#f0883e;display:inline-block;margin-bottom:16px;letter-spacing:.5px}
+.innovation p{color:#8b949e;font-size:1em}
+.innovation strong{color:#e6edf3}
+
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.team-card{background:rgba(22,27,34,0.8);border:1px solid #30363d;border-radius:12px;padding:20px;text-align:center;transition:all .3s}
+.team-card:hover{border-color:#f0883e}
+.team-card .tname{font-size:1.05em;font-weight:600;color:#f0883e;margin-bottom:4px}
+.team-card .troles{font-size:0.85em;color:#8b949e}
+
+.flow-section{background:rgba(22,27,34,0.6);border:1px solid #30363d;border-radius:16px;padding:36px;margin-bottom:50px}
+.flow-steps{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.flow-step{text-align:center;flex:1;min-width:80px}
+.flow-step .num{width:36px;height:36px;background:#238636;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.9em;margin-bottom:8px}
+.flow-step p{font-size:.78em;color:#8b949e}
+.flow-arrow{color:#30363d;font-size:1.5em;flex-shrink:0}
+
+.origin{background:rgba(188,140,255,0.05);border:1px solid rgba(188,140,255,0.2);border-radius:16px;padding:32px;text-align:center;margin-bottom:50px}
+.origin h3{color:#bc8cff;font-size:1.2em;margin-bottom:12px}
+.origin p{color:#8b949e;font-size:0.95em;line-height:1.7}
+.origin a{color:#bc8cff;font-weight:600}
+
+.links-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:50px}
+.links-row a{padding:10px 20px;border:1px solid #30363d;border-radius:8px;color:#58a6ff;font-size:.95em;transition:all .2s}
+.links-row a:hover{background:rgba(56,139,253,0.1);border-color:#58a6ff;text-decoration:none}
+
+.footer{text-align:center;padding:30px 0;border-top:1px solid #21262d;color:#484f58;font-size:.9em}
+.footer a{color:#58a6ff}
+
+.lang-float{position:fixed;top:16px;right:16px;z-index:100;display:flex;gap:8px}
+.lang-float a{padding:6px 14px;border-radius:8px;font-size:.85em;font-weight:600;color:#fff;text-decoration:none!important}
+.lang-float .en{background:rgba(35,134,54,0.85)}
+.lang-float .zh{background:rgba(218,54,51,0.85)}
+
+@media(max-width:768px){
+  .hero h1{font-size:1.8em}
+  .arch-grid,.feature-grid{grid-template-columns:1fr}
+  .team-grid{grid-template-columns:1fr}
+  .flow-steps{flex-direction:column}
+  .flow-arrow{transform:rotate(90deg)}
+  .stats-row{flex-direction:column;align-items:center}
+  .cta-row{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+<div class="lang-float">
+  <a class="en" href="#" onclick="setLang('en')">EN</a>
+  <a class="zh" href="#" onclick="setLang('zh')">中文</a>
+</div>
+
+<div class="container">
+
+<!-- Hero -->
+<div class="hero">
+  <img class="hero-banner" src="../docs/images/hero-banner.png" alt="CodeFlow — Commands Flow, Intelligence Follows"
+       onerror="this.style.display='none'">
+  <h1 data-en="CodeFlow" data-zh="码流 CodeFlow">CodeFlow</h1>
+  <h2 data-en="Commands Flow, Intelligence Follows." data-zh="指令成流，智能随行。">Commands Flow, Intelligence Follows.</h2>
+  <p class="tagline" data-en="One person + one AI team = shipping real products. Control from your phone, execute on PC, collaborate through files."
+     data-zh="一个人 + 一支 AI 团队 = 交付真实产品。手机发指令，PC 端执行，文件协议协作。">
+    One person + one AI team = shipping real products. Control from your phone, execute on PC, collaborate through files.
+  </p>
+</div>
+
+<!-- Badges -->
+<div class="badges">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT">
+  <img src="https://img.shields.io/badge/Desktop-v2.9.44-orange" alt="Desktop">
+  <img src="https://img.shields.io/badge/PWA-v2.3.0-green" alt="PWA">
+  <img src="https://img.shields.io/badge/Platform-Windows-blue" alt="Windows">
+  <img src="https://img.shields.io/badge/i18n-EN%20%7C%20中文-purple" alt="i18n">
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card"><div class="num">87</div><div class="label" data-en="person-days in 17 days" data-zh="人天 / 17 天完成">person-days in 17 days</div></div>
+  <div class="stat-card"><div class="num">91</div><div class="label" data-en="production deploys" data-zh="次生产部署">production deploys</div></div>
+  <div class="stat-card"><div class="num">0</div><div class="label" data-en="incidents" data-zh="事故">incidents</div></div>
+  <div class="stat-card"><div class="num">3</div><div class="label" data-en="team templates" data-zh="团队模板">team templates</div></div>
+</div>
+
+<!-- CTA -->
+<div class="cta-row">
+  <a class="cta-btn cta-desktop" href="https://github.com/joinwell52-AI/codeflow-pwa/releases" data-en="⬇ Download Desktop EXE" data-zh="⬇ 下载桌面端 EXE">⬇ Download Desktop EXE</a>
+  <a class="cta-btn cta-pwa" href="https://joinwell52-ai.github.io/codeflow-pwa/" data-en="📱 Open PWA on Phone" data-zh="📱 手机端 PWA">📱 Open PWA on Phone</a>
+  <a class="cta-btn cta-github" href="https://github.com/joinwell52-AI/codeflow-pwa" data-en="⭐ Star on GitHub" data-zh="⭐ GitHub 仓库">⭐ Star on GitHub</a>
+</div>
+
+<!-- Architecture -->
+<div class="section">
+  <h2 class="section-title" data-en="Architecture" data-zh="产品架构">Architecture</h2>
+  <p class="section-sub" data-en="Three platforms, one protocol, zero databases." data-zh="三端协同，一套协议，零数据库。">Three platforms, one protocol, zero databases.</p>
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="icon">📱</div>
+      <h3 data-en="Phone (PWA)" data-zh="手机端 (PWA)">Phone (PWA)</h3>
+      <p data-en="Send tasks, view status, QR bind. Works offline. Add to home screen." data-zh="发任务、看状态、扫码绑定。离线可用，添加到主屏幕。">Send tasks, view status, QR bind. Works offline. Add to home screen.</p>
+    </div>
+    <div class="arch-card">
+      <div class="icon">🖥️</div>
+      <h3 data-en="Desktop (EXE)" data-zh="桌面端 (EXE)">Desktop (EXE)</h3>
+      <p data-en="Patrol agents, auto-nudge stuck tasks, self-heal Cursor freezes, relay bridge." data-zh="巡检 Agent、自动催办卡住任务、Cursor 冻结自愈、中继桥接。">Patrol agents, auto-nudge stuck tasks, self-heal Cursor freezes, relay bridge.</p>
+    </div>
+    <div class="arch-card">
+      <div class="icon">🔌</div>
+      <h3 data-en="MCP Plugin" data-zh="MCP 插件">MCP Plugin</h3>
+      <p data-en="Init teams, send tasks, read reports — all from Cursor chat. No copy-paste." data-zh="初始化团队、发任务、读报告 — 全在 Cursor 对话里完成。">Init teams, send tasks, read reports — all from Cursor chat. No copy-paste.</p>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="flow-section">
+  <h2 class="section-title" data-en="How It Works" data-zh="工作流程" style="margin-bottom:24px">How It Works</h2>
+  <div class="flow-steps">
+    <div class="flow-step"><div class="num">1</div><p data-en="You → Phone" data-zh="你 → 手机">You → Phone</p></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">2</div><p data-en="Task → Relay" data-zh="任务 → 中继">Task → Relay</p></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">3</div><p data-en="PC receives" data-zh="PC 接收">PC receives</p></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">4</div><p data-en="PM dispatches" data-zh="PM 派发">PM dispatches</p></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">5</div><p data-en="Team executes" data-zh="团队执行">Team executes</p></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="num">6</div><p data-en="You review" data-zh="你验收">You review</p></div>
+  </div>
+</div>
+
+<!-- Features -->
+<div class="section">
+  <h2 class="section-title" data-en="Key Features" data-zh="核心功能">Key Features</h2>
+  <p class="section-sub" data-en="Everything you need to run an AI team solo." data-zh="一个人管理 AI 团队所需的一切。">Everything you need to run an AI team solo.</p>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <h4 data-en="🔄 Self-Healing Patrol" data-zh="🔄 自愈巡检">🔄 Self-Healing Patrol</h4>
+      <p data-en="OCR detects stuck Cursor UI, auto-reloads window. Agents never stay frozen." data-zh="OCR 检测 Cursor 界面卡住，自动重载窗口。Agent 永不冻结。">OCR detects stuck Cursor UI, auto-reloads window. Agents never stay frozen.</p>
+    </div>
+    <div class="feature-item">
+      <h4 data-en="📋 Team Templates" data-zh="📋 团队模板">📋 Team Templates</h4>
+      <p data-en="dev-team (PM/DEV/QA/OPS), media-team, mvp-team. One MCP call to init." data-zh="dev-team (PM/DEV/QA/OPS)、media-team、mvp-team。一条 MCP 指令初始化。">dev-team, media-team, mvp-team. One MCP call to init.</p>
+    </div>
+    <div class="feature-item">
+      <h4 data-en="📁 Filename as Protocol" data-zh="📁 文件名即协议">📁 Filename as Protocol</h4>
+      <p data-en="TASK-date-seq-Sender-to-Recipient.md — 7 fields, 0 databases, 0 config." data-zh="TASK-日期-序号-发送方-to-接收方.md — 7 个字段，0 数据库。">TASK-date-seq-Sender-to-Recipient.md — 7 fields, 0 databases.</p>
+    </div>
+    <div class="feature-item">
+      <h4 data-en="📱 Mobile Control" data-zh="📱 手机主控">📱 Mobile Control</h4>
+      <p data-en="PWA with bilingual UI, task categories, markdown viewer, role filtering." data-zh="PWA 双语 UI，任务分类，Markdown 查看器，角色过滤。">PWA with bilingual UI, task categories, markdown viewer.</p>
+    </div>
+    <div class="feature-item">
+      <h4 data-en="🔗 WebSocket Relay" data-zh="🔗 WebSocket 中继">🔗 WebSocket Relay</h4>
+      <p data-en="Phone ↔ PC real-time sync. QR code bind. Chunked transfer for large payloads." data-zh="手机 ↔ PC 实时同步。扫码绑定。大消息分块传输。">Phone ↔ PC real-time sync. QR bind. Chunked transfer.</p>
+    </div>
+    <div class="feature-item">
+      <h4 data-en="🌐 Bilingual i18n" data-zh="🌐 中英双语">🌐 Bilingual i18n</h4>
+      <p data-en="Full English + Chinese support across Desktop, PWA, and docs." data-zh="桌面端、PWA、文档全面支持中英文。">Full EN + ZH across Desktop, PWA, and docs.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Screenshots -->
+<div class="section screenshots">
+  <h2 class="section-title" data-en="Screenshots" data-zh="产品截图">Screenshots</h2>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('desktop')" data-en="Desktop Panel" data-zh="桌面端">Desktop Panel</button>
+    <button class="tab" onclick="showTab('cursor')" data-en="Cursor IDE" data-zh="Cursor IDE">Cursor IDE</button>
+    <button class="tab" onclick="showTab('pwa')" data-en="PWA Mobile" data-zh="手机端 PWA">PWA Mobile</button>
+  </div>
+  <div class="panel active" id="panel-desktop">
+    <img class="desktop-img" src="../docs/images/codeflow-0.png" alt="Desktop: Preflight">
+    <img class="desktop-img" src="../docs/images/codeflow-3.png" alt="Desktop: Tasks">
+    <img class="desktop-img" src="../docs/images/codeflow-4.png" alt="Desktop: Skills">
+    <img class="desktop-img" src="../docs/images/codeflow-5.png" alt="Desktop: Config">
+  </div>
+  <div class="panel" id="panel-cursor">
+    <img class="cursor-img" src="../docs/images/cursor-0.png" alt="Cursor + Panel">
+    <img class="cursor-img" src="../docs/images/cursor-1.png" alt="Cursor Patrol">
+  </div>
+  <div class="panel" id="panel-pwa">
+    <img class="pwa-img" src="../docs/images/pwa-0.jpg" alt="PWA: Workspace">
+    <img class="pwa-img" src="../docs/images/pwa-1.jpg" alt="PWA: Send Task">
+    <img class="pwa-img" src="../docs/images/pwa-2.jpg" alt="PWA: Detail">
+    <img class="pwa-img" src="../docs/images/pwa-3.jpg" alt="PWA: Bind">
+    <img class="pwa-img" src="../docs/images/pwa-4.jpg" alt="PWA: Config">
+  </div>
+</div>
+
+<!-- Innovation -->
+<div class="innovation">
+  <h3 data-en="Core Innovation: Filename as Protocol" data-zh="核心创新：文件名即协议">Core Innovation: Filename as Protocol</h3>
+  <div class="filename">TASK-20260414-003-PM01-to-DEV01.md</div>
+  <p data-en="<strong>7 fields</strong> in one filename. <strong>0</strong> databases. <strong>0</strong> message queues. <strong>0</strong> lines of config code. Every AI agent reads and writes plain text files."
+     data-zh="一个文件名包含 <strong>7 个字段</strong>。<strong>0</strong> 个数据库、<strong>0</strong> 个消息队列、<strong>0</strong> 行配置代码。所有 AI Agent 读写纯文本文件。">
+    <strong>7 fields</strong> in one filename. <strong>0</strong> databases. <strong>0</strong> message queues. <strong>0</strong> lines of config code.
+  </p>
+</div>
+
+<!-- Team Templates -->
+<div class="section">
+  <h2 class="section-title" data-en="Team Templates" data-zh="团队模板">Team Templates</h2>
+  <p class="section-sub" data-en="Pick a template, init in one command, start working." data-zh="选模板，一条命令初始化，开始干活。">Pick a template, init in one command, start working.</p>
+  <div class="team-grid">
+    <div class="team-card">
+      <div class="tname">dev-team</div>
+      <div class="troles">PM · DEV · QA · OPS</div>
+      <p style="font-size:.82em;color:#6e7681;margin-top:6px" data-en="Full-stack development" data-zh="全栈开发">Full-stack development</p>
+    </div>
+    <div class="team-card">
+      <div class="tname">media-team</div>
+      <div class="troles">WRITER · EDITOR · PUBLISHER · COLLECTOR</div>
+      <p style="font-size:.82em;color:#6e7681;margin-top:6px" data-en="Content & media" data-zh="内容媒体">Content & media</p>
+    </div>
+    <div class="team-card">
+      <div class="tname">mvp-team</div>
+      <div class="troles">MARKETER · RESEARCHER · DESIGNER · BUILDER</div>
+      <p style="font-size:.82em;color:#6e7681;margin-top:6px" data-en="Startup MVP" data-zh="创业 MVP">Startup MVP</p>
+    </div>
+  </div>
+</div>
+
+<!-- Origin -->
+<div class="origin">
+  <h3 data-en="From Methodology to Product" data-zh="从方法论到产品">From Methodology to Product</h3>
+  <p data-en='We published <a href="https://joinwell52-ai.github.io/joinwell52/">How to Build an Automated AI Team in Cursor</a> — then built the tool to make it real. CodeFlow is the production-ready implementation of "Filename as Protocol".'
+     data-zh='我们先发布了 <a href="https://joinwell52-ai.github.io/joinwell52/">《如何在 Cursor 中搭建 AI 自动化团队》</a>，然后把它做成了产品。码流是"文件名即协议"的产品化落地。'>
+    We published <a href="https://joinwell52-ai.github.io/joinwell52/">How to Build an Automated AI Team in Cursor</a> — then built the tool to make it real.
+  </p>
+</div>
+
+<!-- Quick Start -->
+<div class="section" style="text-align:center">
+  <h2 class="section-title" data-en="Quick Start" data-zh="快速开始">Quick Start</h2>
+  <p class="section-sub" data-en="3 steps, 2 minutes." data-zh="3 步，2 分钟。">3 steps, 2 minutes.</p>
+  <div style="background:rgba(22,27,34,0.8);border:1px solid #30363d;border-radius:14px;padding:28px;text-align:left;max-width:600px;margin:0 auto;font-family:'SFMono-Regular',Consolas,monospace;font-size:.92em;line-height:1.8;color:#8b949e">
+    <span style="color:#238636">1.</span> <span data-en="Download" data-zh="下载">Download</span> <a href="https://github.com/joinwell52-AI/codeflow-pwa/releases">CodeFlow-Desktop.exe</a> (~35MB)<br>
+    <span style="color:#238636">2.</span> <span data-en="Double-click → opens Cursor + control panel" data-zh="双击运行 → 打开 Cursor + 控制面板">Double-click → opens Cursor + control panel</span><br>
+    <span style="color:#238636">3.</span> <span data-en="Scan QR on phone → bind → send first task" data-zh="手机扫码 → 绑定 → 发第一条任务">Scan QR on phone → bind → send first task</span>
+  </div>
+</div>
+
+<br>
+
+<!-- Links -->
+<div class="links-row">
+  <a href="https://github.com/joinwell52-AI/codeflow-pwa">⭐ GitHub</a>
+  <a href="https://gitee.com/joinwell52/cursor-ai/releases" data-en="🇨🇳 Gitee (China)" data-zh="🇨🇳 Gitee 国内下载">🇨🇳 Gitee (China)</a>
+  <a href="https://joinwell52-ai.github.io/codeflow-pwa/">📱 PWA</a>
+  <a href="https://joinwell52-ai.github.io/joinwell52/" data-en="📖 Methodology" data-zh="📖 方法论">📖 Methodology</a>
+  <a href="https://github.com/joinwell52-AI/codeflow-pwa/blob/main/README.en.md" data-en="📄 English Docs" data-zh="📄 英文文档">📄 English Docs</a>
+  <a href="https://github.com/joinwell52-AI/codeflow-pwa/blob/main/README.zh.md" data-en="📄 中文文档" data-zh="📄 中文文档">📄 中文文档</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <p>© 2026 <a href="https://github.com/joinwell52-AI">joinwell52-AI</a> · MIT License · Built with real production experience</p>
+</div>
+
+</div>
+
+<script>
+function showTab(name){
+  document.querySelectorAll('.screenshots .panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.screenshots .tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+function setLang(lang){
+  document.querySelectorAll('[data-'+lang+']').forEach(el=>{
+    const v=el.getAttribute('data-'+lang);
+    if(el.tagName==='INPUT')el.value=v;
+    else if(el.tagName==='IMG')el.alt=v;
+    else el.innerHTML=v;
+  });
+  localStorage.setItem('cf-lang',lang);
+}
+(function(){
+  const saved=localStorage.getItem('cf-lang');
+  const lang=saved||(navigator.language.startsWith('zh')?'zh':'en');
+  setLang(lang);
+})();
+</script>
+</body>
+</html>

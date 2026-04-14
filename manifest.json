@@ -1,0 +1,35 @@
+﻿{
+  "name": "码流（CodeFlow）工作台",
+  "short_name": "码流",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#162540",
+  "theme_color": "#1c2e4a",
+  "description": "码流（CodeFlow）——AI 驱动的人机协作中枢，用手机轻松驾驭 AI，让指令高效流转、直达团队。 CodeFlow — AI-powered human-machine collaboration hub. Master AI from your mobile device, make commands flow efficiently and reach your team directly.",
+  "icons": [
+    {
+      "src": "./logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./logo-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./logo-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

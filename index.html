@@ -8,7 +8,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.json?v=2.0.1" />
-  <link rel="apple-touch-icon" href="./logo-CodeFlow-125.png" />
+  <link rel="apple-touch-icon" href="./logo-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./logo-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./logo-512.png" />
   <title>码流 CodeFlow · 工作台</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" async></script>
   <style>
@@ -307,7 +309,8 @@
     .team-icon-card:hover { border-color:rgba(96,165,250,.35); transform:translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1), 0 4px 0 #1a2a3e, 0 7px 16px rgba(0,0,0,.22); }
     .team-icon-card:active { transform:translateY(2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 0 #1a2a3e, 0 2px 4px rgba(0,0,0,.15); }
     .team-icon-card.active { border-color:var(--blue); background:linear-gradient(160deg, rgba(30,50,80,.95) 0%, rgba(20,35,65,.98) 60%, rgba(40,60,90,.9) 100%); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 0 28px rgba(59,130,246,.12), 0 4px 16px rgba(0,0,0,.25); }
-    .team-icon { width:40px; height:40px; margin:0 auto 6px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#fff; background:linear-gradient(145deg,#5c9cf5 0%,#3b82f6 50%,#2563eb 100%); box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 4px 12px rgba(59,130,246,.4); transition:box-shadow .25s ease-out; }
+    .team-icon { width:44px; height:44px; margin:0 auto 6px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; background:linear-gradient(145deg,#5c9cf5 0%,#3b82f6 50%,#2563eb 100%); box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 4px 12px rgba(59,130,246,.4); transition:box-shadow .25s ease-out; letter-spacing:-0.5px; line-height:1.1; text-align:center; padding:2px; }
+    .team-icon-label { font-size:9px; color:var(--text2); margin-top:1px; text-align:center; max-width:60px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .team-icon-card:hover .team-icon { box-shadow:0 4px 16px rgba(59,130,246,.55); }
     .team-icon-card.active .team-icon { box-shadow:0 0 22px rgba(59,130,246,.5), 0 4px 12px rgba(59,130,246,.4); }
     .team-role-state { margin-top:4px; font-size:10px; color:var(--text3); }
@@ -436,6 +439,10 @@
     .fullscreen-page-title { font-family:"Fira Code",monospace; font-weight:700; font-size:15px; color:var(--text); flex:1; }
     .fullscreen-page-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 12px 24px; }
 
+    .task-list-tabs { display:flex; gap:0; margin-bottom:10px; border-radius:10px; overflow:hidden; background:rgba(30,40,60,.5); }
+    .tl-tab { flex:1; padding:8px 0; text-align:center; font-size:12px; font-weight:600; color:var(--text3); background:transparent; border:none; cursor:pointer; transition:all .2s; }
+    .tl-tab.active { color:var(--blue); background:rgba(59,130,246,.15); }
+
     /* ══ 我的：全屏覆盖页 ══ */
     .my-page {
       display:none; position:fixed; inset:0; z-index:100;
@@ -500,9 +507,47 @@
     .toast-msg.toast-ok { background:rgba(34,150,80,.9); }
     @keyframes toastIn { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
     @keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateY(-8px); } }
+
+    /* ── 新版本提示条 ── */
+    #updateBar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 9999;
+      background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 60%, #0ea5e9 100%);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      padding: 10px 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(37,99,235,.5);
+      letter-spacing: .3px;
+      animation: slideDown .35s ease;
+    }
+    #updateBar.visible { display: block; }
+    #updateBar .ub-close {
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      opacity: .7;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
   </style>
 </head>
 <body>
+<!-- 新版本提示条：检测到 SW 更新后显示 -->
+<div id="updateBar" onclick="doForceUpdate()">
+  🆕 发现新版本，点击立即更新
+  <span class="ub-close" onclick="event.stopPropagation();document.getElementById('updateBar').classList.remove('visible')" title="关闭">✕</span>
+</div>
 <div id="toastContainer" class="toast-container"></div>
 <div class="app-shell">
 
@@ -637,6 +682,12 @@
     <span id="taskListPageTitle" class="fullscreen-page-title">任务列表</span>
   </header>
   <div class="fullscreen-page-content">
+    <div id="taskListTabs" class="task-list-tabs">
+      <button class="tl-tab active" data-dir="tasks">任务单</button>
+      <button class="tl-tab" data-dir="reports">报告</button>
+      <button class="tl-tab" data-dir="issues">问题</button>
+      <button class="tl-tab" data-dir="log">归档</button>
+    </div>
     <div id="fullTaskList" class="task-stack"></div>
   </div>
 </div>
@@ -1014,8 +1065,13 @@
     function isTaskToday(item) {
       const t = item.time || item.created_at || "";
       if (!t) return false;
-      const today = new Date().toISOString().slice(0, 10);
-      return t.startsWith(today);
+      const now = new Date();
+      const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+      const pad = (n) => String(n).padStart(2, "0");
+      // 兼容 2026-04-13 / 2026/4/13 / 2026/04/13 等格式
+      return t.startsWith(`${y}-${pad(m)}-${pad(d)}`)
+          || t.startsWith(`${y}/${m}/${d}`)
+          || t.startsWith(`${y}/${pad(m)}/${pad(d)}`);
     }
     function isTaskReply(item) {
       const fn = String(item.filename || item.primary_filename || "");
@@ -1035,18 +1091,27 @@
       en: { today: "Today Tasks", reply: "Today Replies", progress: "In Progress", done: "Completed", all: "All Tasks" }
     };
 
-    function openTaskListPage(filter) {
-      const role = selectedRole || "PM";
-      let allItems = tasksForRole(role);
+    let _taskListFilter = null;
+    let _taskListRoleFilter = null;
+    let _taskListDirFilter = "tasks";
+
+    function _renderTaskListItems() {
       const filterLabel = STAT_FILTER_LABELS[currentLang] || STAT_FILTER_LABELS.zh;
-      let title = filterLabel.all;
-      if (filter === "today") { allItems = allItems.filter(isTaskToday); title = filterLabel.today; }
-      else if (filter === "reply") { allItems = allItems.filter(i => isTaskToday(i) && isTaskReply(i)); title = filterLabel.reply; }
-      else if (filter === "progress") { allItems = allItems.filter(isTaskInProgress); title = filterLabel.progress; }
-      else if (filter === "done") { allItems = allItems.filter(isTaskDone); title = filterLabel.done; }
-      taskListPageTitleEl.textContent = `${role} · ${title}`;
-      const items = allItems;
-      fullTaskListEl.innerHTML = items.length ? items.map((item) => {
+      let allItems;
+      if (_taskListRoleFilter) {
+        allItems = tasksForRole(_taskListRoleFilter);
+      } else {
+        allItems = [...taskRecords];
+      }
+      const f = _taskListFilter;
+      if (f === "today") allItems = allItems.filter(isTaskToday);
+      else if (f === "reply") allItems = allItems.filter(i => isTaskToday(i) && isTaskReply(i));
+      else if (f === "progress") allItems = allItems.filter(isTaskInProgress);
+      else if (f === "done") allItems = allItems.filter(isTaskDone);
+
+      allItems = allItems.filter(item => (item.dir || "tasks") === _taskListDirFilter);
+
+      fullTaskListEl.innerHTML = allItems.length ? allItems.map((item) => {
         const progress = mapProgress(item.progress);
         const roles = taskRoles(item);
         return `<div class="full-task-row" data-file="${item.primary_filename || item.filename}">
@@ -1062,15 +1127,45 @@
       fullTaskListEl.querySelectorAll(".full-task-row").forEach((node) => {
         node.onclick = () => openTaskDetailPage(node.dataset.file);
       });
+    }
+
+    function openTaskListPage(filter, roleFilter) {
+      _taskListFilter = filter || null;
+      _taskListRoleFilter = roleFilter || null;
+      _taskListDirFilter = "tasks";
+      const filterLabel = STAT_FILTER_LABELS[currentLang] || STAT_FILTER_LABELS.zh;
+      const prefix = roleFilter || (currentLang === "en" ? "All" : "全部");
+      let title = filterLabel.all;
+      if (filter === "today") title = filterLabel.today;
+      else if (filter === "reply") title = filterLabel.reply;
+      else if (filter === "progress") title = filterLabel.progress;
+      else if (filter === "done") title = filterLabel.done;
+      taskListPageTitleEl.textContent = `${prefix} · ${title}`;
+      // 激活 tab
+      document.querySelectorAll("#taskListTabs .tl-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.dir === _taskListDirFilter);
+      });
+      _renderTaskListItems();
       taskListPageEl.classList.add("open");
     }
 
     function closeTaskListPage() { taskListPageEl.classList.remove("open"); }
 
+    document.querySelectorAll("#taskListTabs .tl-tab").forEach(btn => {
+      btn.onclick = () => {
+        _taskListDirFilter = btn.dataset.dir;
+        document.querySelectorAll("#taskListTabs .tl-tab").forEach(b => b.classList.toggle("active", b === btn));
+        _renderTaskListItems();
+      };
+    });
+
+    let _fpDetailFilename = null;
+
     function openTaskDetailPage(filename) {
       if (!filename) return;
       const item = getTaskByFilename(filename);
       if (!item) return;
+      _fpDetailFilename = filename;
       const roles = taskRoles(item);
       const progress = mapProgress(item.progress);
       taskDetailPageTitleEl.textContent = currentLang === "en" ? "Task Detail" : "任务详情";
@@ -1090,12 +1185,26 @@
           <div>${m.body || m.summary || ""}</div>
         </div>
       `).join("") || `<div class="muted">${currentLang === "en" ? "No records" : "暂无记录"}</div>`;
-      document.getElementById("fpMarkdown").textContent = detailMarkdownContent(item);
+      // 优先从 record 取 markdown，fallback 到原始 taskItems 和 messages
+      let mdContent = detailMarkdownContent(item);
+      if (!mdContent && Array.isArray(item.messages)) {
+        for (const msg of item.messages) {
+          const mc = detailMarkdownContent(msg);
+          if (mc) { mdContent = mc; break; }
+        }
+      }
+      if (!mdContent) {
+        const raw = taskItems.find(t => t.filename === filename);
+        if (raw) mdContent = detailMarkdownContent(raw);
+      }
+      document.getElementById("fpMarkdown").textContent = mdContent || (currentLang === "en" ? "(Loading MD...)" : "（正在加载 MD 内容…）");
       document.getElementById("fpMarkdownFile").textContent = currentLang === "en" ? `Source: ${item.filename || "--"}` : `关联文件：${item.filename || "--"}`;
+      appendLog(`MD原文: len=${mdContent.length}, keys=${Object.keys(item).join(",")}, md50=${(item.markdown||'').slice(0,50)}, body50=${(item.body||'').slice(0,50)}`);
+      _fpDetailFilename = item.primary_filename || item.filename;
       fpViewMode = "record";
       syncFpTabs();
       taskDetailPageEl.classList.add("open");
-      requestTaskDetail(filename);
+      requestTaskDetail(_fpDetailFilename);
     }
 
     function closeTaskDetailPage() { taskDetailPageEl.classList.remove("open"); }
@@ -1110,13 +1219,22 @@
     taskListBackBtnEl.onclick = closeTaskListPage;
     taskDetailBackBtnEl.onclick = closeTaskDetailPage;
     fpRecordTabBtnEl.onclick = () => { fpViewMode = "record"; syncFpTabs(); };
-    fpMarkdownTabBtnEl.onclick = () => { fpViewMode = "markdown"; syncFpTabs(); };
+    fpMarkdownTabBtnEl.onclick = () => {
+      fpViewMode = "markdown"; syncFpTabs();
+      const fpMd = document.getElementById("fpMarkdown");
+      if (fpMd && (!fpMd.textContent || fpMd.textContent.includes("正在加载") || fpMd.textContent.includes("暂无") || fpMd.textContent.startsWith("# TASK-"))) {
+        if (_fpDetailFilename) {
+          fpMd.textContent = currentLang === "en" ? "Loading..." : "加载中…";
+          requestTaskDetail(_fpDetailFilename);
+        }
+      }
+    };
 
     document.querySelectorAll(".stat-btn[data-filter]").forEach((btn) => {
       btn.onclick = () => openTaskListPage(btn.dataset.filter);
     });
 
-    document.getElementById("taskSectionHead").onclick = () => openTaskListPage();
+    document.getElementById("taskSectionHead").onclick = () => openTaskListPage(null, selectedRole);
 
     const I18N = {
       zh: {
@@ -1249,7 +1367,20 @@
         msgHistoryEmpty: "暂无消息",
         msgSent: "发送",
         msgReceived: "收到",
-        agentRailToggleHint: "切换 Agent 栏左右"
+        agentRailToggleHint: "切换 Agent 栏左右",
+        qrStartingCamera: "正在启动摄像头…",
+        qrLoadingLib: "正在加载识别库…",
+        qrLibFailed: "二维码识别库加载失败，请检查网络",
+        qrAimAt: "对准 PC 浏览器里的二维码",
+        qrScanning: "扫描中…",
+        qrSwitchingRoom: "正在切换房间并绑定…",
+        qrBindSuccess: "绑定成功！",
+        qrRelayNotConnected: "未连接中继，请先连接后重试",
+        qrNotCodeFlow: "检测到二维码，但不是 CodeFlow 码",
+        qrCameraFailed: "摄像头启动失败：",
+        noTraceYet: "暂无轨迹",
+        confirmResetPc: "确定重置 PC 端 CodeFlow Desktop 进程？",
+        confirmUnbind: "确认解除绑定？"
       },
       en: {
         brandHeader: "CodeFlow",
@@ -1381,7 +1512,20 @@
         msgHistoryEmpty: "No messages yet",
         msgSent: "Sent",
         msgReceived: "Received",
-        agentRailToggleHint: "Toggle agent bar left/right"
+        agentRailToggleHint: "Toggle agent bar left/right",
+        qrStartingCamera: "Starting camera…",
+        qrLoadingLib: "Loading QR library…",
+        qrLibFailed: "QR library failed to load. Check network.",
+        qrAimAt: "Aim at the QR code on PC browser",
+        qrScanning: "Scanning…",
+        qrSwitchingRoom: "Switching room & binding…",
+        qrBindSuccess: "Bind successful!",
+        qrRelayNotConnected: "Relay not connected. Connect first.",
+        qrNotCodeFlow: "QR code detected, but not a CodeFlow code",
+        qrCameraFailed: "Camera failed: ",
+        noTraceYet: "No trace yet",
+        confirmResetPc: "Reset PC CodeFlow Desktop process?",
+        confirmUnbind: "Unbind this PC?"
       }
     };
 
@@ -1566,7 +1710,7 @@
 
     function resetPC() {
       if (!ws || ws.readyState !== WebSocket.OPEN) { appendLog("未连接中继，无法重置 PC"); return; }
-      if (!confirm(currentLang === "en" ? "Reset PC CodeFlow Desktop process?" : "确定重置 PC 端 CodeFlow Desktop 进程？")) return;
+      if (!confirm(t("confirmResetPc"))) return;
       sendEvent("execute_desktop_action", { action: "restart" });
       appendLog("已发送：重置 PC");
     }
@@ -1745,7 +1889,48 @@
         const registration = await navigator.serviceWorker.register("./sw.js");
         await registration.update();
         appendLog("PWA 缓存服务已启用");
+
+        // SW 切换完成后强制刷新页面
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          appendLog("新版本已接管，刷新页面…");
+          window.location.reload();
+        });
+
+        // 监听新 SW 安装 → 显示更新提示条
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              // 新版本已下载，提示用户手动确认更新
+              window._pendingNewWorker = newWorker;
+              showUpdateBar();
+            }
+          });
+        });
       } catch (error) { appendLog(`PWA 缓存启用失败: ${error.message}`); }
+    }
+
+    function showUpdateBar() {
+      const bar = document.getElementById("updateBar");
+      if (bar) bar.classList.add("visible");
+      appendLog("发现新版本，可点击顶部提示条更新");
+    }
+
+    function doForceUpdate() {
+      // 如果有等待中的新 SW，发送 skipWaiting；否则直接强制刷新
+      if (window._pendingNewWorker) {
+        window._pendingNewWorker.postMessage({ type: "SKIP_WAITING" });
+      } else {
+        // 清空缓存再刷新
+        if ("caches" in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
     }
 
     function updateMeta() {
@@ -1757,14 +1942,14 @@
     }
 
     function normalizeRole(value) {
-      const raw = String(value || "").toUpperCase();
-      if (!raw) return "OTHER";
+      const raw = String(value || "").toUpperCase().trim();
+      if (!raw || raw === "SYSTEM") return "ADMIN";
       if (raw.includes("ADMIN")) return "ADMIN";
       if (raw.includes("PM")) return "PM";
       if (raw.includes("DEV")) return "DEV";
       if (raw.includes("OPS") || raw.includes("OA")) return "OPS";
       if (raw.includes("QA") || raw.includes("TEST")) return "QA";
-      return raw.replace(/[^A-Z]/g, "") || "OTHER";
+      return raw.replace(/[^A-Z0-9]/g, "") || "ADMIN";
     }
 
     function inferTaskType(item) {
@@ -1789,8 +1974,30 @@
     }
 
     function taskTitle(item) {
-      const raw = String(item.summary || item.body || item.task_id || (currentLang === "en" ? "Untitled" : "未命名任务")).trim();
-      return raw.length > 26 ? `${raw.slice(0, 26)}...` : raw;
+      let raw = String(item.summary || item.body || "").trim();
+      if (!raw && item.markdown) {
+        for (const ln of String(item.markdown).split("\n")) {
+          const t = ln.trim();
+          if (t) { raw = t.replace(/^#+\s*/, "").trim().slice(0, 80); break; }
+        }
+      }
+      if (!raw && item.raw_markdown) {
+        const m = String(item.raw_markdown).match(/^---[\s\S]*?---\s*\n(.+)/);
+        if (m) raw = m[1].replace(/^#+\s*/, "").trim().slice(0, 80);
+      }
+      if (!raw && Array.isArray(item.messages) && item.messages.length > 0) {
+        for (const msg of item.messages) {
+          const t = String(msg.body || msg.summary || "").trim();
+          if (t) { raw = t; break; }
+        }
+      }
+      if (!raw) {
+        const fn = item.primary_filename || item.filename || "";
+        const m = fn.match(/TASK-\d+-\d+-(.+)\.md$/i);
+        if (m) raw = m[1].replace(/-to-/g, " → ").replace(/-/g, " ");
+      }
+      raw = raw || item.task_id || (currentLang === "en" ? "Untitled" : "未命名任务");
+      return raw.length > 30 ? `${raw.slice(0, 30)}...` : raw;
     }
 
     function taskPriority(item) {
@@ -1803,7 +2010,37 @@
 
     function formatTaskTime(item) { return item.time || item.created_at || item.updated_at || ""; }
 
-    function fixedTeamRoles() { return ["PM", "DEV", "QA", "OPS"]; }
+    // 动态角色列表：优先用 PC 端 dashboard 下发的 team_roles，否则降级为本地缓存，最后才用默认值
+    let _dynamicTeamRoles = JSON.parse(localStorage.getItem("codeflow_team_roles") || "null");
+    const _cachedTeamName = localStorage.getItem("codeflow_team_name") || "";
+    if (_cachedTeamName) {
+      const _ttEl = document.getElementById("teamTitle");
+      if (_ttEl) _ttEl.textContent = (currentLang === "en" ? "My Team" : "我的团队") + "：" + _cachedTeamName;
+    }
+    function fixedTeamRoles() {
+      return (_dynamicTeamRoles && _dynamicTeamRoles.length > 0)
+        ? _dynamicTeamRoles
+        : ["PM", "DEV", "QA", "OPS"];
+    }
+    function applyTeamRoles(roles) {
+      if (!Array.isArray(roles) || roles.length === 0) return;
+      const cleaned = roles.map(r => String(r).toUpperCase()).filter(Boolean);
+      if (cleaned.length === 0) return;
+      const prev = JSON.stringify(_dynamicTeamRoles);
+      _dynamicTeamRoles = cleaned;
+      localStorage.setItem("codeflow_team_roles", JSON.stringify(cleaned));
+      if (JSON.stringify(cleaned) !== prev) {
+        renderTeam(onlineDevices, typeof targetRoleEl !== "undefined" ? targetRoleEl.value : "");
+        if (typeof refreshTargetOptions === "function") refreshTargetOptions();
+      }
+    }
+
+    function applyTeamName(name) {
+      if (!name) return;
+      localStorage.setItem("codeflow_team_name", name);
+      const el = document.getElementById("teamTitle");
+      if (el) el.textContent = (currentLang === "en" ? "My Team" : "我的团队") + "：" + name;
+    }
 
     function buildTaskRecords(items) {
       const grouped = new Map();
@@ -1926,7 +2163,7 @@
         `;
       }).join("");
       listEl.querySelectorAll(".task-card").forEach((node) => {
-        node.onclick = () => openTaskListPage();
+        node.onclick = () => openTaskListPage(null, selectedRole);
       });
     }
 
@@ -1953,9 +2190,12 @@
         const state = roleStateInfo(role);
         const roleItems = tasksForRole(role);
         const offlineCls = state.offline ? " offline" : "";
+        const abbr = role.length <= 4 ? role : role.slice(0, 3);
+        const showLabel = role.length > 3;
         return `
           <div class="role-card team-icon-card${offlineCls} ${selectedRole === role ? "active" : ""}" data-role="${role}">
-            <div class="team-icon">${role}</div>
+            <div class="team-icon">${abbr}</div>
+            ${showLabel ? `<div class="team-icon-label">${role}</div>` : ""}
             <div class="team-role-state"><span class="badge ${state.cls}">${state.text}</span> <span style="font-size:9px;color:var(--text3);">${roleItems.length}</span></div>
           </div>
         `;
@@ -1968,7 +2208,6 @@
           renderTaskList();
           renderRolePanel();
           refreshTargetOptions();
-          focusComposerForRole();
         };
       });
     }
@@ -1981,7 +2220,22 @@
       updateCurrentTaskSummary();
     }
 
+    function _ensureItemMd(item) {
+      if (!item.markdown && !item.raw_markdown && !item.body && !item.summary) {
+        item.body = item.task_id || item.filename || "";
+        item.markdown = [
+          `# ${item.task_id || item.filename || "Task"}`,
+          `- Sender: ${item.sender || "--"}`,
+          `- Recipient: ${item.recipient || "--"}`,
+          `- Priority: ${item.priority || "--"}`,
+          `- Status: ${item.progress || "--"}`,
+          `- Time: ${item.created_at || item.time || "--"}`,
+        ].join("\n");
+      }
+      return item;
+    }
     function mergeDashboardItems(serverItems) {
+      serverItems.forEach(_ensureItemMd);
       pendingItems = pendingItems.filter((pending) => {
         return !serverItems.some((item) => item.thread_key === pending.thread_key && item.summary === pending.summary && item.recipient === pending.recipient);
       });
@@ -1989,7 +2243,40 @@
       taskRecords = buildTaskRecords(taskItems);
     }
 
+    let _dashboardChunkBuffer = null;
     function applyDashboard(payload) {
+      // 分片模式：第一包带 _chunked 标记（meta + 空 items）
+      if (payload._chunked) {
+        _dashboardChunkBuffer = { meta: payload, items: [] };
+        if (Array.isArray(payload.team_roles) && payload.team_roles.length > 0) {
+          applyTeamRoles(payload.team_roles);
+        }
+        if (payload.team_name) applyTeamName(payload.team_name);
+        if (payload.stats) {
+          document.getElementById("todayTasks").textContent = String(payload.stats.today_tasks || 0);
+          document.getElementById("todayReplies").textContent = String(payload.stats.today_replies || 0);
+          document.getElementById("inProgressThreads").textContent = String(payload.stats.in_progress_threads || 0);
+          document.getElementById("repliedThreads").textContent = String(payload.stats.replied_threads || 0);
+        }
+        renderTeam(onlineDevices, targetRoleEl.value);
+        return;
+      }
+      // 分片模式：后续包带 _chunk 标记（items 片段）
+      if (payload._chunk && _dashboardChunkBuffer) {
+        const _chunkItems = payload.items || [];
+        if (_chunkItems[0]) appendLog(`chunk[0]: ${JSON.stringify(_chunkItems[0]).slice(0,300)}`);
+        _dashboardChunkBuffer.items.push(..._chunkItems);
+        mergeDashboardItems(_dashboardChunkBuffer.items);
+        renderTaskList();
+        renderRolePanel();
+        return;
+      }
+      // 非分片：整包模式（向后兼容）
+      _dashboardChunkBuffer = null;
+      if (Array.isArray(payload.team_roles) && payload.team_roles.length > 0) {
+        applyTeamRoles(payload.team_roles);
+      }
+      if (payload.team_name) applyTeamName(payload.team_name);
       mergeDashboardItems(payload.items || []);
       document.getElementById("todayTasks").textContent = String(payload.stats?.today_tasks || 0);
       document.getElementById("todayReplies").textContent = String(payload.stats?.today_replies || 0);
@@ -2092,6 +2379,13 @@
       }
       populateDetailFields(detail, { meta: detailMetaEl, body: detailBodyEl, messages: detailMessagesEl, taskId: detailTaskIdEl, fileName: detailFileNameEl, priority: detailPriorityValueEl, type: detailTypeValueEl, sender: detailSenderValueEl, recipient: detailRecipientValueEl, time: detailTimeValueEl, status: detailStatusValueEl, flow: detailFlowValueEl, markdown: detailMarkdownEl, markdownFile: detailMarkdownFileEl });
       populateDetailFields(detail, { meta: roleConversationMetaEl, body: roleConversationBodyEl, messages: roleConversationMessagesEl, taskId: roleDetailTaskIdEl, fileName: roleDetailFileNameEl, priority: roleDetailPriorityValueEl, type: roleDetailTypeValueEl, sender: roleDetailSenderValueEl, recipient: roleDetailRecipientValueEl, time: roleDetailTimeValueEl, status: roleDetailStatusValueEl, flow: roleDetailFlowValueEl, markdown: roleMarkdownEl, markdownFile: roleMarkdownFileEl });
+      // 同步更新全屏详情页的 MD 原文
+      const fpMd = document.getElementById("fpMarkdown");
+      if (fpMd && taskDetailPageEl.classList.contains("open")) {
+        const mc = detailMarkdownContent(detail);
+        appendLog(`renderDetail更新fpMd: fn=${detail.filename}, want=${_fpDetailFilename}, mc_len=${mc.length}`);
+        if (mc) fpMd.textContent = mc;
+      }
       if (detail.thread_key) { threadKeyEl.value = detail.thread_key; localStorage.setItem("codeflow_last_thread", detail.thread_key); }
       updateMeta();
       updateCurrentTaskSummary(detail);
@@ -2109,15 +2403,54 @@
       sendEvent("request_dashboard", { target_device_id: target.device_id });
     }
 
+    let _taskDetailTimer = null;
     function requestTaskDetail(filename) {
       if (!filename) return;
+      if (_taskDetailTimer) { clearTimeout(_taskDetailTimer); _taskDetailTimer = null; }
       const target = currentTargetDevice() || onlineDevices.find((item) => normalizeRole(item.owner_role) === preferredContextRole()) || onlineDevices[0];
       if (target) {
+        appendLog(`requestTaskDetail: 向PC请求 fn=${filename}, dev=${target.device_id}`);
         sendEvent("request_task_detail", { filename, target_device_id: target.device_id });
+        _taskDetailTimer = setTimeout(() => {
+          _fallbackLocalMd(filename);
+        }, 3000);
         return;
       }
+      appendLog(`requestTaskDetail: 无在线PC, fallback本地, fn=${filename}`);
+      _fallbackLocalMd(filename);
+    }
+    function _fallbackLocalMd(filename) {
+      const fpMd = document.getElementById("fpMarkdown");
+      if (!fpMd || !taskDetailPageEl.classList.contains("open")) return;
+      if (fpMd.textContent && !fpMd.textContent.includes("正在加载") && !fpMd.textContent.includes("Loading")) return;
+      appendLog(`fallback开始: fn=${filename}, taskItems=${taskItems.length}`);
+      // 暴力调试：打印第一条 taskItem 的所有 key 和 markdown 长度
+      if (taskItems.length > 0) {
+        const t0 = taskItems[0];
+        appendLog(`taskItems[0]: keys=${Object.keys(t0).join(",")}, fn=${t0.filename}, md=${(t0.markdown||'').length}, raw=${(t0.raw_markdown||'').length}, body=${(t0.body||'').slice(0,30)}`);
+      }
       const local = taskItems.find((item) => item.filename === filename);
-      if (local) renderDetail(local);
+      if (local) {
+        appendLog(`找到local: fn=${local.filename}, md=${(local.markdown||'').length}, raw=${(local.raw_markdown||'').length}`);
+        const mc = detailMarkdownContent(local);
+        appendLog(`fallback本地MD: fn=${filename}, len=${mc.length}, mc50=${mc.slice(0,50)}`);
+        if (mc) { fpMd.textContent = mc; return; }
+      } else {
+        appendLog(`taskItems中未找到 fn=${filename}, 所有fn=[${taskItems.map(i=>i.filename).join(",")}]`);
+      }
+      const rec = getTaskByFilename(filename);
+      if (rec) {
+        let mc = detailMarkdownContent(rec);
+        if (!mc && Array.isArray(rec.messages)) {
+          for (const msg of rec.messages) {
+            mc = detailMarkdownContent(msg);
+            if (mc) break;
+          }
+        }
+        if (mc) { fpMd.textContent = mc; appendLog(`fallback record MD: len=${mc.length}`); return; }
+        appendLog(`rec找到但MD为空: keys=${Object.keys(rec).join(",")}, md=${(rec.markdown||'').length}`);
+      }
+      fpMd.textContent = currentLang === "en" ? "(No MD content available)" : "（暂无 MD 内容）";
     }
 
     function requestDeviceRoster() { sendEvent("request_device_roster", {}); }
@@ -2188,7 +2521,7 @@
     function renderPatrolTrace(events) {
       if (!patrolTraceList) return;
       if (!events || events.length === 0) {
-        patrolTraceList.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:12px;color:var(--text3);">暂无轨迹</div>';
+        patrolTraceList.innerHTML = `<div style="text-align:center;padding:14px 0;font-size:12px;color:var(--text3);">${t('noTraceYet')}</div>`;
         return;
       }
       const rows = [...events].reverse().map(ev => {
@@ -2211,25 +2544,18 @@
       patrolTraceList.innerHTML = rows;
     }
 
-    async function fetchPatrolTrace() {
-      if (!_pcRelayUrl) return;
-      try {
-        const base = _pcRelayUrl.replace(/^ws/, "http").replace(/\/ws\/?$/, "");
-        const r = await fetch(`${base}/api/patrol_trace?limit=60`, { signal: AbortSignal.timeout(4000) });
-        if (r.ok) { const d = await r.json(); renderPatrolTrace(d.events || []); }
-      } catch(_) {}
-    }
-
+    // 巡检轨迹由 PC 通过 WS 事件 patrol_trace 推送，无需 HTTP 轮询
     function startTracePolling() {
-      fetchPatrolTrace();
-      if (_tracePollingTimer) clearInterval(_tracePollingTimer);
-      _tracePollingTimer = setInterval(fetchPatrolTrace, 5000);
+      // 请求一次 patrol_status，触发 PC 推送最新轨迹
+      requestPatrolStatus();
     }
     function stopTracePolling() {
-      if (_tracePollingTimer) { clearInterval(_tracePollingTimer); _tracePollingTimer = null; }
+      // WS 事件驱动，无需停止
     }
 
-    if (traceRefreshBtn) traceRefreshBtn.addEventListener("click", fetchPatrolTrace);
+    if (traceRefreshBtn) traceRefreshBtn.addEventListener("click", () => {
+      requestPatrolStatus(); // 点刷新时触发 PC 推送最新轨迹
+    });
 
     let _lastFileListTotal = -1;
     function applyFileList(payload) {
@@ -2259,21 +2585,8 @@
       }
       _lastFileListTotal = total;
 
-      const items = [];
-      for (const f of tasks) {
-        items.push({ filename: f.filename, dir: "tasks", type: "task", recipient: f.recipient || "", progress: "pending", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
-      }
-      for (const f of reports) {
-        items.push({ filename: f.filename, dir: "reports", type: "report", recipient: f.recipient || "", progress: "completed", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
-      }
-      for (const f of issues) {
-        items.push({ filename: f.filename, dir: "issues", type: "issue", recipient: f.recipient || "", progress: "in_progress", today: !!f.today, time: f.mtime ? new Date(f.mtime * 1000).toLocaleString() : "" });
-      }
-      if (items.length > 0) {
-        mergeDashboardItems(items);
-        renderTaskList();
-        renderRolePanel();
-      }
+      // file_list 仅更新统计数字，不操作 taskItems/taskRecords
+      // （dashboard_state 才是带完整 markdown 的权威数据源）
     }
 
     function _pcDeviceId() {
@@ -2311,7 +2624,7 @@
     function requestPcReset() {
       const did = _pcDeviceId();
       if (!did) { appendLog(currentLang === "en" ? "PC not online" : "PC 不在线，无法重置"); return; }
-      if (!confirm(currentLang === "en" ? "Restart CodeFlow Desktop on PC?" : "确定要重置 PC 端 CodeFlow Desktop 吗？")) return;
+      if (!confirm(t("confirmResetPc"))) return;
       sendEvent("execute_desktop_action", { action: "restart", target_device_id: did });
       appendLog(currentLang === "en" ? "Sent: Reset PC" : "已发送: 重置 PC");
       addMsgRecord("pwa", currentLang === "en" ? "Reset PC" : "重置 PC");
@@ -2337,7 +2650,7 @@
     function renderMsgHistory() {
       if (!msgHistoryList) return;
       if (!msgRecords.length) {
-        msgHistoryList.innerHTML = '<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无消息</div>';
+        msgHistoryList.innerHTML = `<div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">${t('msgHistoryEmpty')}</div>`;
         return;
       }
       msgHistoryList.innerHTML = msgRecords.slice(-50).reverse().map(r =>
@@ -2384,13 +2697,21 @@
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
       };
-      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list"]);
+      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list","patrol_trace"]);
       ws.onmessage = (event) => {
         let data = null;
         try { data = JSON.parse(event.data); } catch (error) { appendLog(`收到无法解析的消息: ${error.message}`); return; }
         const et = data.event_type;
         if (!_silentEvents.has(et)) appendLog(`收到事件: ${et}`);
-        if (et === "dashboard_state") { applyDashboard(data.payload || {}); }
+        if (et === "dashboard_state") {
+          const p = data.payload || {};
+          const _di = (p.items||[])[0];
+          if (_di) {
+            appendLog(`dashboard[0]: ${JSON.stringify(_di).slice(0,300)}`);
+          }
+          appendLog(`dashboard: items=${(p.items||[]).length}, chunk=${!!p._chunked||!!p._chunk}`);
+          applyDashboard(p);
+        }
         else if (et === "device_roster") {
           renderDevices(data.payload?.devices || []);
           const pcNow = !!_pcDeviceId();
@@ -2415,7 +2736,12 @@
             applyPatrolState({ running: false, round: 0, log: "" });
           }
         }
-        else if (et === "task_detail") { renderDetail(data.payload || {}); }
+        else if (et === "task_detail") {
+          if (_taskDetailTimer) { clearTimeout(_taskDetailTimer); _taskDetailTimer = null; }
+          const _td = data.payload || {};
+          appendLog(`task_detail收到: fn=${_td.filename}, md=${(_td.markdown||'').length}, raw=${(_td.raw_markdown||'').length}, err=${_td.error||''}`);
+          renderDetail(_td);
+        }
         else if (et === "task_event") { if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("codeflow_last_thread", data.payload.thread_key); } setSendLocked(false); requestDashboard(); }
         else if (et === "bind_state") {
           bindState = data.payload || {};
@@ -2423,12 +2749,21 @@
             localStorage.setItem("codeflow_bound_pc_code", bindState.machine_code);
             localStorage.setItem("codeflow_bound_pc_name", bindState.bound_mobile_device_name || "CodeFlow-PC");
             appendLog("绑定成功！PC=" + bindState.machine_code);
+            setTimeout(requestDashboard, 500);
           }
           renderMyDeviceInfo();
           if (bindState.pending_bind_code) appendLog("绑定码: " + bindState.pending_bind_code);
         }
-        else if (et === "patrol_state") { applyPatrolState(data.payload || {}); }
+        else if (et === "patrol_state") {
+          const p = data.payload || {};
+          applyPatrolState(p);
+          if (p.patrol_trace && p.patrol_trace.length > 0) renderPatrolTrace(p.patrol_trace);
+        }
         else if (et === "file_list") { applyFileList(data.payload || {}); }
+        else if (et === "patrol_trace") {
+          const entries = (data.payload || {}).entries || data.payload || [];
+          if (Array.isArray(entries) && entries.length > 0) renderPatrolTrace(entries);
+        }
         else if (et === "task_created") {
           const tc = data.payload || {};
           const fn = tc.filename || "";
@@ -2538,21 +2873,21 @@
 
     async function startScan() {
       qrScanModal.style.display = 'flex';
-      qrScanStatus.textContent = '正在启动摄像头…';
+      qrScanStatus.textContent = t('qrStartingCamera');
       try {
         scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         qrVideo.srcObject = scanStream;
         await qrVideo.play();
-        qrScanStatus.textContent = '正在加载识别库…';
+        qrScanStatus.textContent = t('qrLoadingLib');
         if (!window.jsQR) {
           const cdns = ['https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js', 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.min.js', 'https://fastly.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'];
           for (const cdn of cdns) {
             try { await new Promise((res, rej) => { const s = document.createElement('script'); s.src = cdn; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); if (window.jsQR) break; } catch(e) {}
           }
         }
-        if (!window.jsQR) { qrScanStatus.textContent = '二维码识别库加载失败，请检查网络'; return; }
+        if (!window.jsQR) { qrScanStatus.textContent = t('qrLibFailed'); return; }
         const ctx = qrCanvas.getContext('2d');
-        qrScanStatus.textContent = '对准 PC 浏览器里的二维码';
+        qrScanStatus.textContent = t('qrAimAt');
         let frameCount = 0;
         scanTimer = setInterval(() => {
           if (qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA) return;
@@ -2561,7 +2896,7 @@
           const img = ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
           const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
           frameCount++;
-          if (frameCount % 10 === 0) { qrScanStatus.textContent = '扫描中… (' + frameCount + ' frames)'; }
+          if (frameCount % 10 === 0) { qrScanStatus.textContent = t('qrScanning') + ' (' + frameCount + ' frames)'; }
           if (code) {
             const raw = code.data || '';
             let machineCode = '', deviceId = '';
@@ -2595,7 +2930,7 @@
               if (needSwitch) {
                 appendLog('房间不同，切换到 PC 房间: ' + scannedRoomKey);
                 ROOM_KEY = scannedRoomKey;
-                qrScanStatus.textContent = '正在切换房间并绑定…';
+                qrScanStatus.textContent = t('qrSwitchingRoom');
                 disconnect();
                 setTimeout(() => {
                   connect();
@@ -2605,7 +2940,7 @@
                       sendEvent('request_bind_code', { target_device_id: deviceId, mobile_device_id: localMobileDeviceId, mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}` });
                       bindState = { status: "bound", machine_code: machineCode };
                       renderMyDeviceInfo();
-                      qrScanStatus.textContent = '绑定成功！';
+                      qrScanStatus.textContent = t('qrBindSuccess');
                       appendLog('绑定成功：' + machineCode);
                     }
                   }, 300);
@@ -2616,20 +2951,20 @@
                 if (ok) {
                   bindState = { status: "bound", machine_code: machineCode };
                   renderMyDeviceInfo();
-                  qrScanStatus.textContent = '绑定成功！';
+                  qrScanStatus.textContent = t('qrBindSuccess');
                   appendLog('绑定成功：' + machineCode);
                 } else {
-                  qrScanStatus.textContent = '未连接中继，请先连接后重试';
+                  qrScanStatus.textContent = t('qrRelayNotConnected');
                   appendLog('扫码成功但中继未连接');
                 }
               }
             } else if (raw) {
-              qrScanStatus.textContent = '检测到二维码，但不是 CodeFlow 码';
+              qrScanStatus.textContent = t('qrNotCodeFlow');
               appendLog('非BF码: ' + raw.substring(0, 60));
             }
           }
         }, 200);
-      } catch(e) { qrScanStatus.textContent = '摄像头启动失败：' + e.message; }
+      } catch(e) { qrScanStatus.textContent = t('qrCameraFailed') + e.message; }
     }
 
     if (scanQrBtn) scanQrBtn.onclick = startScan;
@@ -2637,7 +2972,7 @@
     const bindBannerBtn = document.getElementById("bindBannerBtn");
     if (bindBannerBtn) bindBannerBtn.onclick = () => { setActiveTab("my"); };
     const unbindPcBtnEl = document.getElementById("unbindPcBtn");
-    if (unbindPcBtnEl) unbindPcBtnEl.onclick = () => { if (confirm(currentLang === "en" ? "Unbind this PC?" : "确认解除绑定？")) unbindPc(); };
+    if (unbindPcBtnEl) unbindPcBtnEl.onclick = () => { if (confirm(t("confirmUnbind"))) unbindPc(); };
     document.getElementById("sendBtn").onclick = sendMessage;
     if (newThreadBtnEl) newThreadBtnEl.onclick = newThread;
     detailRecordTabBtnEl.onclick = () => setDetailView("record");
