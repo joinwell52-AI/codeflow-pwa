@@ -2404,13 +2404,24 @@
         return;
       }
 
-      // ── 状态 3：PC 回复了但 CDP/Cursor 未检测到 ──
+      // ── 状态 3：PC 回复了但 Cursor 未检测到 ──
       if (s.found === false || !s.agent_role) {
-        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span>`;
+        const hasCdp = s.cdp_active;
+        const errMsg = s.error ? `<div style="margin-top:6px;font-size:11px;color:var(--text3);">${s.error}</div>` : "";
+        let hint = t("agentMonitorEmpty");
+        let icon = "🖥️";
+        if (s.found === false && !hasCdp) {
+          hint = t("agentMonitorNoCdp");
+          icon = "⚙️";
+        } else if (s.found === false) {
+          hint = currentLang === "en" ? "Cursor detected but Agent panel not found" : "已连接 Cursor，但未检测到 Agent 面板";
+          icon = "🔍";
+        }
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span> ${currentLang === "en" ? "PC Connected" : "PC 已连接"}`;
         _agentMonitorMetaEl.innerHTML = `<span style="color:var(--text3);">${t("agentMonitorReadonly")}</span>`;
         _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
-          <div style="font-size:28px;margin-bottom:8px;">🖥️</div>
-          <div>${s.found === false ? t("agentMonitorNoCdp") : t("agentMonitorEmpty")}</div>
+          <div style="font-size:28px;margin-bottom:8px;">${icon}</div>
+          <div>${hint}</div>${errMsg}
         </div>`;
         return;
       }
