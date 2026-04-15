@@ -87,6 +87,65 @@ backup  ─── 最后推送，纯备份
 
 ---
 
+## 本地测试发版（不发 GitHub Release）
+
+开发新功能后需要先在本地测试 EXE + PWA，确认功能正常再走正式发版。
+
+### 流程
+
+```powershell
+# 1. 改版本号 + 写 CHANGELOG + 提交代码（同正式发版）
+#    main.py: VERSION = "2.11.0"
+#    CHANGELOG.md: ## [2.11.0] - 2026-04-XX
+#    git add -A && git commit
+
+# 2. 本地打包 EXE（不发 Release）
+cd D:\BridgeFlow\codeflow-desktop
+pack.cmd
+# 产物：dist/CodeFlow-Desktop.exe，直接双击测试
+
+# 3. 只推 PWA 到 GitHub Pages
+cd D:\codeflow-pwa
+Copy-Item D:\BridgeFlow\web\pwa\index.html index.html -Force
+Copy-Item D:\BridgeFlow\web\pwa\config.js config.js -Force
+git add -A
+git commit -m "test: PWA vX.Y.Z for testing"
+git push origin main
+# 等 1-2 分钟 GitHub Pages 自动部署，刷新 PWA 验证
+
+# 4. 测试通过后，走正式发版
+cd D:\BridgeFlow\codeflow-desktop
+release.cmd 2.11.0
+```
+
+### 注意事项
+
+- **不要在 BridgeFlow 主仓库手动 `git push origin`**，因为 origin 指向 codeflow-pwa 仓库，手动推会覆盖 PWA 仓库内容
+- **PWA 同步只操作 `D:\codeflow-pwa\` 目录**，复制文件 → commit → push
+- **EXE 只用 `pack.cmd`** 打包，不要用 `release.cmd`（release.cmd 会创建 tag + Release）
+- **确认测试通过后再跑 `release.cmd`**，一条龙完成正式发版
+
+### GitHub Pages 配置
+
+| 仓库 | 分支 | 路径 | 说明 |
+|------|------|------|------|
+| `joinwell52-AI/codeflow-pwa` | `main` | `/`（根目录） | **必须是 `/`，不能是 `/docs`** |
+
+如果 PWA 出现 404，检查 GitHub Pages source 配置：
+
+```powershell
+# 查看当前配置
+gh api repos/joinwell52-AI/codeflow-pwa/pages
+
+# 修复为根目录
+gh api repos/joinwell52-AI/codeflow-pwa/pages -X PUT -f source[branch]=main -f source[path]=/
+
+# 触发重新构建
+gh api repos/joinwell52-AI/codeflow-pwa/pages/builds -X POST
+```
+
+---
+
 ## 版本号规范
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)：
