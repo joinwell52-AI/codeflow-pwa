@@ -490,21 +490,23 @@ _JS_EXTRACT_STATE = r"""
             msg.summary = preview || 'thinking...';
         } else if (hasTool) {
             msg.type = 'tool';
-            msg.summary = toolName || 'tool call';
+            msg.summary = (toolName ? toolName + ': ' : '') + (plainText.substring(0, 150) || 'tool call');
         } else if (hasTerminal) {
             msg.type = 'terminal';
             const cmd = (termEls[0]?.textContent || '').trim().split('\n')[0].substring(0, 100);
             msg.summary = cmd || 'terminal';
         } else if (hasFileDiff) {
             msg.type = 'file_edit';
-            msg.summary = `${fileEls.length} file(s)`;
+            const fileNames = Array.from(fileEls).map(f => (f.textContent||'').trim().split('\n')[0]).filter(Boolean).slice(0, 3);
+            msg.summary = fileNames.join(', ') || `${fileEls.length} file(s)`;
         } else if (codeCount > 0 && codeLines > 3) {
             msg.type = 'code';
-            msg.summary = `${codeLines} lines`;
+            const codeHint = plainText.substring(0, 120) || `${codeLines} lines`;
+            msg.summary = codeHint;
             if (codeLangs.length > 0) msg.lang = codeLangs[0];
         } else if (hasImage) {
             msg.type = 'image';
-            msg.summary = `${imgEls.length} image(s)`;
+            msg.summary = plainText.substring(0, 100) || `${imgEls.length} image(s)`;
         } else {
             msg.type = 'text';
             msg.summary = plainText.substring(0, 200);

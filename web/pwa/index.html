@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -364,15 +364,23 @@
     .agent-live-dot.waiting { background:#fbbf24; box-shadow:0 0 6px rgba(251,191,36,.5); animation:pulse-dot 2s ease-in-out infinite; }
     @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:.4;} }
 
-    /* ══ Agent 工作实况面板 ══ */
-    .agent-monitor-panel { display:none; margin-top:10px; }
-    .agent-monitor-panel.visible { display:block; }
-    .agent-monitor-header { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:rgba(20,30,48,.7); border:1px solid rgba(180,200,220,.15); border-radius:var(--r2) var(--r2) 0 0; }
-    .agent-monitor-title { font-size:12px; font-weight:700; color:var(--text); }
+    /* ══ Agent 工作实况面板（底部弹出浮层） ══ */
+    .agent-monitor-panel {
+      position:fixed; left:0; right:0; bottom:0; z-index:900;
+      max-height:70vh; background:rgba(14,20,36,.97); backdrop-filter:blur(16px);
+      border-top:1px solid rgba(180,200,220,.18); border-radius:16px 16px 0 0;
+      box-shadow:0 -4px 24px rgba(0,0,0,.4);
+      transform:translateY(100%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+      overflow:hidden; display:flex; flex-direction:column;
+      pointer-events:none; opacity:0;
+    }
+    .agent-monitor-panel.visible { transform:translateY(0); pointer-events:auto; opacity:1; }
+    .agent-monitor-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 8px; flex-shrink:0; }
+    .agent-monitor-title { font-size:14px; font-weight:700; color:var(--text); }
     .agent-monitor-status { font-size:11px; color:var(--text2); }
-    .agent-monitor-meta { display:flex; gap:10px; padding:6px 10px; background:rgba(20,30,48,.5); border-left:1px solid rgba(180,200,220,.15); border-right:1px solid rgba(180,200,220,.15); font-size:10px; color:var(--text3); }
-    .agent-monitor-messages { max-height:320px; overflow-y:auto; border:1px solid rgba(180,200,220,.12); border-top:none; border-radius:0 0 var(--r2) var(--r2); background:rgba(10,18,32,.6); }
-    .agent-msg { padding:8px 10px; border-bottom:1px solid rgba(180,200,220,.06); font-size:12px; line-height:1.5; }
+    .agent-monitor-meta { display:flex; flex-wrap:wrap; gap:8px; padding:4px 16px 8px; font-size:10px; color:var(--text3); flex-shrink:0; border-bottom:1px solid rgba(180,200,220,.1); }
+    .agent-monitor-messages { flex:1; overflow-y:auto; padding-bottom:env(safe-area-inset-bottom,12px); }
+    .agent-msg { padding:10px 16px; border-bottom:1px solid rgba(180,200,220,.06); font-size:12px; line-height:1.5; }
     .agent-msg:last-child { border-bottom:none; }
     .agent-msg-role { font-size:10px; font-weight:600; margin-bottom:2px; }
     .agent-msg-role.user { color:#60a5fa; }
@@ -380,9 +388,12 @@
     .agent-msg-type { display:inline-block; font-size:9px; padding:1px 5px; border-radius:4px; margin-left:6px; background:rgba(148,163,184,.15); color:var(--text3); }
     .agent-msg-summary { color:var(--text2); word-break:break-word; }
     .agent-msg-context { margin-top:2px; font-size:11px; color:var(--text3); font-style:italic; }
-    .agent-monitor-empty { padding:20px; text-align:center; font-size:12px; color:var(--text3); }
-    .agent-monitor-close { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:2px 6px; min-height:auto; min-width:auto; box-shadow:none; }
+    .agent-monitor-empty { padding:32px 16px; text-align:center; font-size:13px; color:var(--text3); }
+    .agent-monitor-close { background:none; border:none; color:var(--text3); cursor:pointer; font-size:16px; padding:4px 8px; min-height:auto; min-width:auto; box-shadow:none; }
     .agent-monitor-close:hover { color:var(--text); }
+    .agent-monitor-overlay { position:fixed; inset:0; z-index:899; background:rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:opacity .25s; }
+    .agent-monitor-overlay.visible { opacity:1; pointer-events:auto; }
+    .agent-monitor-drag-bar { width:36px; height:4px; margin:8px auto 0; border-radius:2px; background:rgba(180,200,220,.25); flex-shrink:0; }
 
 
     /* 任务详情展开区 */
@@ -633,18 +644,6 @@
         </div>
         <div id="teamDesc" class="muted" style="display:none;"></div>
         <div id="teamList" class="role-grid is-agent-rail"></div>
-        <!-- Agent 工作实况（只读监控面板） -->
-        <div id="agentMonitorPanel" class="agent-monitor-panel">
-          <div class="agent-monitor-header">
-            <span class="agent-monitor-title" id="agentMonitorTitle">Agent 工作实况</span>
-            <span class="agent-monitor-status" id="agentMonitorStatus"></span>
-            <button class="agent-monitor-close" id="agentMonitorClose" title="Close">✕</button>
-          </div>
-          <div class="agent-monitor-meta" id="agentMonitorMeta"></div>
-          <div class="agent-monitor-messages" id="agentMonitorMessages">
-            <div class="agent-monitor-empty" id="agentMonitorEmpty">暂无 Agent 活动</div>
-          </div>
-        </div>
       </div>
     </aside>
 
@@ -1380,6 +1379,9 @@
         teamOffline: "离线",
         agentMonitorTitle: "工作实况",
         agentMonitorEmpty: "暂无 Agent 活动",
+        agentMonitorNoConn: "未连接 PC · 请先扫码绑定",
+        agentMonitorWaiting: "PC 已连接 · 正在获取 Agent 状态…",
+        agentMonitorNoCdp: "Agent 监控未启用 · 需在 PC 端开启 CDP",
         agentLiveRunning: "工作中",
         agentLiveIdle: "空闲",
         agentLiveWaiting: "等待审批",
@@ -1396,9 +1398,9 @@
         agentMsgTypeTool: "工具调用",
         agentMsgTypeThinking: "思考",
         agentMsgTypeImage: "图片",
-        agentMsgUser: "用户",
+        agentMsgUser: "指令",
         agentMsgAssistant: "Agent",
-        agentMsgCountLabel: "条对话",
+        agentMsgCountLabel: "条消息",
         agentMonitorReadonly: "只读监控 · 如需指挥请发送任务",
         versionTitle: "版本号",
         languageTitle: "语言",
@@ -1547,6 +1549,9 @@
         teamOffline: "Offline",
         agentMonitorTitle: "Live Monitor",
         agentMonitorEmpty: "No Agent activity",
+        agentMonitorNoConn: "PC not connected · Scan QR to bind",
+        agentMonitorWaiting: "PC connected · Fetching Agent status…",
+        agentMonitorNoCdp: "Agent monitor unavailable · Enable CDP on PC",
         agentLiveRunning: "Working",
         agentLiveIdle: "Idle",
         agentLiveWaiting: "Approval",
@@ -1563,7 +1568,7 @@
         agentMsgTypeTool: "Tool Call",
         agentMsgTypeThinking: "Thinking",
         agentMsgTypeImage: "Image",
-        agentMsgUser: "User",
+        agentMsgUser: "Command",
         agentMsgAssistant: "Agent",
         agentMsgCountLabel: "messages",
         agentMonitorReadonly: "Read-only monitor · Send tasks to command",
@@ -2320,28 +2325,41 @@
       });
     }
 
-    // ── Agent 工作实况面板（只读监控）──
-    const _agentMonitorEl = document.getElementById("agentMonitorPanel");
-    const _agentMonitorTitleEl = document.getElementById("agentMonitorTitle");
-    const _agentMonitorStatusEl = document.getElementById("agentMonitorStatus");
-    const _agentMonitorMetaEl = document.getElementById("agentMonitorMeta");
-    const _agentMonitorMsgsEl = document.getElementById("agentMonitorMessages");
-    const _agentMonitorEmptyEl = document.getElementById("agentMonitorEmpty");
-    const _agentMonitorCloseEl = document.getElementById("agentMonitorClose");
+    // ── Agent 工作实况面板（只读监控，惰性获取，因为 DOM 在 script 之后） ──
+    let _agentMonitorEl, _agentMonitorTitleEl, _agentMonitorStatusEl,
+        _agentMonitorMetaEl, _agentMonitorMsgsEl, _agentMonitorOverlayEl;
+    let _monitorInited = false;
 
-    if (_agentMonitorCloseEl) {
-      _agentMonitorCloseEl.onclick = () => {
-        _agentMonitorRole = null;
-        _agentMonitorEl.classList.remove("visible");
-      };
+    function _initMonitorEls() {
+      if (_monitorInited) return;
+      _agentMonitorEl = document.getElementById("agentMonitorPanel");
+      _agentMonitorTitleEl = document.getElementById("agentMonitorTitle");
+      _agentMonitorStatusEl = document.getElementById("agentMonitorStatus");
+      _agentMonitorMetaEl = document.getElementById("agentMonitorMeta");
+      _agentMonitorMsgsEl = document.getElementById("agentMonitorMessages");
+      _agentMonitorOverlayEl = document.getElementById("agentMonitorOverlay");
+      const closeBtn = document.getElementById("agentMonitorClose");
+      if (closeBtn) closeBtn.onclick = () => closeAgentMonitor();
+      if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.onclick = () => closeAgentMonitor();
+      _monitorInited = !!_agentMonitorEl;
+    }
+
+    function closeAgentMonitor() {
+      _agentMonitorRole = null;
+      if (_agentMonitorEl) _agentMonitorEl.classList.remove("visible");
+      if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.classList.remove("visible");
     }
 
     function openAgentMonitor(role) {
+      _initMonitorEls();
+      if (!_agentMonitorEl) return;
       _agentMonitorRole = role;
       renderAgentMonitor();
       _agentMonitorEl.classList.add("visible");
+      if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.classList.add("visible");
       if (ws && ws.readyState === WebSocket.OPEN) {
-        sendEvent("request_agent_live", {});
+        const did = _pcDeviceId();
+        sendEvent("request_agent_live", did ? { target_device_id: did } : {});
       }
     }
 
@@ -2360,18 +2378,56 @@
     }
 
     function renderAgentMonitor() {
+      _initMonitorEls();
       if (!_agentMonitorEl) return;
       const s = _agentLiveState;
       _agentMonitorTitleEl.textContent = `${_agentMonitorRole || "Agent"} · ${t("agentMonitorTitle")}`;
 
-      if (!s || !s.agent_role) {
-        _agentMonitorStatusEl.textContent = "";
-        _agentMonitorMetaEl.innerHTML = `<span style="color:var(--text3);">${t("agentMonitorReadonly")}</span>`;
-        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">${t("agentMonitorEmpty")}</div>`;
+      // ── 状态 1：PWA 未连接 PC ──
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span> ${t("statusDisconn")}`;
+        _agentMonitorMetaEl.innerHTML = "";
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
+          <div style="font-size:28px;margin-bottom:8px;">📡</div>
+          <div>${t("agentMonitorNoConn")}</div>
+        </div>`;
         return;
       }
 
-      // 状态栏
+      // ── 状态 2：已连接但尚未收到 CDP 数据 ──
+      if (!s) {
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot running"></span> ${t("agentMonitorWaiting")}`;
+        _agentMonitorMetaEl.innerHTML = "";
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
+          <div style="font-size:28px;margin-bottom:8px;">⏳</div>
+          <div>${t("agentMonitorWaiting")}</div>
+        </div>`;
+        return;
+      }
+
+      // ── 状态 3：PC 回复了但 Cursor 未检测到 ──
+      if (s.found === false || !s.agent_role) {
+        const hasCdp = s.cdp_active;
+        const errMsg = s.error ? `<div style="margin-top:6px;font-size:11px;color:var(--text3);">${s.error}</div>` : "";
+        let hint = t("agentMonitorEmpty");
+        let icon = "🖥️";
+        if (s.found === false && !hasCdp) {
+          hint = t("agentMonitorNoCdp");
+          icon = "⚙️";
+        } else if (s.found === false) {
+          hint = currentLang === "en" ? "Cursor detected but Agent panel not found" : "已连接 Cursor，但未检测到 Agent 面板";
+          icon = "🔍";
+        }
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span> ${currentLang === "en" ? "PC Connected" : "PC 已连接"}`;
+        _agentMonitorMetaEl.innerHTML = `<span style="color:var(--text3);">${t("agentMonitorReadonly")}</span>`;
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
+          <div style="font-size:28px;margin-bottom:8px;">${icon}</div>
+          <div>${hint}</div>${errMsg}
+        </div>`;
+        return;
+      }
+
+      // ── 状态 4：正常数据 ──
       const live = agentLiveHintForRole(_agentMonitorRole);
       if (live) {
         _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot ${live.dot}"></span> ${live.text}`;
@@ -2379,19 +2435,19 @@
         _agentMonitorStatusEl.textContent = "";
       }
 
-      // Meta 信息
       const metaParts = [];
-      if (s.model_name) metaParts.push(s.model_name);
       if (s.message_count) metaParts.push(`${s.message_count} ${t("agentMsgCountLabel")}`);
+      if (s.model_name) metaParts.push(s.model_name);
       if (s.current_mode) metaParts.push(s.current_mode);
       if (s.pending_approvals > 0) metaParts.push(`⚠️ ${s.pending_approvals} pending`);
-      metaParts.push(t("agentMonitorReadonly"));
       _agentMonitorMetaEl.innerHTML = metaParts.map(p => `<span>${p}</span>`).join("");
 
-      // 消息列表
       const msgs = Array.isArray(s.recent_messages) ? s.recent_messages : [];
       if (msgs.length === 0) {
-        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">${t("agentMonitorEmpty")}</div>`;
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
+          <div style="font-size:28px;margin-bottom:8px;">💤</div>
+          <div>${t("agentMonitorEmpty")}</div>
+        </div>`;
         return;
       }
 
@@ -2409,14 +2465,15 @@
         </div>`;
       }).join("");
 
-      // 自动滚到底部
+      _agentMonitorMsgsEl.innerHTML += `<div style="padding:8px 16px;text-align:center;font-size:10px;color:var(--text3);border-top:1px solid rgba(180,200,220,.08);">${t("agentMonitorReadonly")}</div>`;
       _agentMonitorMsgsEl.scrollTop = _agentMonitorMsgsEl.scrollHeight;
     }
 
     function applyAgentLiveState(payload) {
       _agentLiveState = payload;
       renderTeam(onlineDevices, typeof targetRoleEl !== "undefined" ? targetRoleEl.value : "");
-      if (_agentMonitorRole && _agentMonitorEl.classList.contains("visible")) {
+      _initMonitorEls();
+      if (_agentMonitorRole && _agentMonitorEl && _agentMonitorEl.classList.contains("visible")) {
         renderAgentMonitor();
       }
     }
@@ -3229,5 +3286,21 @@
     applyVersionPolicy().then(registerServiceWorker);
     if (AUTO_CONNECT) connect();
   </script>
+
+<!-- Agent 工作实况（只读监控浮层） -->
+<div id="agentMonitorOverlay" class="agent-monitor-overlay"></div>
+<div id="agentMonitorPanel" class="agent-monitor-panel">
+  <div class="agent-monitor-drag-bar"></div>
+  <div class="agent-monitor-header">
+    <span class="agent-monitor-title" id="agentMonitorTitle">Agent 工作实况</span>
+    <span class="agent-monitor-status" id="agentMonitorStatus"></span>
+    <button class="agent-monitor-close" id="agentMonitorClose" title="Close">✕</button>
+  </div>
+  <div class="agent-monitor-meta" id="agentMonitorMeta"></div>
+  <div class="agent-monitor-messages" id="agentMonitorMessages">
+    <div class="agent-monitor-empty" id="agentMonitorEmpty">暂无 Agent 活动</div>
+  </div>
+</div>
+
 </body>
 </html>

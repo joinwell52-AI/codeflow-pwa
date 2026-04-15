@@ -2665,25 +2665,30 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                             await _send("desktop_action_result", result)
 
                         elif et == "request_agent_live":
+                            logger.info("收到 PWA request_agent_live 请求")
                             try:
                                 cursor_state = nudger.get_cursor_state()
-                                if cursor_state.get("found"):
-                                    live_payload = {
-                                        "agent_role": cursor_state.get("agent_role", ""),
-                                        "all_roles": cursor_state.get("all_roles", []),
-                                        "agent_status": cursor_state.get("agent_status", "unknown"),
-                                        "is_busy": cursor_state.get("is_busy", False),
-                                        "busy_hint": cursor_state.get("busy_hint", ""),
-                                        "model_name": cursor_state.get("model_name", ""),
-                                        "current_mode": cursor_state.get("current_mode", ""),
-                                        "message_count": cursor_state.get("message_count", 0),
-                                        "pending_approvals": cursor_state.get("pending_approvals", 0),
-                                        "recent_messages": cursor_state.get("recent_messages", []),
-                                    }
-                                    await _send("agent_live_state", live_payload)
-                                else:
-                                    await _send("agent_live_state", {"found": False})
+                                live_payload = {
+                                    "found": bool(cursor_state.get("found")),
+                                    "has_cdp": cursor_state.get("has_cdp", HAS_CDP),
+                                    "cdp_active": _cdp_active,
+                                    "agent_role": cursor_state.get("agent_role", ""),
+                                    "all_roles": cursor_state.get("all_roles", []),
+                                    "agent_status": cursor_state.get("agent_status", "unknown"),
+                                    "is_busy": cursor_state.get("is_busy", False),
+                                    "busy_hint": cursor_state.get("busy_hint", ""),
+                                    "model_name": cursor_state.get("model_name", ""),
+                                    "current_mode": cursor_state.get("current_mode", ""),
+                                    "message_count": cursor_state.get("message_count", 0),
+                                    "pending_approvals": cursor_state.get("pending_approvals", 0),
+                                    "recent_messages": cursor_state.get("recent_messages", []),
+                                }
+                                if cursor_state.get("error"):
+                                    live_payload["error"] = str(cursor_state["error"])[:200]
+                                await _send("agent_live_state", live_payload)
+                                logger.info("已响应 request_agent_live: found=%s role=%s", live_payload["found"], live_payload["agent_role"])
                             except Exception as _req_exc:
+                                logger.warning("响应 request_agent_live 失败: %s", _req_exc)
                                 await _send("agent_live_state", {"found": False, "error": str(_req_exc)})
 
                 async def _push_desktop_snapshot(reason: str = "interval"):
@@ -2707,25 +2712,33 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                         # Agent 实时状态推送（CDP 状态 + 消息摘要）
                         try:
                             cursor_state = nudger.get_cursor_state()
-                            if cursor_state.get("found"):
-                                live_payload = {
-                                    "agent_role": cursor_state.get("agent_role", ""),
-                                    "all_roles": cursor_state.get("all_roles", []),
-                                    "agent_status": cursor_state.get("agent_status", "unknown"),
-                                    "is_busy": cursor_state.get("is_busy", False),
-                                    "busy_hint": cursor_state.get("busy_hint", ""),
-                                    "model_name": cursor_state.get("model_name", ""),
-                                    "current_mode": cursor_state.get("current_mode", ""),
-                                    "message_count": cursor_state.get("message_count", 0),
-                                    "pending_approvals": cursor_state.get("pending_approvals", 0),
-                                    "recent_messages": cursor_state.get("recent_messages", []),
-                                }
-                                await ws.send(_make_msg("agent_live_state", live_payload))
+                            live_payload = {
+                                "found": bool(cursor_state.get("found")),
+                                "has_cdp": cursor_state.get("has_cdp", HAS_CDP),
+                                "cdp_active": _cdp_active,
+                                "agent_role": cursor_state.get("agent_role", ""),
+                                "all_roles": cursor_state.get("all_roles", []),
+                                "agent_status": cursor_state.get("agent_status", "unknown"),
+                                "is_busy": cursor_state.get("is_busy", False),
+                                "busy_hint": cursor_state.get("busy_hint", ""),
+                                "model_name": cursor_state.get("model_name", ""),
+                                "current_mode": cursor_state.get("current_mode", ""),
+                                "message_count": cursor_state.get("message_count", 0),
+                                "pending_approvals": cursor_state.get("pending_approvals", 0),
+                                "recent_messages": cursor_state.get("recent_messages", []),
+                            }
+                            if cursor_state.get("error"):
+                                live_payload["error"] = str(cursor_state["error"])[:200]
+                            msg = _make_msg("agent_live_state", live_payload)
+                            msg_kb = len(msg.encode("utf-8")) / 1024
+                            await ws.send(msg)
+                            logger.info("已推送 agent_live_state (%.1fKB) found=%s role=%s msgs=%d",
+                                        msg_kb, live_payload.get("found"), live_payload.get("agent_role", ""), len(live_payload.get("recent_messages", [])))
                         except Exception as _cdp_exc:
-                            logger.debug("推送 agent_live_state 失败: %s", _cdp_exc)
+                            logger.warning("推送 agent_live_state 失败: %s", _cdp_exc)
                         logger.debug("已推送 PWA 快照 (%s)", reason)
                     except Exception as ex:
-                        logger.debug("推送 PWA 快照失败: %s", ex)
+                        logger.warning("推送 PWA 快照失败: %s", ex)
 
                 async def poll_and_push():
                     _last_file_snapshot = ""

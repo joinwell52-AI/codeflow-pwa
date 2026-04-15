@@ -1,4 +1,4 @@
-﻿// build: 20260414-2.3.0
+// build: 20260414-2.3.0
 importScripts("./config.js");
 
 const APP_VERSION = (self.CODEFLOW_CONFIG && self.CODEFLOW_CONFIG.appVersion) || "1.0.0";

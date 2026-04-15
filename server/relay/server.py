@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import os
 import time
@@ -45,6 +45,9 @@ ALLOWED_EVENTS = {
     "task_created",
     "patrol_trace",
     "conn_error_reload",
+    # Agent 实时监控（CDP → PWA）
+    "agent_live_state",
+    "request_agent_live",
 }
 MAX_MESSAGE_BYTES = 256 * 1024
 TRANSPORT_MAX_BYTES = 512 * 1024
