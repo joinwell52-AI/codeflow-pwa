@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING
 
 from urllib.parse import urlparse, parse_qs
 
+from config import _T
 
 if TYPE_CHECKING:
 
@@ -103,52 +104,55 @@ _stop_callback = None
 _setup_complete_callback = None  # 引导完成后调用，由 main.py 注入
 
 
-TEAM_TEMPLATES = {
-    "dev-team": {
-        "name": "软件开发团队",
-        "name_en": "Software Dev Team",
-        "roles": [
-            {"code": "PM", "label": "项目经理"},
-            {"code": "DEV", "label": "开发工程师"},
-            {"code": "QA", "label": "测试工程师"},
-            {"code": "OPS", "label": "运维工程师"},
-        ],
-        "leader": "PM",
-    },
-    "media-team": {
-        "name": "自媒体团队",
-        "name_en": "Content Media Team",
-        "roles": [
-            {"code": "COLLECTOR", "label": "素材采集"},
-            {"code": "WRITER", "label": "拟题提纲"},
-            {"code": "EDITOR", "label": "润色编辑"},
-            {"code": "PUBLISHER", "label": "审核发行"},
-        ],
-        "leader": "PUBLISHER",
-    },
-    "mvp-team": {
-        "name": "创业MVP团队",
-        "name_en": "Startup MVP Team",
-        "roles": [
-            {"code": "BUILDER", "label": "快速原型"},
-            {"code": "DESIGNER", "label": "产品设计"},
-            {"code": "MARKETER", "label": "增长运营"},
-            {"code": "RESEARCHER", "label": "市场调研"},
-        ],
-        "leader": "MARKETER",
-    },
-    "qa-team": {
-        "name": "专项测试团队",
-        "name_en": "Dedicated QA Team",
-        "roles": [
-            {"code": "LEAD-QA", "label": "测试负责人"},
-            {"code": "TESTER", "label": "功能测试"},
-            {"code": "AUTO-TESTER", "label": "自动化测试"},
-            {"code": "PERF-TESTER", "label": "性能测试"},
-        ],
-        "leader": "LEAD-QA",
-    },
-}
+def _get_team_templates() -> dict:
+    return {
+        "dev-team": {
+            "name": _T("team_dev"),
+            "name_en": "Software Dev Team",
+            "roles": [
+                {"code": "PM", "label": _T("role_pm")},
+                {"code": "DEV", "label": _T("role_dev")},
+                {"code": "QA", "label": _T("role_qa")},
+                {"code": "OPS", "label": _T("role_ops")},
+            ],
+            "leader": "PM",
+        },
+        "media-team": {
+            "name": _T("team_media"),
+            "name_en": "Content Media Team",
+            "roles": [
+                {"code": "COLLECTOR", "label": _T("role_collector")},
+                {"code": "WRITER", "label": _T("role_writer")},
+                {"code": "EDITOR", "label": _T("role_editor")},
+                {"code": "PUBLISHER", "label": _T("role_publisher")},
+            ],
+            "leader": "PUBLISHER",
+        },
+        "mvp-team": {
+            "name": _T("team_mvp"),
+            "name_en": "Startup MVP Team",
+            "roles": [
+                {"code": "BUILDER", "label": _T("role_builder")},
+                {"code": "DESIGNER", "label": _T("role_designer")},
+                {"code": "MARKETER", "label": _T("role_marketer")},
+                {"code": "RESEARCHER", "label": _T("role_researcher")},
+            ],
+            "leader": "MARKETER",
+        },
+        "qa-team": {
+            "name": _T("team_qa"),
+            "name_en": "Dedicated QA Team",
+            "roles": [
+                {"code": "LEAD-QA", "label": _T("role_lead_qa")},
+                {"code": "TESTER", "label": _T("role_tester")},
+                {"code": "AUTO-TESTER", "label": _T("role_auto_tester")},
+                {"code": "PERF-TESTER", "label": _T("role_perf_tester")},
+            ],
+            "leader": "LEAD-QA",
+        },
+    }
+
+TEAM_TEMPLATES = _get_team_templates()
 
 
 # ─── 工具函数 ─────────────────────────────────────────────
@@ -735,7 +739,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not fp.exists():
 
-            self.send_error(500, "面板文件丢失")
+            self.send_error(500, _T("panel_file_missing"))
 
             return
 
@@ -921,7 +925,7 @@ class PanelHandler(BaseHTTPRequestHandler):
             if result:
                 self._json({"ok": True, "data": result})
             else:
-                self._json({"ok": False, "message": "CDP 不可用或未找到目标"})
+                self._json({"ok": False, "message": _T("cdp_unavailable")})
         except Exception as e:
             self._json({"ok": False, "message": str(e)[:200]})
 
@@ -931,7 +935,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not _nudger_ref:
 
-            return self._json({"error": "nudger 未启动"})
+            return self._json({"error": _T("nudger_not_started")})
 
         try:
 
@@ -951,9 +955,9 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         pd = _project_dir()
 
-        checks.append({"name": "项目目录", "ok": pd is not None and pd.exists(),
+        checks.append({"name": _T("pf_project_dir"), "ok": pd is not None and pd.exists(),
 
-                        "detail": str(pd) if pd else "未设置",
+                        "detail": str(pd) if pd else _T("pf_not_set"),
 
                         "action": "change_project"})
 
@@ -961,15 +965,15 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         dirs_ok = ad and all((ad / d).exists() for d in ["tasks", "reports", "issues", "log"])
 
-        checks.append({"name": "目录结构", "ok": bool(dirs_ok),
+        checks.append({"name": _T("pf_dir_structure"), "ok": bool(dirs_ok),
 
-                        "detail": "tasks/ reports/ issues/ log/ 就绪" if dirs_ok else "缺少子目录"})
+                        "detail": "tasks/ reports/ issues/ log/ ✓" if dirs_ok else _T("pf_missing_subdirs")})
 
         cfg = _load_bf_config()
 
-        checks.append({"name": "团队配置", "ok": cfg is not None,
+        checks.append({"name": _T("pf_team_config"), "ok": cfg is not None,
 
-                        "detail": cfg.get("team_name", "") if cfg else "未初始化",
+                        "detail": cfg.get("team_name", "") if cfg else _T("pf_not_initialized"),
 
                         "action": "change_team"})
 
@@ -997,17 +1001,17 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if all_files_ok:
 
-            detail = "rules + skills + 角色文档 已就绪"
+            detail = _T("pf_rules_skills_ready")
 
         elif rules_ok:
 
-            detail = "rules 就绪，角色文档缺失"
+            detail = _T("pf_rules_ready_docs_miss")
 
         else:
 
-            detail = "未拷贝到项目"
+            detail = _T("pf_not_copied")
 
-        checks.append({"name": "角色文件", "ok": all_files_ok,
+        checks.append({"name": _T("pf_role_files"), "ok": all_files_ok,
 
                         "detail": detail,
 
@@ -1055,9 +1059,9 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             pass
 
-        checks.append({"name": "Cursor 窗口", "ok": win is not None,
+        checks.append({"name": _T("pf_cursor_window"), "ok": win is not None,
 
-                        "detail": win[1][:60] if win else "未找到 Cursor，请先打开（或手动指定路径）",
+                        "detail": win[1][:60] if win else _T("pf_cursor_not_found"),
 
                         "action": "set_cursor_exe" if not win else "",
 
@@ -1104,7 +1108,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         map_saved_path: str | None = None
 
-        map_detail = "未执行 OCR 映射"
+        map_detail = _T("pf_ocr_not_mapped")
 
         # ── Step 1：只要有团队角色，先生成完整映射骨架（加载已保存坐标）──
 
@@ -1140,7 +1144,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         else:
 
-            map_detail = "请先选择团队（团队配置未就绪）"
+            map_detail = _T("pf_select_team_first")
 
         # ── Step 2：尝试 OCR 识别，补充侧栏标签和坐标（失败不影响表格显示）──
 
@@ -1174,13 +1178,13 @@ class PanelHandler(BaseHTTPRequestHandler):
                     if ocr_lang_check.get("missing"):
                         missing = ocr_lang_check["missing"]
                         checks.append({
-                            "name": "OCR 语言包",
+                            "name": _T("pf_ocr_lang"),
                             "ok": False,
-                            "detail": f"缺少 {missing}，已触发后台安装（需管理员权限），安装完成后重新预检即可",
+                            "detail": f"missing {missing}",
                         })
                     else:
                         checks.append({
-                            "name": "OCR 语言包",
+                            "name": _T("pf_ocr_lang"),
                             "ok": True,
                             "detail": f"en={ocr_lang_check['en']} zh={ocr_lang_check['zh']}",
                         })
@@ -1297,15 +1301,15 @@ class PanelHandler(BaseHTTPRequestHandler):
 
                 logger.warning("preflight agent mapping OCR: %s", e)
 
-                map_detail = f"OCR 扫描异常（坐标记录仍有效）: {e}"[:160]
+                map_detail = f"{_T('pf_ocr_scan_error')}: {e}"[:160]
 
         elif agent_mapping:
 
-            map_detail = "Nudger 未就绪，仅显示角色列表（可手动定位）"
+            map_detail = _T("pf_nudger_not_ready")
 
         checks.append({
 
-            "name": "Agent 映射",
+            "name": _T("pf_agent_mapping"),
 
             "ok": agent_mapping_ok,
 
@@ -1419,13 +1423,13 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         except Exception as e:
 
-            content = f"读取失败: {e}"
+            content = _T("read_fail", err=e)
 
         self._json({"filename": fname, "dir": dir_name, "content": content})
 
     def _api_teams(self):
 
-        self._json({"teams": TEAM_TEMPLATES})
+        self._json({"teams": _get_team_templates()})
 
     def _api_devices(self):
 
@@ -1488,11 +1492,11 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             _start_callback()
 
-            self._json({"ok": True, "message": "巡检已启动"})
+            self._json({"ok": True, "message": _T("patrol_started")})
 
         else:
 
-            self._json({"ok": False, "message": "回调未注册"}, 500)
+            self._json({"ok": False, "message": _T("callback_not_registered")}, 500)
 
     def _api_stop(self):
 
@@ -1500,11 +1504,11 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             _stop_callback()
 
-            self._json({"ok": True, "message": "巡检已停止"})
+            self._json({"ok": True, "message": _T("patrol_stopped")})
 
         else:
 
-            self._json({"ok": False, "message": "回调未注册"}, 500)
+            self._json({"ok": False, "message": _T("callback_not_registered")}, 500)
 
     def _api_quit(self):
 
@@ -1518,7 +1522,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
                 pass
 
-        self._json({"ok": True, "message": "正在退出"})
+        self._json({"ok": True, "message": _T("exiting")})
 
         def _shutdown():
 
@@ -1558,10 +1562,10 @@ class PanelHandler(BaseHTTPRequestHandler):
             import updater
             state = updater.get_state()
             if state["status"] != "ready":
-                return self._json({"ok": False, "error": "新版本尚未下载完成"})
+                return self._json({"ok": False, "error": _T("update_not_ready")})
             ok, msg = updater.apply_update(state["new_exe"])
             if ok:
-                self._json({"ok": True, "message": "正在更新，程序将自动重启…"})
+                self._json({"ok": True, "message": _T("updating_restart")})
             else:
                 return self._json({"ok": False, "error": msg})
         except Exception as e:
@@ -1570,7 +1574,7 @@ class PanelHandler(BaseHTTPRequestHandler):
     def _api_restart(self):
         """保存 cursor_exe_path 后重启程序，重新走完整启动流程。"""
         import sys as _sys, os as _os, subprocess as _sp
-        self._json({"ok": True, "message": "正在重启…"})
+        self._json({"ok": True, "message": _T("restarting")})
 
         def _do_restart():
             time.sleep(0.8)
@@ -1602,7 +1606,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             logger.info("已清除本地配置: %s", cfg_path)
 
-        self._json({"ok": True, "message": "已重置，请重新配置项目目录和团队", "need_setup": True})
+        self._json({"ok": True, "message": _T("reset_done"), "need_setup": True})
 
 
     def _api_setup(self):
@@ -1613,7 +1617,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if team_id not in TEAM_TEMPLATES:
 
-            return self._json({"ok": False, "message": f"未知团队: {team_id}"}, 400)
+            return self._json({"ok": False, "message": _T("unknown_team", name=team_id)}, 400)
 
         ad = _agents_dir()
 
@@ -1621,7 +1625,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not ad or not pd:
 
-            return self._json({"ok": False, "message": "项目目录未设置"}, 400)
+            return self._json({"ok": False, "message": _T("project_dir_not_set")}, 400)
 
         for sub in ["tasks", "reports", "issues", "log"]:
 
@@ -1683,7 +1687,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         _save_bf_config(cfg)
 
-        self._json({"ok": True, "message": "配置已保存"})
+        self._json({"ok": True, "message": _T("config_saved")})
 
     def _api_regenerate_key(self):
 
@@ -1697,7 +1701,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         logger.info("房间密钥已重新生成")
 
-        self._json({"ok": True, "room_key": cfg["room_key"], "message": "密钥已重新生成，所有设备需重新扫码"})
+        self._json({"ok": True, "room_key": cfg["room_key"], "message": _T("key_regenerated")})
 
     def _api_unbind(self):
 
@@ -1713,7 +1717,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         _save_bf_config(cfg)
 
-        self._json({"ok": True, "message": f"已解绑: {device_id}"})
+        self._json({"ok": True, "message": _T("unbound", name=device_id)})
 
     def _api_change_project(self):
 
@@ -1723,13 +1727,13 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not new_path:
 
-            return self._json({"ok": False, "message": "路径不能为空"})
+            return self._json({"ok": False, "message": _T("path_empty")})
 
         p = Path(new_path)
 
         if not p.exists() or not p.is_dir():
 
-            return self._json({"ok": False, "message": f"目录不存在: {new_path}"})
+            return self._json({"ok": False, "message": _T("dir_not_exist", path=new_path)})
 
         from main import save_config, init_project_dirs
 
@@ -1751,7 +1755,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         logger.info("项目目录已切换: %s", p)
 
-        self._json({"ok": True, "message": f"已切换到: {p}", "project_dir": str(p)})
+        self._json({"ok": True, "message": _T("switched_to", path=p), "project_dir": str(p)})
 
     def _api_browse_folder(self):
         """弹出文件夹选择框，返回选中的路径。"""
@@ -1761,12 +1765,12 @@ class PanelHandler(BaseHTTPRequestHandler):
             root = tk.Tk()
             root.withdraw()
             root.attributes("-topmost", True)
-            path = filedialog.askdirectory(title="选择项目文件夹")
+            path = filedialog.askdirectory(title=_T("dlg_select_project"))
             root.destroy()
         except Exception as e:
-            return self._json({"ok": False, "message": f"选择失败: {e}"})
+            return self._json({"ok": False, "message": _T("select_fail", err=e)})
         if not path:
-            return self._json({"ok": False, "message": "未选择"})
+            return self._json({"ok": False, "message": _T("nothing_selected")})
         return self._json({"ok": True, "path": path})
 
     def _api_set_cursor_exe(self):
@@ -1787,9 +1791,9 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             path = filedialog.askopenfilename(
 
-                title="选择 Cursor.exe",
+                title=_T("dlg_select_cursor"),
 
-                filetypes=[("可执行文件", "*.exe"), ("所有文件", "*.*")],
+                filetypes=[(_T("dlg_executables"), "*.exe"), (_T("dlg_all_files"), "*.*")],
 
             )
 
@@ -1797,17 +1801,17 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         except Exception as e:
 
-            return self._json({"ok": False, "message": f"文件选择失败: {e}"})
+            return self._json({"ok": False, "message": _T("file_select_fail", err=e)})
 
         if not path:
 
-            return self._json({"ok": False, "message": "未选择文件"})
+            return self._json({"ok": False, "message": _T("no_file_selected")})
 
         p = Path(path)
 
         if not p.is_file():
 
-            return self._json({"ok": False, "message": f"文件不存在: {path}"})
+            return self._json({"ok": False, "message": _T("file_not_exist", path=path)})
 
         from main import save_config
 
@@ -1819,7 +1823,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         logger.info("Cursor.exe 路径已保存: %s", p)
         # 引导阶段只记录路径，不触发嵌入，不打开 Cursor
-        self._json({"ok": True, "message": f"已保存: {p.name}", "cursor_exe_path": str(p)})
+        self._json({"ok": True, "message": _T("saved", path=p.name), "cursor_exe_path": str(p)})
 
     # ── Agent 坐标定位 / 实测 / 删除 ────────────────────────────────────
 
@@ -1907,7 +1911,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not role:
 
-            return self._json({"ok": False, "message": "缺少 role 参数"}, 400)
+            return self._json({"ok": False, "message": _T("missing_role_param")}, 400)
 
         role_key = _normalize_role(role).upper()
 
@@ -1950,7 +1954,7 @@ class PanelHandler(BaseHTTPRequestHandler):
             if not xy:
                 PanelHandler._calibrate_states[role_key] = {
                     "status": "timeout", "xy": None,
-                    "msg": "20 秒内未捕获到点击，请重试"
+                    "msg": _T("calibrate_timeout")
                 }
                 return
 
@@ -1961,7 +1965,7 @@ class PanelHandler(BaseHTTPRequestHandler):
             PanelHandler._calibrate_states[role_key] = {
                 "status": "done",
                 "xy": list(xy),
-                "msg": f"已记录 ({xy[0]}, {xy[1]})",
+                "msg": f"{_T('calibrate_recorded')} ({xy[0]}, {xy[1]})",
                 "verified": True,
             }
 
@@ -1981,13 +1985,13 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not role_key:
 
-            return self._json({"status": "error", "msg": "缺少 role 参数"}, 400)
+            return self._json({"status": "error", "msg": _T("missing_role_param")}, 400)
 
         state = PanelHandler._calibrate_states.get(role_key)
 
         if not state:
 
-            return self._json({"status": "not_started", "xy": None, "msg": "未启动监听"})
+            return self._json({"status": "not_started", "xy": None, "msg": _T("listen_not_started")})
 
         self._json(state)
 
@@ -2001,11 +2005,11 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not role:
 
-            return self._json({"ok": False, "message": "缺少 role 参数"}, 400)
+            return self._json({"ok": False, "message": _T("missing_role_param")}, 400)
 
         if not _nudger_ref:
 
-            return self._json({"ok": False, "message": "Nudger 未就绪"}, 400)
+            return self._json({"ok": False, "message": _T("nudger_not_ready")}, 400)
 
         try:
 
@@ -2025,7 +2029,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             if not win:
 
-                return self._json({"ok": False, "message": "未找到 Cursor 窗口"})
+                return self._json({"ok": False, "message": _T("cursor_win_not_found_s")})
 
             focus_window(win[0])
 
@@ -2048,7 +2052,7 @@ class PanelHandler(BaseHTTPRequestHandler):
                 pos = _fkp(st0, label) or _fkp(st0, role_key)
 
             if not pos:
-                return self._json({"ok": False, "message": f"OCR未找到 {label}，请确认侧栏可见"})
+                return self._json({"ok": False, "message": _T("ocr_not_found_role", role=label)})
 
             logger.info("[切换] OCR点击 %s → (%d,%d)", label, pos[0], pos[1])
             focus_window(win[0])
@@ -2072,7 +2076,7 @@ class PanelHandler(BaseHTTPRequestHandler):
     def _api_agent_test_all(self):
         """后台线程逐个切换 Agent，前端轮询 /api/agent/test_all_poll 获取进度。"""
         if not _nudger_ref:
-            return self._json({"ok": False, "message": "Nudger 未就绪"}, 400)
+            return self._json({"ok": False, "message": _T("nudger_not_ready")}, 400)
 
         # 如果已在运行，直接返回当前状态
         if PanelHandler._test_all_state.get("running"):
@@ -2126,13 +2130,13 @@ class PanelHandler(BaseHTTPRequestHandler):
                 })
 
                 if not team_roles:
-                    _push("系统", "错误", "未读到角色配置，请先完成预检")
+                    _push("系统", "错误", _T("test_no_roles"))
                     PanelHandler._test_all_state["running"] = False
                     return
 
                 win = find_cursor_window(_nudger_ref.config) if _nudger_ref else None
                 if not win:
-                    _push("系统", "错误", "未找到 Cursor 窗口")
+                    _push("系统", "错误", _T("cursor_win_not_found_s"))
                     PanelHandler._test_all_state["running"] = False
                     return
 
@@ -2281,7 +2285,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not role:
 
-            return self._json({"ok": False, "message": "缺少 role 参数"}, 400)
+            return self._json({"ok": False, "message": _T("missing_role_param")}, 400)
 
         try:
 
@@ -2325,7 +2329,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         if not pd:
 
-            return self._json({"ok": False, "message": "项目目录未设置"})
+            return self._json({"ok": False, "message": _T("project_dir_not_set")})
 
         cfg = _load_bf_config()
 
@@ -2333,7 +2337,7 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         _copy_templates(pd, tid)
 
-        self._json({"ok": True, "message": "角色文件已拷贝"})
+        self._json({"ok": True, "message": _T("role_files_copied")})
 
     # ─── 外部 Skills ──────────────────────────────────────
 
@@ -2409,30 +2413,29 @@ class PanelHandler(BaseHTTPRequestHandler):
         """POST /api/skills/install — 把指定 skill 目录复制到项目 .cursor/skills/<name>/"""
         pd = _project_dir()
         if not pd:
-            return self._json({"ok": False, "message": "项目目录未设置"}, 400)
+            return self._json({"ok": False, "message": _T("project_dir_not_set")}, 400)
 
         body = self._read_body()
         skill_path = (body.get("path") or "").strip()
         skill_name = (body.get("name") or "").strip()
         if not skill_path or not skill_name:
-            return self._json({"ok": False, "message": "缺少 path 或 name"}, 400)
+            return self._json({"ok": False, "message": _T("missing_path_or_name")}, 400)
 
         src = Path(skill_path)
         if not src.exists() or not src.is_dir():
-            return self._json({"ok": False, "message": f"skill 目录不存在: {skill_path}"}, 400)
+            return self._json({"ok": False, "message": _T("dir_not_exist", path=skill_path)}, 400)
 
         dst = pd / ".cursor" / "skills" / skill_name
         try:
-            # 确保父目录 .cursor/skills/ 存在（新项目可能没有）
             dst.parent.mkdir(parents=True, exist_ok=True)
             if dst.exists():
                 shutil.rmtree(str(dst))
             shutil.copytree(str(src), str(dst))
             logger.info("[skills] 已安装 %s → %s", skill_name, dst)
-            self._json({"ok": True, "message": f"已安装：{skill_name}", "dst": str(dst)})
+            self._json({"ok": True, "message": _T("installed", name=skill_name), "dst": str(dst)})
         except Exception as e:
             logger.error("[skills] 安装失败 %s: %s", skill_name, e)
-            self._json({"ok": False, "message": f"安装失败: {e}"}, 500)
+            self._json({"ok": False, "message": _T("install_fail", err=e)}, 500)
 
     # ─── 技能市场：仓库列表 + 下载 ───────────────────────────
 
@@ -2599,11 +2602,11 @@ class PanelHandler(BaseHTTPRequestHandler):
         repo_id = (body.get("id") or "").strip()
         repo_cfg = next((r for r in PanelHandler._SKILL_REPOS if r["id"] == repo_id), None)
         if not repo_cfg:
-            return self._json({"ok": False, "message": f"未知仓库: {repo_id}"}, 400)
+            return self._json({"ok": False, "message": _T("unknown_repo", repo=repo_id)}, 400)
 
         ext_dir = self._get_external_dir()
         if not ext_dir:
-            return self._json({"ok": False, "message": "无法确定 external/ 目录，请先设置项目目录"}, 400)
+            return self._json({"ok": False, "message": _T("no_external_dir")}, 400)
 
         local_path = ext_dir / repo_cfg["dir"]
         url = repo_cfg["url"]
@@ -2621,7 +2624,7 @@ class PanelHandler(BaseHTTPRequestHandler):
             return self._json({
                 "ok": False,
                 "no_git": True,
-                "message": "未检测到 git，请先安装 Git for Windows：\nhttps://git-scm.com/download/win\n安装后重启本程序即可。"
+                "message": _T("git_not_found"),
             }, 400)
 
         # GitHub 国内镜像代理列表（依次尝试）
@@ -2670,16 +2673,16 @@ class PanelHandler(BaseHTTPRequestHandler):
 
                 if r is None or r.returncode != 0:
                     return self._json({"ok": False,
-                                       "message": f"下载失败（已尝试直连和镜像）:\n{last_err}"})
+                                       "message": _T("download_fail_all", err=last_err)})
 
             logger.info("[skills] %s 成功: %s", action, repo_cfg["dir"])
             self._json({"ok": True, "message": f"{action}成功：{repo_cfg['name']}",
                         "local_path": str(local_path)})
         except FileNotFoundError:
             self._json({"ok": False,
-                        "message": "未找到 git 命令，请先安装 Git（https://git-scm.com）"}, 500)
+                        "message": _T("git_cmd_not_found")}, 500)
         except Exception as e:
-            self._json({"ok": False, "message": f"操作失败: {e}"}, 500)
+            self._json({"ok": False, "message": _T("operation_fail", err=e)}, 500)
 
 # ─── 启动 ────────────────────────────────────────────────
 

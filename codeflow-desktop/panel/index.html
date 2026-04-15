@@ -310,11 +310,12 @@ a:hover{text-decoration:underline}
   padding:9px 16px;display:none;align-items:center;gap:10px;font-size:13px;
   box-shadow:0 2px 12px rgba(0,0,0,.4)">
   <span style="font-size:1.2em">⬆️</span>
-  <span id="update-bar-msg">发现新版本，正在下载…</span>
+  <span id="update-bar-msg" data-i18n="update_downloading">发现新版本，正在下载…</span>
   <span id="update-bar-progress" style="margin-left:4px;color:#86efac"></span>
   <button id="update-bar-btn" onclick="applyUpdate()" style="display:none;margin-left:auto;
     border:1px solid #4ade80;background:rgba(74,222,128,.15);color:#4ade80;
-    border-radius:6px;padding:3px 14px;cursor:pointer;font-size:12px;font-weight:600">
+    border-radius:6px;padding:3px 14px;cursor:pointer;font-size:12px;font-weight:600"
+    data-i18n="update_btn_apply">
     立即更新重启
   </button>
 </div>
@@ -338,7 +339,7 @@ a:hover{text-decoration:underline}
 
   <!-- Agent 命名指引（选了团队就显示，常驻在巡检控制上方） -->
   <div id="agentNameGuide" style="display:none;margin-bottom:14px;padding:10px 16px;background:rgba(234,179,8,.07);border:1px solid rgba(234,179,8,.28);border-radius:8px;font-size:12px;line-height:1.7">
-    <div style="font-weight:700;color:#fbbf24;margin-bottom:4px">💡 如何在 Cursor 创建团队 Agent</div>
+    <div style="font-weight:700;color:#fbbf24;margin-bottom:4px" data-i18n="agent_guide_title">💡 如何在 Cursor 创建团队 Agent</div>
     <div style="color:#fde68a">按以下格式命名，并 <b>置顶（Pin）</b>到 Agents 列表：</div>
     <div id="agentNameList" style="font-family:monospace;color:#fcd34d;margin:6px 0 4px;letter-spacing:.5px"></div>
     <div style="color:#d1d5db;font-size:11px">
@@ -363,17 +364,17 @@ a:hover{text-decoration:underline}
 
   <!-- 1.5 CDP 实时状态 -->
   <div class="sec" id="secCdp" style="display:none">
-    <div class="sec-head" onclick="toggle('cdpBody')"><span class="sec-title">Cursor 实时状态 (CDP)</span><span class="sec-badge" id="cdpBadge">--</span><span class="sec-toggle" id="cdpToggle">&#9660;</span></div>
+    <div class="sec-head" onclick="toggle('cdpBody')"><span class="sec-title" data-i18n="sec_cdp_title">Cursor 实时状态 (CDP)</span><span class="sec-badge" id="cdpBadge">--</span><span class="sec-toggle" id="cdpToggle">&#9660;</span></div>
     <div class="sec-body" id="cdpBody" style="max-height:4000px;overflow:visible">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:8px 0" id="cdpGrid">
-        <div class="stat-card"><div class="stat-val" id="cdpActiveRole">--</div><div class="stat-lbl">当前角色</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpMode">--</div><div class="stat-lbl">模式</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpBusy">--</div><div class="stat-lbl">状态</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpScanMs">--</div><div class="stat-lbl">扫描耗时</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpRoles">--</div><div class="stat-lbl">全部角色</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpApprovals">--</div><div class="stat-lbl">待审批</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpMsgs">--</div><div class="stat-lbl">消息数</div></div>
-        <div class="stat-card"><div class="stat-val" id="cdpModel">--</div><div class="stat-lbl">模型</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpActiveRole">--</div><div class="stat-lbl" data-i18n="cdp_lbl_active_role">当前角色</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpMode">--</div><div class="stat-lbl" data-i18n="cdp_lbl_mode">模式</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpBusy">--</div><div class="stat-lbl" data-i18n="cdp_lbl_status">状态</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpScanMs">--</div><div class="stat-lbl" data-i18n="cdp_lbl_scan_time">扫描耗时</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpRoles">--</div><div class="stat-lbl" data-i18n="cdp_lbl_all_roles">全部角色</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpApprovals">--</div><div class="stat-lbl" data-i18n="cdp_lbl_pending">待审批</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpMsgs">--</div><div class="stat-lbl" data-i18n="cdp_lbl_messages">消息数</div></div>
+        <div class="stat-card"><div class="stat-val" id="cdpModel">--</div><div class="stat-lbl" data-i18n="cdp_lbl_model">模型</div></div>
       </div>
     </div>
   </div>
@@ -389,19 +390,19 @@ a:hover{text-decoration:underline}
       <!-- 切换实测区域 -->
       <div id="secSwitchTest" style="display:none;margin-top:14px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span style="font-weight:700;font-size:13px;color:#e2e8f0">切换实测（程序）</span>
-          <button id="btnTestAll" class="btn" style="padding:3px 14px;font-size:12px" onclick="runTestAll()">▶ 全部实测</button>
+          <span style="font-weight:700;font-size:13px;color:#e2e8f0" data-i18n="switch_test_title">切换实测（程序）</span>
+          <button id="btnTestAll" class="btn" style="padding:3px 14px;font-size:12px" onclick="runTestAll()" data-i18n="btn_test_all">▶ 全部实测</button>
           <span id="testAllStatus" style="font-size:12px;color:var(--muted)"></span>
         </div>
         <div id="switchTestTable" style="overflow-x:auto;max-height:300px;overflow-y:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:8px">
             <thead><tr style="background:rgba(15,23,42,.6);color:#94a3b8;text-align:left">
               <th style="padding:7px 10px">Agent</th>
-              <th style="padding:7px 8px">状态</th>
-              <th style="padding:7px 8px">详情</th>
+              <th style="padding:7px 8px" data-i18n="col_status">状态</th>
+              <th style="padding:7px 8px" data-i18n="col_detail">详情</th>
             </tr></thead>
             <tbody id="switchTestBody">
-              <tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center">点击「▶ 全部实测」开始</td></tr>
+              <tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center" data-i18n="switch_test_empty">点击「▶ 全部实测」开始</td></tr>
             </tbody>
           </table>
         </div>
@@ -417,7 +418,7 @@ a:hover{text-decoration:underline}
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:12px" id="traceTable">
           <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
-            <th style="padding:6px 4px">时间</th><th style="padding:6px 4px">阶段</th><th style="padding:6px 4px">说明</th><th style="padding:6px 4px">参数</th>
+            <th style="padding:6px 4px" data-i18n="trace_th_time">时间</th><th style="padding:6px 4px" data-i18n="trace_th_stage">阶段</th><th style="padding:6px 4px" data-i18n="trace_th_detail">说明</th><th style="padding:6px 4px" data-i18n="trace_th_params">参数</th>
           </tr></thead>
           <tbody id="traceRows"><tr><td colspan="4" class="empty" data-i18n="empty_loading">加载中...</td></tr></tbody>
         </table>
@@ -468,29 +469,29 @@ a:hover{text-decoration:underline}
   <!-- 5b. 外部技能 -->
   <div class="sec" id="secSkills">
     <div class="sec-head" onclick="toggle('skillsBody')">
-      <span class="sec-title">外部技能</span>
+      <span class="sec-title" data-i18n="sec_external_skills">外部技能</span>
       <span class="sec-badge" id="skillsBadge">0</span>
       <span class="sec-toggle" id="skillsToggle">&#9660;</span>
     </div>
     <div class="sec-body" id="skillsBody" style="max-height:2000px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:var(--fs-sm);font-weight:600;color:var(--cyan)">🛒 技能市场</span>
-        <button class="btn sm" onclick="fetchRepos()" style="margin-left:auto">&#8635; 刷新</button>
+        <span style="font-size:var(--fs-sm);font-weight:600;color:var(--cyan)" data-i18n="skills_market_title">🛒 技能市场</span>
+        <button class="btn sm" onclick="fetchRepos()" style="margin-left:auto" data-i18n="btn_refresh">&#8635; 刷新</button>
       </div>
       <div id="noGitTip" style="display:none;align-items:flex-start;gap:8px;background:#2a1a0a;border:1px solid #f59e0b;border-radius:6px;padding:8px 10px;margin-bottom:8px">
         <span style="font-size:16px">⚠️</span>
-        <div style="font-size:var(--fs-sm);line-height:1.6;color:#fbbf24"><b>未检测到 git</b>，请先安装 <b>Git for Windows</b>：<br><a href="https://git-scm.com/download/win" target="_blank" style="color:#60a5fa;text-decoration:underline">https://git-scm.com/download/win</a><br><span style="color:var(--dim)">安装后重启本程序即可。</span></div>
+        <div style="font-size:var(--fs-sm);line-height:1.6;color:#fbbf24" data-i18n="skills_no_git"><b>未检测到 git</b>，请先安装 <b>Git for Windows</b>：<br><a href="https://git-scm.com/download/win" target="_blank" style="color:#60a5fa;text-decoration:underline">https://git-scm.com/download/win</a><br><span style="color:var(--dim)">安装后重启本程序即可。</span></div>
         <button onclick="document.getElementById('noGitTip').style.display='none'" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px;margin-left:auto">×</button>
       </div>
       <!-- 安装进度面板 -->
       <div id="installProgress" style="display:none;margin-bottom:8px;background:#0d1f0d;border:1px solid #22c55e;border-radius:6px;padding:10px 12px">
-        <div style="font-size:var(--fs-sm);color:#86efac;font-weight:600;margin-bottom:5px" id="installProgressTitle">正在安装...</div>
+        <div style="font-size:var(--fs-sm);color:#86efac;font-weight:600;margin-bottom:5px" id="installProgressTitle" data-i18n="skills_installing_text">正在安装...</div>
         <div id="installProgressLog" style="font-size:11px;color:var(--dim);line-height:1.9;max-height:130px;overflow-y:auto;font-family:monospace"></div>
         <div style="margin-top:6px;background:var(--border);border-radius:3px;height:4px">
           <div id="installProgressBar" style="background:#22c55e;height:4px;border-radius:3px;width:0%;transition:width 0.25s"></div>
         </div>
       </div>
-      <div id="reposList"><div class="empty" style="font-size:var(--fs-sm)">点击「刷新」查看可下载的技能包</div></div>
+      <div id="reposList"><div class="empty" style="font-size:var(--fs-sm)" data-i18n="skills_repos_empty">点击「刷新」查看可下载的技能包</div></div>
     </div>
   </div>
 
@@ -1046,8 +1047,8 @@ a:hover{text-decoration:underline}
 
       <!-- Step 1: 团队模板 -->
       <div id="setupStep1" style="display:none">
-        <div class="wiz-step-title" data-i18n="wiz_s1_h">选择团队模板</div>
-        <div class="wiz-step-desc" data-i18n="wiz_s1_d">选一个最适合你项目的 AI 团队，定义角色和协作规则。</div>
+        <div class="wiz-step-title" data-i18n="wiz_step1_title">选择团队模板</div>
+        <div class="wiz-step-desc" data-i18n="wiz_step1_desc">选一个最适合你项目的 AI 团队，定义角色和协作规则。</div>
         <div class="wiz-team-grid" id="teamOpts"></div>
         <div class="wiz-btn-row">
           <button class="wiz-btn ghost" onclick="wizGoStep0()">← 返回</button>
@@ -1059,8 +1060,8 @@ a:hover{text-decoration:underline}
 
       <!-- Step 2: 项目路径 & 完成 -->
       <div id="setupStep2" style="display:none">
-        <div class="wiz-step-title" data-i18n="wiz_s2_h">初始化项目</div>
-        <div class="wiz-step-desc" data-i18n="wiz_s2_d">确认项目目录，系统将自动创建协作规则文件和目录结构。</div>
+        <div class="wiz-step-title" data-i18n="wiz_step2_title">初始化项目</div>
+        <div class="wiz-step-desc" data-i18n="wiz_step2_desc">确认项目目录，系统将自动创建协作规则文件和目录结构。</div>
 
         <label class="wiz-field-label">项目目录</label>
         <div style="display:flex;gap:10px;align-items:center">
@@ -1305,7 +1306,22 @@ const I18N={
     pf_n_角色文件:'角色文件', pf_n_Cursor窗口:'Cursor 窗口', pf_n_快捷键:'快捷键',
     pf_d_未设置:'未设置', pf_d_就绪:'tasks/ reports/ issues/ log/ 就绪', pf_d_缺少子目录:'缺少子目录',
     pf_d_未初始化:'未初始化', pf_d_rules_ok:'rules + skills 已就绪', pf_d_rules_no:'未拷贝到项目',
-    pf_d_cursor_no:'未找到 Cursor，请先打开', pf_d_kb_ok:'已配置', pf_d_kb_no:'未配置'
+    pf_d_cursor_no:'未找到 Cursor，请先打开', pf_d_kb_ok:'已配置', pf_d_kb_no:'未配置',
+    sec_cdp_title:'Cursor 实时状态 (CDP)',
+    cdp_lbl_active_role:'当前角色', cdp_lbl_mode:'模式', cdp_lbl_status:'状态',
+    cdp_lbl_scan_time:'扫描耗时', cdp_lbl_all_roles:'全部角色', cdp_lbl_pending:'待审批',
+    cdp_lbl_messages:'消息数', cdp_lbl_model:'模型',
+    agent_guide_title:'\uD83D\uDCA1 如何在 Cursor 创建团队 Agent',
+    update_downloading:'发现新版本，正在下载…', update_btn_apply:'立即更新重启',
+    switch_test_title:'切换实测（程序）', btn_test_all:'\u25B6 全部实测',
+    col_status:'状态', col_detail:'详情',
+    switch_test_empty:'点击「\u25B6 全部实测」开始',
+    trace_th_time:'时间', trace_th_stage:'阶段', trace_th_detail:'说明', trace_th_params:'参数',
+    sec_external_skills:'外部技能', skills_market_title:'\uD83D\uDED2 技能市场',
+    btn_refresh:'&#8635; 刷新',
+    skills_no_git:'<b>未检测到 git</b>，请先安装 <b>Git for Windows</b>：<br><a href="https://git-scm.com/download/win" target="_blank" style="color:#60a5fa;text-decoration:underline">https://git-scm.com/download/win</a><br><span style="color:var(--dim)">安装后重启本程序即可。</span>',
+    skills_installing_text:'正在安装...',
+    skills_repos_empty:'点击「刷新」查看可下载的技能包'
   },
   en:{
     hd_nudger:'Nudger', hd_relay:'Relay',
@@ -1321,7 +1337,7 @@ const I18N={
     team_sync_tpl:'Sync role templates', team_sync_ok:'Updated docs/agents/ from bundled templates (backup old files first)',
     sec_phone:'Mobile', phone_room_key:'Room Key:', phone_regen:'Regenerate',
     phone_scan_hint:'Scan QR with PWA to bind', phone_bound:'Bound Devices',
-    sec_log:'Live Logs', sec_trace:'Patrol trace', trace_hint:'Recent steps (stage + detail); same source as [巡检] lines in logs below.',
+    sec_log:'Live Logs', sec_trace:'Patrol trace', trace_hint:'Recent steps (stage + detail); same source as [Patrol] lines in logs below.',
     sec_config:'Config',
     cfg_relay:'Relay URL', cfg_offset:'Input Offset', cfg_poll:'Poll Interval', cfg_poll_val:'2 sec',
     cfg_watchdog:'File boost', cfg_watchdog_on:'watchdog on', cfg_watchdog_off:'poll only',
@@ -1351,7 +1367,22 @@ const I18N={
     pf_n_角色文件:'Role Files', pf_n_Cursor窗口:'Cursor Window', pf_n_快捷键:'Hotkeys',
     pf_d_未设置:'Not set', pf_d_就绪:'tasks/ reports/ issues/ log/ ready', pf_d_缺少子目录:'Missing subdirs',
     pf_d_未初始化:'Not initialized', pf_d_rules_ok:'rules + skills ready', pf_d_rules_no:'Not copied to project',
-    pf_d_cursor_no:'Cursor not found, please open it', pf_d_kb_ok:'Configured', pf_d_kb_no:'Not configured'
+    pf_d_cursor_no:'Cursor not found, please open it', pf_d_kb_ok:'Configured', pf_d_kb_no:'Not configured',
+    sec_cdp_title:'Cursor Live Status (CDP)',
+    cdp_lbl_active_role:'Active role', cdp_lbl_mode:'Mode', cdp_lbl_status:'Status',
+    cdp_lbl_scan_time:'Scan time', cdp_lbl_all_roles:'All roles', cdp_lbl_pending:'Pending',
+    cdp_lbl_messages:'Messages', cdp_lbl_model:'Model',
+    agent_guide_title:'\uD83D\uDCA1 How to create team Agents in Cursor',
+    update_downloading:'New version found, downloading\u2026', update_btn_apply:'Update and restart',
+    switch_test_title:'Live switch test', btn_test_all:'\u25B6 Run all tests',
+    col_status:'Status', col_detail:'Detail',
+    switch_test_empty:'Click "\u25B6 Run all tests" to start',
+    trace_th_time:'Time', trace_th_stage:'Stage', trace_th_detail:'Detail', trace_th_params:'Params',
+    sec_external_skills:'External skills', skills_market_title:'\uD83D\uDED2 Skills marketplace',
+    btn_refresh:'&#8635; Refresh',
+    skills_no_git:'<b>Git not found.</b> Please install <b>Git for Windows</b>:<br><a href="https://git-scm.com/download/win" target="_blank" style="color:#60a5fa;text-decoration:underline">https://git-scm.com/download/win</a><br><span style="color:var(--dim)">Restart this app after installation.</span>',
+    skills_installing_text:'Installing\u2026',
+    skills_repos_empty:'Click Refresh to list downloadable skill packs'
   }
 };
 
@@ -2155,7 +2186,8 @@ function syncRoleTemplates(){
 function addLog(lv,txt){
   const b=$('logBox');
   const cls=lv==='ERROR'?'error':(lv==='WARNING'?'warn':'info');
-  const now=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  const _timeLocale=_lang==='en'?'en-US':'zh-CN';
+  const now=new Date().toLocaleTimeString(_timeLocale,{hour12:false});
   b.insertAdjacentHTML('beforeend','<div class="'+cls+'">['+now+'] '+txt+'</div>');
   if(b.children.length>300)b.removeChild(b.firstChild);
   b.scrollTop=b.scrollHeight;

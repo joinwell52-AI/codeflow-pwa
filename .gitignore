@@ -102,6 +102,7 @@ external/
 
 # ── codeflow-desktop 调试与测试产物 ──
 codeflow-desktop/build_snap/
+codeflow-desktop/dist_snap/
 codeflow-desktop/_*.py
 codeflow-desktop/_*.png
 codeflow-desktop/test_*.png

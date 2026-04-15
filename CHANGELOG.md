@@ -8,6 +8,45 @@
 
 ---
 
+## [2.10.1] - 2026-04-06
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：全量双语支持（i18n）
+
+为所有用户可见文案建立统一 i18n 基础设施，切换语言后 API 消息、面板 UI、巡检轨迹全部跟随。
+
+- **新增 `config.py` i18n 引擎**：`_T(key, **kwargs)` 翻译函数 + `_I18N` 集中字典（130+ 键），支持 `set_lang("en")` 一键切换
+- **`web_panel.py` 全量双语**：65+ 处 API 返回消息、预检文案、Tk 文件对话框、团队模板名/角色标签
+- **`nudger.py` 巡检轨迹双语**：48 处 `patrol_trace` detail + 返回消息全部走 `_T()`
+- **`cursor_cdp.py`**：5 处 `state.error` 双语化
+- **`cursor_vision.py`**：3 处 `state.error` 双语化
+- **`cursor_embed.py`**：12 处返回消息双语化
+- **`panel/index.html`**：补全 I18N 字典（CDP 区块、技能市场、切换实测、巡检轨迹表头等 28 键），时间格式跟随 locale
+
+#### 仓库清理
+
+- 删除 `docs/` 下 PWA 重复副本（index.html + config.js + sw.js + manifest.json + 7 个 logo PNG）
+- 删除 `docs/promotion/promotion/` 嵌套错误目录
+- 删除 `promotion/index.html` 根目录重复推广页
+- 删除 `cursor-forum.png`（根目录 + web/pwa/，无引用）
+- 删除 `codeflow-desktop/dist_snap/snap_click.exe`（二进制构建产物不入库）
+- `.gitignore` 新增 `codeflow-desktop/dist_snap/` 规则
+
+#### 文档
+
+- **新增 LICENSE**（MIT）——修复 README 徽章断链
+- **补全 4 个 Cursor 规则英文版**：`qa-team-lead.en.mdc` / `qa-team-tester.en.mdc` / `qa-team-auto-tester.en.mdc` / `qa-team-perf-tester.en.mdc`
+- **补全 7 篇文档英文版**：release-process / nudger-shoulder-tap / message-protocol / github-repo-about / repo-collaboration / cursor-shortcuts-scope / github-actions-codeflow-pwa
+- README 版本徽章更新至 v2.10.1
+
+### PWA（`web/pwa/`）
+
+- 版本号升至 `2.3.1`（Service Worker 缓存更新）
+- 清理无引用的 `cursor-forum.png`
+
+---
+
 ## [2.10.0] - 2026-04-14
 
 ### 桌面端（`codeflow-desktop`）

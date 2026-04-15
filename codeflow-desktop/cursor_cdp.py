@@ -22,6 +22,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from config import _T
+
 logger = logging.getLogger("codeflow.cdp")
 
 # ═══════════════════════════════════════════════════════════
@@ -644,26 +646,26 @@ def scan(host: str = CDP_HOST, port: int = CDP_PORT) -> CdpCursorState:
 
     target = _get_main_target()
     if not target:
-        state.error = "未找到 CDP 目标（Cursor 未以 --remote-debugging-port 启动）"
+        state.error = _T("cdp_no_target")
         state.scan_ms = (time.perf_counter() - t0) * 1000
         return state
 
     ws_url = target.get("webSocketDebuggerUrl", "")
     if not ws_url:
-        state.error = "CDP 目标无 WebSocket URL"
+        state.error = _T("cdp_no_ws_url")
         state.scan_ms = (time.perf_counter() - t0) * 1000
         return state
 
     conn = _get_connection(ws_url)
     if not conn:
-        state.error = f"CDP WebSocket 连接失败: {ws_url[:60]}"
+        state.error = _T("cdp_ws_fail", url=ws_url[:60])
         state.scan_ms = (time.perf_counter() - t0) * 1000
         return state
 
     try:
         raw = conn.evaluate(_JS_EXTRACT_STATE)
         if not raw or not isinstance(raw, dict):
-            state.error = "CDP 提取返回空结果"
+            state.error = _T("cdp_empty_result")
             state.scan_ms = (time.perf_counter() - t0) * 1000
             return state
 
@@ -689,7 +691,7 @@ def scan(host: str = CDP_HOST, port: int = CDP_PORT) -> CdpCursorState:
             state.input_box = Rect(0, 0, 100, 30)
 
     except Exception as e:
-        state.error = f"CDP 提取异常: {e}"
+        state.error = _T("cdp_extract_error", err=e)
         logger.warning("CDP scan 异常: %s", e)
 
     state.scan_ms = (time.perf_counter() - t0) * 1000

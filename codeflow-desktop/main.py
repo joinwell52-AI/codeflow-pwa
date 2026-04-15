@@ -43,7 +43,7 @@ import webbrowser
 from pathlib import Path
 
 
-VERSION = "2.10.0"
+VERSION = "2.10.1"
 
 
 logger = logging.getLogger("codeflow")
@@ -941,6 +941,8 @@ def main():
             if "lang" in data:
 
                 config.lang = data["lang"]
+                from config import set_lang
+                set_lang(data["lang"])
 
             logger.info("已加载团队配置: %s", bf_json)
 

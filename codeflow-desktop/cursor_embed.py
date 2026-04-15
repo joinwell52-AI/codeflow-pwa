@@ -12,6 +12,8 @@ import sys
 import time
 from pathlib import Path
 
+from config import _T
+
 logger = logging.getLogger("codeflow.embed")
 
 
@@ -36,7 +38,7 @@ def default_cursor_exe() -> Path | None:
 
 def try_launch_cursor(exe: Path, project_dir: Path | None = None) -> tuple[bool, str]:
     if not exe.is_file():
-        return False, f"文件不存在: {exe}"
+        return False, _T("file_not_found", path=exe)
     try:
         if sys.platform == "darwin":
             if project_dir:
@@ -301,7 +303,7 @@ def _do_embed(hwnd: int, url: str, wait_s: float = 0.28) -> tuple[bool, str]:
     try:
         import pyautogui
     except ImportError:
-        return False, "未安装 pyautogui"
+        return False, _T("pyautogui_missing")
 
     try:
         import pyperclip
@@ -313,7 +315,7 @@ def _do_embed(hwnd: int, url: str, wait_s: float = 0.28) -> tuple[bool, str]:
 
     url_s = (url or "").strip()
     if not url_s:
-        return False, "url 为空"
+        return False, _T("url_empty")
 
     old_clip = ""
     if pyperclip:
@@ -363,7 +365,7 @@ def try_open_simple_browser_embed(url: str, wait_s: float = 0.28) -> tuple[bool,
     """
     hwnd = _find_cursor_main_hwnd()
     if not hwnd:
-        return False, "未找到 Cursor 主窗口"
+        return False, _T("cursor_win_not_found")
     return _do_embed(hwnd, url, wait_s=wait_s)
 
 
@@ -405,11 +407,11 @@ def _restart_cursor_with_cdp(
 
     resolved_exe = exe if (exe and exe.is_file()) else default_cursor_exe()
     if not resolved_exe:
-        return False, "重启失败：未找到 Cursor 可执行文件"
+        return False, _T("restart_no_exe")
 
     launched, msg = try_launch_cursor(resolved_exe, project_dir=project_dir)
     if not launched:
-        return False, f"重启失败: {msg}"
+        return False, _T("restart_fail", msg=msg)
     logger.info("[CDP 重启] 已带 CDP 参数重启 Cursor: %s", msg)
     return True, msg
 
@@ -436,7 +438,7 @@ def embed_panel_after_launch(
             if restarted:
                 hwnd = _wait_for_cursor_window(timeout_s=60.0)
                 if not hwnd:
-                    return False, "CDP 重启后等待 Cursor 窗口超时"
+                    return False, _T("cdp_restart_timeout")
             else:
                 logger.warning("[Cursor 嵌入] CDP 重启失败(%s)，使用已有窗口", rmsg)
         else:
@@ -446,19 +448,19 @@ def embed_panel_after_launch(
         return _do_embed(hwnd, url, wait_s=wait_s)
 
     if not launch_if_no_window:
-        return False, "未找到 Cursor 窗口且不允许启动"
+        return False, _T("no_win_no_launch")
 
     exe = cursor_exe if (cursor_exe and cursor_exe.is_file()) else default_cursor_exe()
     if not exe:
-        return False, "未找到 Cursor 可执行文件"
+        return False, _T("cursor_exe_not_found")
 
     launched, lmsg = try_launch_cursor(exe, project_dir=project_dir)
     if not launched:
-        return False, f"启动 Cursor 失败: {lmsg}"
+        return False, _T("launch_fail", msg=lmsg)
 
     logger.info("[Cursor 嵌入] 已启动 Cursor: %s，等待窗口出现…", lmsg)
     hwnd = _wait_for_cursor_window(timeout_s=60.0)
     if not hwnd:
-        return False, "等待 Cursor 窗口超时"
+        return False, _T("wait_cursor_timeout")
 
     return _do_embed(hwnd, url, wait_s=wait_s + 0.15)

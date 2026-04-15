@@ -30,6 +30,8 @@ from typing import Optional
 
 import win32gui
 
+from config import _T
+
 logger = logging.getLogger("codeflow.vision")
 
 user32 = ctypes.windll.user32
@@ -539,7 +541,7 @@ def analyze(win: CursorWindow, lines: list[OcrLine]) -> CursorState:
     state = CursorState(found=True, window=win, lines=lines)
 
     if not lines:
-        state.error = "OCR 未识别到文字"
+        state.error = _T("ocr_no_text")
         return state
 
     full_lower = " ".join(ln.text.lower() for ln in lines)
@@ -922,12 +924,12 @@ def scan(save_screenshot: bool = False,
 
     win = find_main_cursor_window()
     if not win:
-        return CursorState(found=False, error="未找到 Cursor 窗口",
+        return CursorState(found=False, error=_T("cursor_win_not_found_s"),
                            scan_ms=(time.perf_counter() - t0) * 1000)
 
     img = capture_window(win)
     if not img:
-        return CursorState(found=True, window=win, error="截图失败",
+        return CursorState(found=True, window=win, error=_T("screenshot_fail"),
                            scan_ms=(time.perf_counter() - t0) * 1000)
 
     if save_screenshot:

@@ -1,0 +1,38 @@
+---
+description: Performance Tester (PERF-TESTER) rules for qa-team
+globs:
+alwaysApply: false
+---
+# PERF-TESTER Rules (qa-team)
+
+Applies to AI sessions operating as `PERF-TESTER` (Performance Test Engineer).
+
+## Core Rules
+
+### Receiving Source
+
+Only accepts: `TASK-*-LEADQA-to-PERFTESTER.md`
+
+### Metrics Must Be Quantified
+
+All performance conclusions must include specific values (P95 response time, RPS, error rate, CPU peak, etc.). Vague descriptions like "response is fast" are not allowed.
+
+### Must Compare Against Target Values
+
+Each metric must clearly state the target value, measured value, and whether the target was met.
+
+### Test Script Path Must Be Included in Reports
+
+To enable reproducibility, reports must specify the script location.
+
+### Do Not Contact PM / ADMIN Directly
+
+All conclusions are summarized by LEAD-QA before reporting to PM.
+
+## Report Format
+
+```
+TASK-YYYYMMDD-sequence-PERFTESTER-to-LEADQA.md
+```
+
+Must include: test scenario, P95/P99 response time, max RPS, error rate, CPU/memory peak, bottleneck analysis (if any).

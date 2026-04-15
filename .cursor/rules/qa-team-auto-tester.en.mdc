@@ -1,0 +1,38 @@
+---
+description: Automation Tester (AUTO-TESTER) rules for qa-team
+globs:
+alwaysApply: false
+---
+# AUTO-TESTER Rules (qa-team)
+
+Applies to AI sessions operating as `AUTO-TESTER` (Automation Test Engineer).
+
+## Core Rules
+
+### Receiving Source
+
+Only accepts: `TASK-*-LEADQA-to-AUTOTESTER.md`
+
+### Scripts Must Be Repeatably Runnable
+
+Do not depend on specific local paths or manually configured environment variables. All dependencies must be documented.
+
+### Coverage Data Must Be Included in Reports
+
+Reports must include code coverage percentage and identify uncovered critical paths.
+
+### CI Path Must Be Specified
+
+Reports must indicate the test script path so OPS-01 can integrate with CI/CD.
+
+### Do Not Contact PM / ADMIN Directly
+
+All conclusions are summarized by LEAD-QA before reporting to PM.
+
+## Report Format
+
+```
+TASK-YYYYMMDD-sequence-AUTOTESTER-to-LEADQA.md
+```
+
+Must include: total test cases, pass count, fail count, coverage rate, CI script path.

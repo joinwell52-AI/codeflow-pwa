@@ -36,6 +36,8 @@ import pyperclip
 import win32con
 import win32gui
 
+from config import _T
+
 logger = logging.getLogger("codeflow.nudger")
 
 # ─── 巡检轨迹（结构化可查询，与实时日志同源）────────────────
@@ -132,7 +134,7 @@ def _probe_cdp(retries: int = 1, delay: float = 0) -> bool:
                 if not _cdp_active:
                     _cdp_active = True
                     logger.info("✓ CDP 端口可用（9222），巡检使用 CDP 高速模式（第%d次探测）", attempt)
-                    patrol_trace("cdp_on", "CDP 巡检模式已激活（精度100%、延迟<100ms）")
+                    patrol_trace("cdp_on", _T("tr_cdp_active"))
                 return True
         except Exception as e:
             logger.debug("CDP 探测第%d次异常: %s", attempt, e)
@@ -864,7 +866,7 @@ def reload_cursor_window(config: Any | None = None) -> bool:
             except Exception:
                 pass
         logger.info("reload_cursor_window: 已触发 Developer: Reload Window")
-        patrol_trace("cursor_reload", "已执行 Reload Window（卡住恢复）")
+        patrol_trace("cursor_reload", _T("tr_reload_stuck"))
         return True
     except Exception as e:
         logger.warning("reload_cursor_window 失败: %s", e)
@@ -935,7 +937,7 @@ def switch_and_send(hwnd: int, role: str, message,
     resolved = _role_key_for_task(role) or re.sub(r'^\d+[-_\s]*', '', role.upper()).strip() or role.upper()
 
     if not focus_window(hwnd):
-        patrol_trace("send_fail", "无法聚焦 Cursor 窗口", role=resolved)
+        patrol_trace("send_fail", _T("tr_focus_fail"), role=resolved)
         return False
 
     # 如果 message 是 callable，在切换确认后延迟生成（greet 场景专用）
@@ -947,7 +949,7 @@ def switch_and_send(hwnd: int, role: str, message,
         ok = _switch_and_send_with_cdp(role, resolved, msg_str, msg_factory=msg_factory)
         if ok:
             prev = (msg_str or "").replace("\n", " ").strip()[:48]
-            patrol_trace("send_ok", "已向 Agent 输入框发送（CDP）",
+            patrol_trace("send_ok", _T("tr_sent_cdp"),
                          role=resolved, preview=prev, mode="cdp")
             return True
         logger.info("CDP 发送失败，降级到 OCR 模式 → %s", resolved)
@@ -962,7 +964,7 @@ def switch_and_send(hwnd: int, role: str, message,
         prev = (msg_str or "").replace("\n", " ").strip()[:48]
         patrol_trace(
             "send_ok",
-            "已向 Agent 输入框发送",
+            _T("tr_sent"),
             role=resolved,
             preview=prev,
             signals=vision_sig or "(无)",
@@ -970,7 +972,7 @@ def switch_and_send(hwnd: int, role: str, message,
     else:
         patrol_trace(
             "send_fail",
-            "切换 Tab 或粘贴发送失败",
+            _T("tr_switch_paste_fail"),
             role=resolved,
             vision=HAS_VISION,
             signals=vision_sig or "",
@@ -1640,7 +1642,7 @@ class Nudger:
         if nonstd:
             patrol_trace(
                 "tasks_nonstandard",
-                "tasks/ 中存在非标准命名的 .md，不参与自动催办配对，请 PM 统一 TASK-日期-序号-发件人-to-收件人.md",
+                _T("tr_nonstandard_files"),
                 count=len(nonstd),
                 samples=",".join(nonstd[:8]) + (f",…(+{len(nonstd) - 8})" if len(nonstd) > 8 else ""),
             )
@@ -1652,7 +1654,7 @@ class Nudger:
         n_closed = len(collect_closed_task_ids(self.config))
         patrol_trace(
             "bootstrap_read",
-            "已扫描 tasks/ 全部标准任务；reports/ 与 log/ 中出现的 TASK-编号视为已闭环（含 PM 归档到 log）",
+            _T("tr_scan_done"),
             incomplete_count=n,
             closed_ids_marked=n_closed,
             filenames_preview=fn_preview or "(无)",
@@ -1663,7 +1665,7 @@ class Nudger:
             rp = parse_recipient(fn) or ""
             patrol_trace(
                 "bootstrap_queue",
-                "未闭环任务已加入催办队列（与启动后新文件合并处理）",
+                _T("tr_open_queued"),
                 filename=fn,
                 recipient=rp,
             )
@@ -1699,7 +1701,7 @@ class Nudger:
             obs.start()
             self._observer = obs
             logger.info("watchdog: 已监听 tasks/reports/issues（.md 变更将加速下一轮检测）")
-            patrol_trace("watchdog_on", "已启用目录监听，新 .md 会打断轮询等待", dirs="tasks,reports,issues")
+            patrol_trace("watchdog_on", _T("tr_watcher_on"), dirs="tasks,reports,issues")
         except Exception as e:
             logger.warning("watchdog 未启用（仍用轮询）: %s", e)
 
@@ -1739,10 +1741,9 @@ class Nudger:
         # agent_busy 不计入失败次数，直接加队列等下一轮
         if reason == "agent_busy":
             self._nudge_pending.append((filename, dir_name, full_path))
-            _defer_reason_zh = {"agent_busy": "Agent 正忙，下一轮再试"}
             patrol_trace(
                 "defer",
-                _defer_reason_zh["agent_busy"],
+                _T("tr_agent_busy"),
                 filename=filename,
                 reason=reason,
                 attempt=self._nudge_attempts.get(filename, 0),
@@ -1758,7 +1759,7 @@ class Nudger:
             )
             patrol_trace(
                 "giveup",
-                "同一文件重试次数用尽，停止催办",
+                _T("tr_max_retries"),
                 filename=filename,
                 reason=reason,
                 attempts=n,
@@ -1768,15 +1769,15 @@ class Nudger:
             return False
         self._nudge_pending.append((filename, dir_name, full_path))
         logger.debug("催办延后重试 (%d/%d): %s 原因=%s", n, _MAX_NUDGE_ATTEMPTS_PER_FILE, filename, reason)
-        _defer_reason_zh = {
-            "cooldown": "该收件人冷却中，下一轮再试",
-            "agent_busy": "Agent 正忙，下一轮再试",
-            "send_failed": "切换或粘贴失败，下一轮再试",
-            "no_cursor_window": "未找到 Cursor 窗口，下一轮再试",
+        _defer_reason_key = {
+            "cooldown": "tr_cooldown",
+            "agent_busy": "tr_agent_busy",
+            "send_failed": "tr_switch_paste_fail",
+            "no_cursor_window": "tr_no_cursor",
         }
         patrol_trace(
             "defer",
-            _defer_reason_zh.get(reason, f"延后重试: {reason}"),
+            _T(_defer_reason_key.get(reason, "tr_cooldown")),
             filename=filename,
             reason=reason,
             attempt=n,
@@ -1802,7 +1803,7 @@ class Nudger:
             recipient = parse_recipient(filename)
             patrol_trace(
                 "file_in",
-                "处理文件",
+                _T("tr_processing"),
                 filename=filename,
                 dir=dir_name,
                 recipient=recipient or "?",
@@ -1818,7 +1819,7 @@ class Nudger:
             }
 
             if not recipient:
-                patrol_trace("skip", "文件名无法解析收件人，跳过", filename=filename)
+                patrol_trace("skip", _T("tr_parse_fail"), filename=filename)
                 events.append(ev)
                 self._on_event(ev)
                 self._notified.add(filename)
@@ -1826,7 +1827,7 @@ class Nudger:
 
             if recipient.upper() in _NO_NUDGE_RECIPIENTS:
                 logger.info("文件 %s → %s（人工角色，仅通知 PWA，不催办）", filename, recipient)
-                patrol_trace("skip", "人工/ADMIN 类收件人不自动催办", filename=filename, recipient=recipient)
+                patrol_trace("skip", _T("tr_human_skip"), filename=filename, recipient=recipient)
                 events.append(ev)
                 self._on_event(ev)
                 self._notified.add(filename)
@@ -1899,7 +1900,7 @@ class Nudger:
             if win:
                 hwnd, title = win
                 logger.info("催办 %s ← %s", recipient, filename)
-                patrol_trace("cursor_ok", "已找到 Cursor 窗口", title=(title or "")[:56])
+                patrol_trace("cursor_ok", _T("tr_cursor_found"), title=(title or "")[:56])
                 if switch_and_send(hwnd, recipient, msg,
                                    self.config.input_offset):
                     self._notified.add(filename)
@@ -1911,7 +1912,7 @@ class Nudger:
                     logger.info("已发送: %s", msg[:60])
                     patrol_trace(
                         "task_done",
-                        "该任务文件已完成催办闭环",
+                        _T("tr_nudge_done"),
                         filename=filename,
                         recipient=recipient,
                     )
@@ -1926,7 +1927,7 @@ class Nudger:
             else:
                 self.stats["nudge_fail"] += 1
                 logger.warning("找不到 Cursor 窗口")
-                patrol_trace("cursor_fail", "未找到 Cursor 窗口，无法催办", filename=filename, recipient=recipient)
+                patrol_trace("cursor_fail", _T("tr_no_cursor"), filename=filename, recipient=recipient)
                 if self._schedule_retry(filename, dir_name, full_path, "no_cursor_window"):
                     ev["action"] = "deferred_no_window"
                     events.append(ev)
@@ -2041,7 +2042,7 @@ class Nudger:
             logger.info("已自动 kick %s", role_std)
             patrol_trace(
                 "idle_kick",
-                "检测到「等待确认」类文案，已自动发送继续",
+                _T("tr_auto_continue"),
                 role=role_std,
                 keyword=waiting_hit,
             )
@@ -2121,7 +2122,7 @@ class Nudger:
             logger.info("自动催促 %s: %s", recipient, item["task_id"])
             patrol_trace(
                 "stuck_check",
-                "对长时间无报告的任务发催促",
+                _T("tr_stuck_nudge"),
                 task_id=item["task_id"],
                 filename=item["filename"],
                 recipient=recipient,
@@ -2143,7 +2144,7 @@ class Nudger:
                 self._on_event(ev)
                 patrol_trace(
                     "stuck_nudge_ok",
-                    "卡住任务催促已发送",
+                    _T("tr_stuck_sent"),
                     task_id=item["task_id"],
                     recipient=recipient,
                 )
@@ -2163,7 +2164,7 @@ class Nudger:
         win = find_cursor_window(self.config)
         if not win:
             logger.warning("未找到 Cursor 窗口，跳过打招呼")
-            patrol_trace("greet_skip", "打招呼跳过：无 Cursor 窗口")
+            patrol_trace("greet_skip", _T("tr_greet_skip"))
             return
 
         hwnd, title = win
@@ -2184,7 +2185,7 @@ class Nudger:
                 for r in self._get_active_recipients()
             })
         roles_sorted = sorted(roles_from_labels, key=_role_seq)
-        patrol_trace("greet_begin", "开始向各 Agent 打招呼", roles=len(roles_sorted))
+        patrol_trace("greet_begin", _T("tr_greet_start"), roles=len(roles_sorted))
 
         greeted = 0
         _lang = self.config.lang
@@ -2194,7 +2195,7 @@ class Nudger:
                 logger.warning("巡检已停止，中断打招呼")
                 return
 
-            patrol_trace("greet_role", "正在打招呼", role=role)
+            patrol_trace("greet_role", _T("tr_greeting"), role=role)
             logger.info("打招呼 → %s", role)
 
             sent = False
@@ -2207,7 +2208,7 @@ class Nudger:
                     mark_role_greeted(role)
                     greeted += 1
                     sent = True
-                    patrol_trace("greet_ok", "打招呼已发送（CDP）", role=role, attempt=1)
+                    patrol_trace("greet_ok", _T("tr_greet_cdp"), role=role, attempt=1)
                     logger.info("打招呼成功(CDP) → %s", role)
                     time.sleep(max(float(self.config.nudge_cooldown), 5.0))
                 else:
@@ -2221,7 +2222,7 @@ class Nudger:
                 clicked = vision_click_role(state, role)
                 if not clicked:
                     logger.warning("打招呼第%d次：侧栏找不到 %s，重试", attempt, role)
-                    patrol_trace("greet_retry", f"第{attempt}次侧栏未找到角色，重试",
+                    patrol_trace("greet_retry", _T("tr_sidebar_miss", n=attempt),
                                  role=role, attempt=attempt)
                     time.sleep(3.0)
                     continue
@@ -2240,7 +2241,7 @@ class Nudger:
                         logger.info("打招呼第%d次：激活Tab=%s 确认=%s",
                                     attempt, active_tab or "(未识别)", confirmed)
                         if not confirmed:
-                            patrol_trace("greet_retry", f"第{attempt}次未确认切换，重试",
+                            patrol_trace("greet_retry", _T("tr_switch_miss", n=attempt),
                                          role=role, attempt=attempt, active_tab=active_tab)
                             time.sleep(3.0)
                             continue
@@ -2283,7 +2284,7 @@ class Nudger:
                 mark_role_greeted(role)
                 greeted += 1
                 sent = True
-                patrol_trace("greet_ok", "打招呼已发送", role=role, attempt=attempt)
+                patrol_trace("greet_ok", _T("tr_greet_sent"), role=role, attempt=attempt)
                 logger.info("打招呼成功 → %s", role)
 
                 time.sleep(max(float(self.config.nudge_cooldown), 8.0))
@@ -2291,7 +2292,7 @@ class Nudger:
 
             if not sent:
                 logger.warning("打招呼失败（3次均未成功）: %s，跳过", role)
-                patrol_trace("greet_fail", "打招呼3次失败，跳过该角色", role=role)
+                patrol_trace("greet_fail", _T("tr_greet_fail"), role=role)
 
         logger.info("打招呼完成，成功 %d/%d 个角色", greeted, len(roles_sorted))
 
@@ -2310,7 +2311,7 @@ class Nudger:
         logger.info("巡检已启动，监听: %s（未闭环任务 %d 条已入队）", self.config.agents_dir, n_inc)
         patrol_trace(
             "patrol_on",
-            "巡检已启动：已接手未完成任务队列；将轮询新文件并做 idle/stuck 检测",
+            _T("tr_patrol_on") + "：" + _T("tr_patrol_on_detail"),
             poll_interval=self.config.poll_interval,
             nudge_cooldown=self.config.nudge_cooldown,
             file_watcher=bool(self._observer),
@@ -2320,7 +2321,7 @@ class Nudger:
             self.greet_all_roles()
         except Exception as e:
             logger.warning("启动问候异常（可稍后重试）: %s", e)
-            patrol_trace("greet_error", "启动时各 Agent 问候异常", error=str(e)[:120])
+            patrol_trace("greet_error", _T("tr_greet_error"), error=str(e)[:120])
         self._wake_event.set()
 
     def stop_patrol(self):
@@ -2334,7 +2335,7 @@ class Nudger:
         _greeted_roles.clear()
         self._stop_file_observer()
         logger.info("巡检已停止，所有状态已清除")
-        patrol_trace("patrol_off", "巡检已停止：不再处理新文件与自动 kick")
+        patrol_trace("patrol_off", _T("tr_patrol_off"))
 
     def start_loop(self):
         """后台轮询线程（仅当 _running=True 时才真正执行操作）"""
@@ -2360,7 +2361,7 @@ class Nudger:
                         if now - _last_reload_t > _reload_cooldown:
                             if _check_cursor_connection_error(self.config):
                                 logger.warning("检测到 Cursor 异常（Connection Error / Extension Host 卡住），执行 Reload Window")
-                                patrol_trace("conn_error_reload", "检测到 Cursor 异常，自动 Reload Window")
+                                patrol_trace("conn_error_reload", _T("tr_anomaly_reload"))
                                 reload_cursor_window(self.config)
                                 _last_reload_t = time.time()
                                 time.sleep(float(getattr(self.config, "reload_window_wait_s", 12.0)))
@@ -2486,7 +2487,7 @@ class Nudger:
             except Exception as e:
                 logger.info("CDP scan 异常 %s，降级到 OCR", e)
         if not HAS_VISION:
-            return {"error": "cursor_vision 模块未加载", "has_vision": False, "has_cdp": HAS_CDP}
+            return {"error": _T("vision_not_loaded"), "has_vision": False, "has_cdp": HAS_CDP}
         try:
             state = vision_scan(save_screenshot=True)
             return state.to_dict()
@@ -2980,32 +2981,32 @@ def _handle_desktop_action(action: str, nudger: Nudger) -> dict:
         win = find_cursor_window(nudger.config)
         if win:
             focus_window(win[0])
-            patrol_trace("desktop", "手机/面板请求：聚焦 Cursor", action=action, ok=True)
-            return {"action": action, "ok": True, "message": "Cursor 已聚焦"}
-        patrol_trace("desktop", "手机/面板请求：聚焦 Cursor 失败", action=action, ok=False)
-        return {"action": action, "ok": False, "message": "未找到 Cursor 窗口"}
+            patrol_trace("desktop", _T("tr_relay_focus"), action=action, ok=True)
+            return {"action": action, "ok": True, "message": _T("cursor_focused")}
+        patrol_trace("desktop", _T("tr_relay_focus_fail"), action=action, ok=False)
+        return {"action": action, "ok": False, "message": _T("cursor_win_not_found_s")}
     elif action == "inspect":
         status = nudger.get_status()
         return {"action": action, "ok": True, "message": json.dumps(status, ensure_ascii=False)}
     elif action == "start_work":
         if not nudger.running:
             _relay_start_patrol(nudger)
-            return {"action": action, "ok": True, "message": "巡检已启动"}
-        return {"action": action, "ok": True, "message": "巡检已在运行"}
+            return {"action": action, "ok": True, "message": _T("patrol_started")}
+        return {"action": action, "ok": True, "message": _T("patrol_already_running")}
     elif action == "stop_work":
         if nudger.running:
             _relay_stop_patrol(nudger)
-            return {"action": action, "ok": True, "message": "巡检已停止"}
-        return {"action": action, "ok": True, "message": "巡检未在运行"}
+            return {"action": action, "ok": True, "message": _T("patrol_stopped")}
+        return {"action": action, "ok": True, "message": _T("patrol_not_running")}
     elif action == "restart":
         nudger.stop_patrol()
         import time as _time
         _time.sleep(1)
         _relay_start_patrol(nudger)
-        patrol_trace("desktop", "手机/面板请求：重启巡检进程", action=action, ok=True)
-        return {"action": action, "ok": True, "message": "巡检已重启"}
+        patrol_trace("desktop", _T("tr_relay_restart"), action=action, ok=True)
+        return {"action": action, "ok": True, "message": _T("patrol_restarted")}
     else:
-        return {"action": action, "ok": False, "message": f"未知动作: {action}"}
+        return {"action": action, "ok": False, "message": _T("unknown_action", action=action)}
 
 
 def _handle_admin_command(config, text: str, target_role: str = "",
@@ -3055,7 +3056,7 @@ def _relay_say_to_cursor(nudger: 'Nudger', config, role: str, text: str):
     logger.info("通知 Cursor → %s: %s", role, text[:80] if text else "(开工)")
     patrol_trace(
         "relay_notify",
-        "中继下发：尝试通知 Cursor",
+        _T("tr_relay_notify"),
         role=role,
         preview=(text or "")[:60],
     )
