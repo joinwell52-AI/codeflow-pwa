@@ -356,6 +356,34 @@
     .role-card.offline .team-role-state { opacity:.5; }
     .pair-summary { margin-top:6px; padding:6px 8px; border-radius:8px; background:rgba(59,130,246,.1); border-left:3px solid var(--blue); font-size:11px; color:var(--text2); }
 
+    /* ══ Agent 实时状态 ══ */
+    .agent-live-hint { margin-top:3px; font-size:9px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:72px; }
+    .agent-live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:3px; vertical-align:middle; }
+    .agent-live-dot.running { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,.6); animation:pulse-dot 1.2s ease-in-out infinite; }
+    .agent-live-dot.idle { background:#94a3b8; }
+    .agent-live-dot.waiting { background:#fbbf24; box-shadow:0 0 6px rgba(251,191,36,.5); animation:pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+    /* ══ Agent 工作实况面板 ══ */
+    .agent-monitor-panel { display:none; margin-top:10px; }
+    .agent-monitor-panel.visible { display:block; }
+    .agent-monitor-header { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:rgba(20,30,48,.7); border:1px solid rgba(180,200,220,.15); border-radius:var(--r2) var(--r2) 0 0; }
+    .agent-monitor-title { font-size:12px; font-weight:700; color:var(--text); }
+    .agent-monitor-status { font-size:11px; color:var(--text2); }
+    .agent-monitor-meta { display:flex; gap:10px; padding:6px 10px; background:rgba(20,30,48,.5); border-left:1px solid rgba(180,200,220,.15); border-right:1px solid rgba(180,200,220,.15); font-size:10px; color:var(--text3); }
+    .agent-monitor-messages { max-height:320px; overflow-y:auto; border:1px solid rgba(180,200,220,.12); border-top:none; border-radius:0 0 var(--r2) var(--r2); background:rgba(10,18,32,.6); }
+    .agent-msg { padding:8px 10px; border-bottom:1px solid rgba(180,200,220,.06); font-size:12px; line-height:1.5; }
+    .agent-msg:last-child { border-bottom:none; }
+    .agent-msg-role { font-size:10px; font-weight:600; margin-bottom:2px; }
+    .agent-msg-role.user { color:#60a5fa; }
+    .agent-msg-role.assistant { color:#a78bfa; }
+    .agent-msg-type { display:inline-block; font-size:9px; padding:1px 5px; border-radius:4px; margin-left:6px; background:rgba(148,163,184,.15); color:var(--text3); }
+    .agent-msg-summary { color:var(--text2); word-break:break-word; }
+    .agent-msg-context { margin-top:2px; font-size:11px; color:var(--text3); font-style:italic; }
+    .agent-monitor-empty { padding:20px; text-align:center; font-size:12px; color:var(--text3); }
+    .agent-monitor-close { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:2px 6px; min-height:auto; min-width:auto; box-shadow:none; }
+    .agent-monitor-close:hover { color:var(--text); }
+
 
     /* 任务详情展开区 */
     .detail-expand { display:none; margin-top:10px; padding-top:10px; border-top:1px solid rgba(148,163,184,.1); }
@@ -374,10 +402,10 @@
     .detail-view.active { display:block; }
     .detail-markdown { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:10px; max-height:280px; overflow:auto; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); }
     .detail-file-line { margin-top:5px; font-size:11px; color:var(--text3); }
-    .chat-list { display:grid; gap:6px; }
-    .chat-item { max-width:92%; padding:8px 10px; border-radius:var(--r2); background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); color:var(--text); font-size:12px; box-shadow:inset 0 1px 2px rgba(0,0,0,.08); }
-    .chat-item.mine { margin-left:auto; background:rgba(59,130,246,.12); border-color:rgba(96,165,250,.25); }
-    .chat-meta { font-size:10px; color:var(--text3); margin-bottom:3px; }
+    .task-record-list { display:grid; gap:6px; }
+    .task-record-item { max-width:92%; padding:8px 10px; border-radius:var(--r2); background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); color:var(--text); font-size:12px; box-shadow:inset 0 1px 2px rgba(0,0,0,.08); }
+    .task-record-item.mine { margin-left:auto; background:rgba(59,130,246,.12); border-color:rgba(96,165,250,.25); }
+    .task-record-meta { font-size:10px; color:var(--text3); margin-bottom:3px; }
 
     /* ══ 4. 发送任务区 ══ */
     .composer-section {}
@@ -605,6 +633,18 @@
         </div>
         <div id="teamDesc" class="muted" style="display:none;"></div>
         <div id="teamList" class="role-grid is-agent-rail"></div>
+        <!-- Agent 工作实况（只读监控面板） -->
+        <div id="agentMonitorPanel" class="agent-monitor-panel">
+          <div class="agent-monitor-header">
+            <span class="agent-monitor-title" id="agentMonitorTitle">Agent 工作实况</span>
+            <span class="agent-monitor-status" id="agentMonitorStatus"></span>
+            <button class="agent-monitor-close" id="agentMonitorClose" title="Close">✕</button>
+          </div>
+          <div class="agent-monitor-meta" id="agentMonitorMeta"></div>
+          <div class="agent-monitor-messages" id="agentMonitorMessages">
+            <div class="agent-monitor-empty" id="agentMonitorEmpty">暂无 Agent 活动</div>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -643,7 +683,7 @@
         <button id="detailRecordTabBtn" class="detail-tab-btn active" type="button">任务记录</button>
         <button id="detailMarkdownTabBtn" class="detail-tab-btn" type="button">MD原文</button>
       </div>
-      <div id="detailRecordView" class="detail-view active"><div id="detailMessages" class="chat-list"></div></div>
+      <div id="detailRecordView" class="detail-view active"><div id="detailMessages" class="task-record-list"></div></div>
       <div id="detailMarkdownView" class="detail-view"><div id="detailMarkdown" class="detail-markdown">请选择任务后查看 MD 原文。</div><div id="detailMarkdownFile" class="detail-file-line"></div></div>
     </div>
 
@@ -721,7 +761,7 @@
         <button id="fpMarkdownTabBtn" class="detail-tab-btn" type="button">MD原文</button>
       </div>
       <div id="fpRecordView" class="detail-view active">
-        <div id="fpMessages" class="chat-list"></div>
+        <div id="fpMessages" class="task-record-list"></div>
       </div>
       <div id="fpMarkdownView" class="detail-view">
         <div id="fpMarkdown" class="detail-markdown"></div>
@@ -825,10 +865,10 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h3 id="msgHistoryTitle" class="card-title">消息记录</h3></div>
-      <div id="msgHistoryDesc" class="muted">PC 和手机之间的收发消息记录。</div>
+      <div class="card-head"><h3 id="msgHistoryTitle" class="card-title">指令日志</h3></div>
+      <div id="msgHistoryDesc" class="muted">PC 和手机之间的任务指令收发记录。</div>
       <div id="msgHistoryList" style="background:rgba(0,0,0,.2);border:1px solid var(--card-border);border-radius:8px;padding:8px;max-height:240px;overflow-y:auto;min-height:40px;">
-        <div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无消息</div>
+        <div class="muted" style="font-size:12px;text-align:center;padding:12px 0;">暂无指令</div>
       </div>
     </div>
 
@@ -1180,8 +1220,8 @@
       document.getElementById("fpDetailFlow").textContent = `${roles.sender} -> ${roles.recipient}`;
       const messages = Array.isArray(item.messages) ? item.messages : [];
       document.getElementById("fpMessages").innerHTML = messages.map((m) => `
-        <div class="chat-item ${normalizeRole(m.sender) === "ADMIN" ? "mine" : ""}">
-          <div class="chat-meta">${normalizeRole(m.sender)} -> ${normalizeRole(m.recipient)} | ${m.time || ""}</div>
+        <div class="task-record-item ${normalizeRole(m.sender) === "ADMIN" ? "mine" : ""}">
+          <div class="task-record-meta">${normalizeRole(m.sender)} -> ${normalizeRole(m.recipient)} | ${m.time || ""}</div>
           <div>${m.body || m.summary || ""}</div>
         </div>
       `).join("") || `<div class="muted">${currentLang === "en" ? "No records" : "暂无记录"}</div>`;
@@ -1338,6 +1378,28 @@
         teamIdle: "闲着",
         teamWaiting: "等待",
         teamOffline: "离线",
+        agentMonitorTitle: "工作实况",
+        agentMonitorEmpty: "暂无 Agent 活动",
+        agentLiveRunning: "工作中",
+        agentLiveIdle: "空闲",
+        agentLiveWaiting: "等待审批",
+        agentLiveThinking: "思考中...",
+        agentLivePlanning: "规划中...",
+        agentLiveGenerating: "生成中...",
+        agentLiveSearching: "搜索中...",
+        agentLiveTerminal: "执行命令...",
+        agentLivePatching: "应用补丁...",
+        agentMsgTypeText: "文本",
+        agentMsgTypeCode: "代码",
+        agentMsgTypeTerminal: "终端",
+        agentMsgTypeFileEdit: "文件编辑",
+        agentMsgTypeTool: "工具调用",
+        agentMsgTypeThinking: "思考",
+        agentMsgTypeImage: "图片",
+        agentMsgUser: "用户",
+        agentMsgAssistant: "Agent",
+        agentMsgCountLabel: "条对话",
+        agentMonitorReadonly: "只读监控 · 如需指挥请发送任务",
         versionTitle: "版本号",
         languageTitle: "语言",
         bindStatusPending: "待确认",
@@ -1362,11 +1424,11 @@
         patrolNotStarted: "未启动",
         patrolRunning: "运行中",
         patrolStopped: "已停止",
-        msgHistoryTitle: "消息记录",
-        msgHistoryDesc: "PC 和手机之间的收发消息记录。",
-        msgHistoryEmpty: "暂无消息",
-        msgSent: "发送",
-        msgReceived: "收到",
+        msgHistoryTitle: "指令日志",
+        msgHistoryDesc: "PC 和手机之间的任务指令收发记录。",
+        msgHistoryEmpty: "暂无指令",
+        msgSent: "已派发",
+        msgReceived: "已接收",
         agentRailToggleHint: "切换 Agent 栏左右",
         qrStartingCamera: "正在启动摄像头…",
         qrLoadingLib: "正在加载识别库…",
@@ -1483,6 +1545,28 @@
         teamIdle: "Idle",
         teamWaiting: "Waiting",
         teamOffline: "Offline",
+        agentMonitorTitle: "Live Monitor",
+        agentMonitorEmpty: "No Agent activity",
+        agentLiveRunning: "Working",
+        agentLiveIdle: "Idle",
+        agentLiveWaiting: "Approval",
+        agentLiveThinking: "Thinking...",
+        agentLivePlanning: "Planning...",
+        agentLiveGenerating: "Generating...",
+        agentLiveSearching: "Searching...",
+        agentLiveTerminal: "Running cmd...",
+        agentLivePatching: "Patching...",
+        agentMsgTypeText: "Text",
+        agentMsgTypeCode: "Code",
+        agentMsgTypeTerminal: "Terminal",
+        agentMsgTypeFileEdit: "File Edit",
+        agentMsgTypeTool: "Tool Call",
+        agentMsgTypeThinking: "Thinking",
+        agentMsgTypeImage: "Image",
+        agentMsgUser: "User",
+        agentMsgAssistant: "Agent",
+        agentMsgCountLabel: "messages",
+        agentMonitorReadonly: "Read-only monitor · Send tasks to command",
         versionTitle: "Version",
         languageTitle: "Language",
         bindStatusPending: "Pending",
@@ -1507,10 +1591,10 @@
         patrolNotStarted: "Not Started",
         patrolRunning: "Running",
         patrolStopped: "Stopped",
-        msgHistoryTitle: "Messages",
-        msgHistoryDesc: "Messages between PC and mobile.",
-        msgHistoryEmpty: "No messages yet",
-        msgSent: "Sent",
+        msgHistoryTitle: "Command Log",
+        msgHistoryDesc: "Task command log between PC and mobile.",
+        msgHistoryEmpty: "No commands yet",
+        msgSent: "Dispatched",
         msgReceived: "Received",
         agentRailToggleHint: "Toggle agent bar left/right",
         qrStartingCamera: "Starting camera…",
@@ -2182,6 +2266,24 @@
       renderTeam(onlineDevices, targetRoleEl.value);
     }
 
+    function agentLiveHintForRole(role) {
+      if (!_agentLiveState || !_agentLiveState.agent_role) return null;
+      const liveRole = (_agentLiveState.agent_role || "").replace(/^\d+-?/, "").toUpperCase();
+      const cardRole = (role || "").replace(/^\d+-?/, "").toUpperCase();
+      if (liveRole !== cardRole) return null;
+      const s = _agentLiveState;
+      if (s.agent_status === "waiting_approval") return { dot: "waiting", text: t("agentLiveWaiting") };
+      if (!s.is_busy) return { dot: "idle", text: t("agentLiveIdle") };
+      const hint = (s.busy_hint || "").toLowerCase();
+      if (hint.includes("planning")) return { dot: "running", text: t("agentLivePlanning") };
+      if (hint.includes("thinking")) return { dot: "running", text: t("agentLiveThinking") };
+      if (hint.includes("generating")) return { dot: "running", text: t("agentLiveGenerating") };
+      if (hint.includes("searching")) return { dot: "running", text: t("agentLiveSearching") };
+      if (hint.includes("terminal") || hint.includes("command")) return { dot: "running", text: t("agentLiveTerminal") };
+      if (hint.includes("patch")) return { dot: "running", text: t("agentLivePatching") };
+      return { dot: "running", text: t("agentLiveRunning") };
+    }
+
     function renderTeam(devices, currentTarget) {
       const safeDevices = Array.isArray(devices) ? devices : [];
       const roles = fixedTeamRoles();
@@ -2192,11 +2294,16 @@
         const offlineCls = state.offline ? " offline" : "";
         const abbr = role.length <= 4 ? role : role.slice(0, 3);
         const showLabel = role.length > 3;
+        const live = agentLiveHintForRole(role);
+        const liveHtml = live
+          ? `<div class="agent-live-hint"><span class="agent-live-dot ${live.dot}"></span>${live.text}</div>`
+          : "";
         return `
           <div class="role-card team-icon-card${offlineCls} ${selectedRole === role ? "active" : ""}" data-role="${role}">
             <div class="team-icon">${abbr}</div>
             ${showLabel ? `<div class="team-icon-label">${role}</div>` : ""}
             <div class="team-role-state"><span class="badge ${state.cls}">${state.text}</span> <span style="font-size:9px;color:var(--text3);">${roleItems.length}</span></div>
+            ${liveHtml}
           </div>
         `;
       }).join("");
@@ -2208,8 +2315,110 @@
           renderTaskList();
           renderRolePanel();
           refreshTargetOptions();
+          openAgentMonitor(selectedRole);
         };
       });
+    }
+
+    // ── Agent 工作实况面板（只读监控）──
+    const _agentMonitorEl = document.getElementById("agentMonitorPanel");
+    const _agentMonitorTitleEl = document.getElementById("agentMonitorTitle");
+    const _agentMonitorStatusEl = document.getElementById("agentMonitorStatus");
+    const _agentMonitorMetaEl = document.getElementById("agentMonitorMeta");
+    const _agentMonitorMsgsEl = document.getElementById("agentMonitorMessages");
+    const _agentMonitorEmptyEl = document.getElementById("agentMonitorEmpty");
+    const _agentMonitorCloseEl = document.getElementById("agentMonitorClose");
+
+    if (_agentMonitorCloseEl) {
+      _agentMonitorCloseEl.onclick = () => {
+        _agentMonitorRole = null;
+        _agentMonitorEl.classList.remove("visible");
+      };
+    }
+
+    function openAgentMonitor(role) {
+      _agentMonitorRole = role;
+      renderAgentMonitor();
+      _agentMonitorEl.classList.add("visible");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        sendEvent("request_agent_live", {});
+      }
+    }
+
+    function msgTypeIcon(type) {
+      const icons = { text: "💬", code: "📝", terminal: "⚙️", file_edit: "✏️", tool: "🔧", thinking: "💭", image: "🖼️" };
+      return icons[type] || "💬";
+    }
+
+    function msgTypeLabel(type) {
+      const map = {
+        text: t("agentMsgTypeText"), code: t("agentMsgTypeCode"), terminal: t("agentMsgTypeTerminal"),
+        file_edit: t("agentMsgTypeFileEdit"), tool: t("agentMsgTypeTool"),
+        thinking: t("agentMsgTypeThinking"), image: t("agentMsgTypeImage"),
+      };
+      return map[type] || type;
+    }
+
+    function renderAgentMonitor() {
+      if (!_agentMonitorEl) return;
+      const s = _agentLiveState;
+      _agentMonitorTitleEl.textContent = `${_agentMonitorRole || "Agent"} · ${t("agentMonitorTitle")}`;
+
+      if (!s || !s.agent_role) {
+        _agentMonitorStatusEl.textContent = "";
+        _agentMonitorMetaEl.innerHTML = `<span style="color:var(--text3);">${t("agentMonitorReadonly")}</span>`;
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">${t("agentMonitorEmpty")}</div>`;
+        return;
+      }
+
+      // 状态栏
+      const live = agentLiveHintForRole(_agentMonitorRole);
+      if (live) {
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot ${live.dot}"></span> ${live.text}`;
+      } else {
+        _agentMonitorStatusEl.textContent = "";
+      }
+
+      // Meta 信息
+      const metaParts = [];
+      if (s.model_name) metaParts.push(s.model_name);
+      if (s.message_count) metaParts.push(`${s.message_count} ${t("agentMsgCountLabel")}`);
+      if (s.current_mode) metaParts.push(s.current_mode);
+      if (s.pending_approvals > 0) metaParts.push(`⚠️ ${s.pending_approvals} pending`);
+      metaParts.push(t("agentMonitorReadonly"));
+      _agentMonitorMetaEl.innerHTML = metaParts.map(p => `<span>${p}</span>`).join("");
+
+      // 消息列表
+      const msgs = Array.isArray(s.recent_messages) ? s.recent_messages : [];
+      if (msgs.length === 0) {
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">${t("agentMonitorEmpty")}</div>`;
+        return;
+      }
+
+      _agentMonitorMsgsEl.innerHTML = msgs.map(m => {
+        const roleLabel = m.role === "user" ? t("agentMsgUser") : t("agentMsgAssistant");
+        const roleCls = m.role === "user" ? "user" : "assistant";
+        const icon = msgTypeIcon(m.type);
+        const typeTag = m.type !== "text" ? `<span class="agent-msg-type">${msgTypeLabel(m.type)}</span>` : "";
+        const summary = (m.summary || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const context = m.context ? `<div class="agent-msg-context">${m.context.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : "";
+        return `<div class="agent-msg">
+          <div class="agent-msg-role ${roleCls}">${icon} ${roleLabel} ${typeTag}</div>
+          <div class="agent-msg-summary">${summary}</div>
+          ${context}
+        </div>`;
+      }).join("");
+
+      // 自动滚到底部
+      _agentMonitorMsgsEl.scrollTop = _agentMonitorMsgsEl.scrollHeight;
+    }
+
+    function applyAgentLiveState(payload) {
+      _agentLiveState = payload;
+      renderTeam(onlineDevices, typeof targetRoleEl !== "undefined" ? targetRoleEl.value : "");
+      if (_agentMonitorRole && _agentMonitorEl.classList.contains("visible")) {
+        renderAgentMonitor();
+      }
     }
 
     function renderRolePanel() {
@@ -2363,8 +2572,8 @@
       refs.markdownFile.textContent = currentLang === "en" ? `Source: ${detail.filename || "--"}` : `关联文件：${detail.filename || "--"}`;
       const messages = Array.isArray(detail.messages) ? detail.messages : [];
       refs.messages.innerHTML = messages.map((item) => `
-        <div class="chat-item ${normalizeRole(item.sender) === "ADMIN" ? "mine" : ""}">
-          <div class="chat-meta">${normalizeRole(item.sender)} -> ${normalizeRole(item.recipient)} | ${item.time || ""} | ${inferTaskType(item)}</div>
+        <div class="task-record-item ${normalizeRole(item.sender) === "ADMIN" ? "mine" : ""}">
+          <div class="task-record-meta">${normalizeRole(item.sender)} -> ${normalizeRole(item.recipient)} | ${item.time || ""} | ${inferTaskType(item)}</div>
           <div>${item.body || item.summary || ""}</div>
         </div>
       `).join("");
@@ -2479,6 +2688,10 @@
     let _pcWasOnline = false;
     let _patrolRunning = false;
     let _wsConnected = false;
+
+    // Agent 实时状态（CDP 推送）
+    let _agentLiveState = null;
+    let _agentMonitorRole = null;
 
     function applyPatrolState(p) {
       const running = !!p.running;
@@ -2634,7 +2847,7 @@
     if (patrolStopBtn) patrolStopBtn.onclick = requestPatrolStop;
     if (pcResetBtn) pcResetBtn.onclick = requestPcReset;
 
-    // ── Message history (PC ↔ PWA) ──────────────────────────────────
+    // ── Command log (PC ↔ PWA) ──────────────────────────────────
     const msgHistoryList = document.getElementById("msgHistoryList");
     let msgRecords = JSON.parse(localStorage.getItem("codeflow_msg_records") || "[]");
 
@@ -2697,7 +2910,7 @@
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
       };
-      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list","patrol_trace"]);
+      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list","patrol_trace","agent_live_state"]);
       ws.onmessage = (event) => {
         let data = null;
         try { data = JSON.parse(event.data); } catch (error) { appendLog(`收到无法解析的消息: ${error.message}`); return; }
@@ -2772,6 +2985,7 @@
           showToast(currentLang === "en" ? `Task file created: ${fn}` : `任务文件已创建: ${fn}`, "ok");
           requestDashboard();
         }
+        else if (et === "agent_live_state") { applyAgentLiveState(data.payload || {}); }
         else if (et === "desktop_action_result") { appendLog(`PC动作: ${data.payload?.message || ""}`); addMsgRecord("pc", data.payload?.message || "动作完成"); }
         else if (et === "reply_summary") { addMsgRecord("pc", `回复: ${data.payload?.summary || ""}`); if (data.payload.thread_key) { threadKeyEl.value = data.payload.thread_key; localStorage.setItem("codeflow_last_thread", data.payload.thread_key); } requestDashboard(); }
         else if (et === "pong") { }

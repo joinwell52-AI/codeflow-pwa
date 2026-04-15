@@ -8,6 +8,41 @@
 
 ---
 
+## [2.11.0] - 2026-04-06
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：Agent 工作实况监控
+
+通过 CDP 实时提取 Cursor 中 Agent 的聊天消息摘要，推送到手机端 PWA 供只读监控。
+
+- **`cursor_cdp.py` 消息提取引擎**：JS 注入脚本新增第 7b 节，从 DOM 提取最近 20 条消息，自动分类为 `text` / `code` / `terminal` / `file_edit` / `tool` / `thinking` / `image` 七种类型并生成摘要
+- **`cursor_cdp.py` 数据结构**：`CdpCursorState.messages` 填充真实数据，`to_dict()` 输出 `recent_messages` 字段
+- **`nudger.py` Relay 推送**：`_push_desktop_snapshot()` 每次推送附带 `agent_live_state` 事件（状态 + 消息摘要）
+- **`nudger.py` 按需请求**：新增 `request_agent_live` 事件响应，PWA 可主动拉取最新 Agent 状态
+
+### PWA（`web/pwa/`）
+
+#### 新增：Agent 实时状态 + 只读工作实况面板
+
+- **Agent 卡片升级**：活跃 Agent 显示实时状态徽章（绿色脉冲 = 工作中，灰色 = 空闲，黄色 = 等待审批）及状态文字（"规划中..."、"生成中..."等）
+- **工作实况面板**：点击 Agent 卡片展开只读监控面板，显示模型名 / 消息条数 / 模式，以及最近 20 条消息的分类摘要（带图标 💬📝⚙️✏️🔧💭🖼️）
+- **明确"只读"定位**：面板底部标注"只读监控 · 如需指挥请发送任务"，没有输入框，不破坏现有 TASK 协议
+- **i18n 双语**：新增 18 个中英文案 key（agentMonitor / agentLive / agentMsgType 系列）
+
+#### 优化：去聊天化 — 强化任务语境
+
+- CSS class 重命名：`chat-list` / `chat-item` / `chat-meta` → `task-record-list` / `task-record-item` / `task-record-meta`
+- "消息记录" → "指令日志" / "Command Log"（中英双语）
+- "暂无消息" → "暂无指令" / "No commands yet"
+- "发送" / "收到" → "已派发" / "已接收"
+
+#### 版本号
+
+- PWA 版本升至 `2.4.0`
+
+---
+
 ## [2.10.1] - 2026-04-06
 
 ### 桌面端（`codeflow-desktop`）

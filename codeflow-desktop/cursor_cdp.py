@@ -97,6 +97,8 @@ class CdpCursorState:
         d["model_name"] = self.model_name
         d["message_count"] = len(self.messages)
         d["pending_approvals"] = len(self.pending_approvals)
+        if self.messages:
+            d["recent_messages"] = self.messages[:20]
         return d
 
 
@@ -415,12 +417,106 @@ _JS_EXTRACT_STATE = r"""
         }
     });
 
-    // ── 7. 消息计数 ──
+    // ── 7. 消息计数 + 内容提取 ──
     const msgEls = document.querySelectorAll(
         '[data-message-id], [class*="chat-message"], [class*="message-row"], ' +
         '[class*="turn-"], [class*="conversation-turn"]'
     );
     state.messageCount = msgEls.length;
+
+    // 7b. 提取最近 20 条消息摘要（只读监控用，非全文）
+    state.recentMessages = [];
+    const lastN = Array.from(msgEls).slice(-20);
+    lastN.forEach((el, idx) => {
+        const msg = { idx: msgEls.length - lastN.length + idx };
+
+        // 角色判断：user 发的消息 vs assistant 回复
+        const cls = (el.className || '').toLowerCase();
+        const authorEl = el.querySelector('[class*="author"], [class*="role"], [class*="sender"]');
+        const authorText = (authorEl?.textContent || '').trim().toLowerCase();
+        if (authorText.includes('user') || authorText.includes('human') || cls.includes('user') || cls.includes('human')) {
+            msg.role = 'user';
+        } else if (authorText.includes('assistant') || authorText.includes('agent') || cls.includes('assistant') || cls.includes('agent')) {
+            msg.role = 'assistant';
+        } else {
+            msg.role = idx % 2 === 0 ? 'user' : 'assistant';
+        }
+
+        // 代码块检测
+        const codeBlocks = el.querySelectorAll('pre, code[class*="language-"], [class*="code-block"]');
+        const codeCount = codeBlocks.length;
+        let codeLangs = [];
+        let codeLines = 0;
+        codeBlocks.forEach(cb => {
+            const langCls = (cb.className || '').match(/language-(\w+)/);
+            if (langCls) codeLangs.push(langCls[1]);
+            codeLines += (cb.textContent || '').split('\n').length;
+        });
+
+        // 终端/命令检测
+        const termEls = el.querySelectorAll('[class*="terminal"], [class*="shell"], [class*="command"]');
+        const hasTerminal = termEls.length > 0;
+
+        // 文件编辑检测
+        const fileEls = el.querySelectorAll('[class*="file-diff"], [class*="diff"], [class*="patch"], [class*="file-edit"]');
+        const hasFileDiff = fileEls.length > 0;
+
+        // 工具调用检测
+        const toolEls = el.querySelectorAll('[class*="tool-call"], [class*="tool-use"], [class*="function-call"]');
+        const hasTool = toolEls.length > 0;
+        let toolName = '';
+        if (hasTool && toolEls[0]) {
+            toolName = (toolEls[0].textContent || '').trim().substring(0, 60);
+        }
+
+        // 思考块检测
+        const thinkEls = el.querySelectorAll('[class*="thinking"], [class*="thought"], [class*="reasoning"]');
+        const hasThinking = thinkEls.length > 0;
+
+        // 图片检测
+        const imgEls = el.querySelectorAll('img:not([width="16"]):not([height="16"]):not([class*="icon"]):not([class*="avatar"])');
+        const hasImage = imgEls.length > 0;
+
+        // 纯文本提取（排除代码块、工具调用等子元素的文本）
+        let plainText = '';
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('pre, [class*="code-block"], [class*="terminal"], [class*="tool-call"], [class*="tool-use"], [class*="thinking"], [class*="thought"]').forEach(n => n.remove());
+        plainText = (clone.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 300);
+
+        // 分类 + 生成摘要
+        if (hasThinking) {
+            msg.type = 'thinking';
+            const preview = (thinkEls[0]?.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 120);
+            msg.summary = preview || 'thinking...';
+        } else if (hasTool) {
+            msg.type = 'tool';
+            msg.summary = toolName || 'tool call';
+        } else if (hasTerminal) {
+            msg.type = 'terminal';
+            const cmd = (termEls[0]?.textContent || '').trim().split('\n')[0].substring(0, 100);
+            msg.summary = cmd || 'terminal';
+        } else if (hasFileDiff) {
+            msg.type = 'file_edit';
+            msg.summary = `${fileEls.length} file(s)`;
+        } else if (codeCount > 0 && codeLines > 3) {
+            msg.type = 'code';
+            msg.summary = `${codeLines} lines`;
+            if (codeLangs.length > 0) msg.lang = codeLangs[0];
+        } else if (hasImage) {
+            msg.type = 'image';
+            msg.summary = `${imgEls.length} image(s)`;
+        } else {
+            msg.type = 'text';
+            msg.summary = plainText.substring(0, 200);
+        }
+
+        // 附加：纯文本开头（所有类型都带一点上下文）
+        if (msg.type !== 'text' && plainText.length > 0) {
+            msg.context = plainText.substring(0, 100);
+        }
+
+        state.recentMessages.push(msg);
+    });
 
     // ── 8. 待审批检测 ──
     const approvalBtns = document.querySelectorAll(
@@ -685,6 +781,10 @@ def scan(host: str = CDP_HOST, port: int = CDP_PORT) -> CdpCursorState:
         state.agent_status = raw.get("agentStatus", "unknown")
         state.model_name = raw.get("modelName", "")
         state.chat_tabs = raw.get("chatTabs", [])
+
+        raw_msgs = raw.get("recentMessages", [])
+        if isinstance(raw_msgs, list):
+            state.messages = raw_msgs[:20]
 
         if raw.get("inputBoxFound"):
             from cursor_vision import Rect

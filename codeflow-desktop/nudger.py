@@ -2664,8 +2664,30 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                             result = _handle_desktop_action(action, nudger)
                             await _send("desktop_action_result", result)
 
+                        elif et == "request_agent_live":
+                            try:
+                                cursor_state = nudger.get_cursor_state()
+                                if cursor_state.get("found"):
+                                    live_payload = {
+                                        "agent_role": cursor_state.get("agent_role", ""),
+                                        "all_roles": cursor_state.get("all_roles", []),
+                                        "agent_status": cursor_state.get("agent_status", "unknown"),
+                                        "is_busy": cursor_state.get("is_busy", False),
+                                        "busy_hint": cursor_state.get("busy_hint", ""),
+                                        "model_name": cursor_state.get("model_name", ""),
+                                        "current_mode": cursor_state.get("current_mode", ""),
+                                        "message_count": cursor_state.get("message_count", 0),
+                                        "pending_approvals": cursor_state.get("pending_approvals", 0),
+                                        "recent_messages": cursor_state.get("recent_messages", []),
+                                    }
+                                    await _send("agent_live_state", live_payload)
+                                else:
+                                    await _send("agent_live_state", {"found": False})
+                            except Exception as _req_exc:
+                                await _send("agent_live_state", {"found": False, "error": str(_req_exc)})
+
                 async def _push_desktop_snapshot(reason: str = "interval"):
-                    """文件变化时推送列表+轨迹；心跳时只推文件列表。"""
+                    """文件变化时推送列表+轨迹+Agent状态；心跳时推文件列表+Agent状态。"""
                     try:
                         file_list = nudger.get_file_list()
                         await ws.send(_make_msg("file_list", file_list))
@@ -2682,6 +2704,25 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                 "entries": slim_trace,
                                 "reason": reason,
                             }))
+                        # Agent 实时状态推送（CDP 状态 + 消息摘要）
+                        try:
+                            cursor_state = nudger.get_cursor_state()
+                            if cursor_state.get("found"):
+                                live_payload = {
+                                    "agent_role": cursor_state.get("agent_role", ""),
+                                    "all_roles": cursor_state.get("all_roles", []),
+                                    "agent_status": cursor_state.get("agent_status", "unknown"),
+                                    "is_busy": cursor_state.get("is_busy", False),
+                                    "busy_hint": cursor_state.get("busy_hint", ""),
+                                    "model_name": cursor_state.get("model_name", ""),
+                                    "current_mode": cursor_state.get("current_mode", ""),
+                                    "message_count": cursor_state.get("message_count", 0),
+                                    "pending_approvals": cursor_state.get("pending_approvals", 0),
+                                    "recent_messages": cursor_state.get("recent_messages", []),
+                                }
+                                await ws.send(_make_msg("agent_live_state", live_payload))
+                        except Exception as _cdp_exc:
+                            logger.debug("推送 agent_live_state 失败: %s", _cdp_exc)
                         logger.debug("已推送 PWA 快照 (%s)", reason)
                     except Exception as ex:
                         logger.debug("推送 PWA 快照失败: %s", ex)
