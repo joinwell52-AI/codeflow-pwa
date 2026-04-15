@@ -1398,9 +1398,9 @@
         agentMsgTypeTool: "工具调用",
         agentMsgTypeThinking: "思考",
         agentMsgTypeImage: "图片",
-        agentMsgUser: "用户",
+        agentMsgUser: "发送方",
         agentMsgAssistant: "Agent",
-        agentMsgCountLabel: "条对话",
+        agentMsgCountLabel: "条消息",
         agentMonitorReadonly: "只读监控 · 如需指挥请发送任务",
         versionTitle: "版本号",
         languageTitle: "语言",
@@ -1568,7 +1568,7 @@
         agentMsgTypeTool: "Tool Call",
         agentMsgTypeThinking: "Thinking",
         agentMsgTypeImage: "Image",
-        agentMsgUser: "User",
+        agentMsgUser: "Sender",
         agentMsgAssistant: "Agent",
         agentMsgCountLabel: "messages",
         agentMonitorReadonly: "Read-only monitor · Send tasks to command",
@@ -2436,11 +2436,10 @@
       }
 
       const metaParts = [];
-      if (s.model_name) metaParts.push(s.model_name);
       if (s.message_count) metaParts.push(`${s.message_count} ${t("agentMsgCountLabel")}`);
+      if (s.model_name) metaParts.push(s.model_name);
       if (s.current_mode) metaParts.push(s.current_mode);
       if (s.pending_approvals > 0) metaParts.push(`⚠️ ${s.pending_approvals} pending`);
-      metaParts.push(t("agentMonitorReadonly"));
       _agentMonitorMetaEl.innerHTML = metaParts.map(p => `<span>${p}</span>`).join("");
 
       const msgs = Array.isArray(s.recent_messages) ? s.recent_messages : [];
@@ -2466,6 +2465,7 @@
         </div>`;
       }).join("");
 
+      _agentMonitorMsgsEl.innerHTML += `<div style="padding:8px 16px;text-align:center;font-size:10px;color:var(--text3);border-top:1px solid rgba(180,200,220,.08);">${t("agentMonitorReadonly")}</div>`;
       _agentMonitorMsgsEl.scrollTop = _agentMonitorMsgsEl.scrollHeight;
     }
 
