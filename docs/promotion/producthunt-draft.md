@@ -12,7 +12,7 @@ Command your AI dev team from your phone. Open source.
 - Filename as Protocol — the simplest multi-agent orchestration
 
 ## Description (260 chars)
-CodeFlow orchestrates multi-role AI teams (PM/DEV/QA/OPS) in Cursor IDE. CDP patrol engine reads DOM in 10ms — 60x faster than OCR. Send tasks from phone, agents execute on PC, everything is a markdown file. 3 team templates, bilingual, self-healing.
+CodeFlow orchestrates multi-role AI teams (PM/DEV/QA/OPS) in Cursor IDE. CDP patrol reads DOM in 10ms — 60x faster than OCR. Send tasks from phone, agents execute on PC, everything is markdown. 4 team templates, full EN/ZH i18n, self-healing. v2.10.1.
 
 ## Topics
 - Developer Tools
@@ -49,12 +49,12 @@ CDP reads Cursor's DOM directly — `div[role="tab"]` for agent tabs, `aria-sele
 
 ### The full stack:
 
-- **Desktop EXE** (v2.10.0): CDP patrol engine monitors all agents, auto-nudges stuck tasks, self-heals frozen Cursor windows
+- **Desktop EXE** (v2.10.1): CDP patrol engine monitors all agents, auto-nudges stuck tasks, self-heals frozen Cursor windows, full EN/ZH bilingual (130+ i18n keys)
 - **Phone PWA**: Send "do a security audit" from your couch, come back to find the report
 - **MCP Plugin**: Init teams, dispatch tasks, read reports — all from Cursor chat
 - **Protocol**: Every task is `TASK-20260414-003-PM-to-DEV.md`. The filename IS the routing. No databases, no message queues.
 
-3 team templates (dev/media/mvp), full EN+ZH bilingual, MIT licensed.
+4 team templates (dev/media/mvp/qa), full EN+ZH bilingual, MIT licensed. GitHub community health: 100%.
 
 Try the PWA right now on your phone:
 https://joinwell52-ai.github.io/codeflow-pwa/

@@ -1,6 +1,6 @@
 # Hacker News — Show HN
 
-**Title:** Show HN: CodeFlow – CDP-powered patrol engine for multi-agent Cursor IDE teams (open source)
+**Title:** Show HN: CodeFlow – CDP-powered patrol engine for multi-agent Cursor IDE teams (open source, bilingual)
 
 **URL:** https://github.com/joinwell52-AI/codeflow-pwa
 
@@ -22,7 +22,7 @@ Two core innovations:
 
 **2. Filename as Protocol** — Every task is a markdown file: `TASK-20260414-003-PM-to-DEV.md` — 7 routing fields in the filename. Zero databases, zero message queues.
 
-The product: Desktop EXE patrols agents + Phone PWA sends tasks + MCP Plugin for Cursor chat. 4 team templates (dev/media/mvp/qa).
+The product: Desktop EXE (v2.10.1) patrols agents + Phone PWA (v2.3.1) sends tasks + MCP Plugin for Cursor chat. 4 team templates (dev/media/mvp/qa). Full EN/ZH bilingual — 130+ i18n keys, every message switches with one setting.
 
 Born from a real production project: 87 person-days in 17 days, 91 deployments, zero incidents.
 

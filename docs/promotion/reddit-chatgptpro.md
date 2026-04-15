@@ -34,4 +34,6 @@ Real results: 87 person-days of work in 17 days. 91 production deployments. Zero
 - CDP Tech Doc: https://github.com/joinwell52-AI/codeflow-pwa/blob/main/docs/cdp-multi-agent.md
 - Product page: https://joinwell52-ai.github.io/codeflow-pwa/promotion/
 
-Open source, MIT licensed.
+v2.10.1: full EN/ZH bilingual UI (130+ i18n keys). Community health score: 100%.
+
+Open source, MIT licensed. Star us if you find it useful!

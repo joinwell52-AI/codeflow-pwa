@@ -5,7 +5,7 @@
 
 ---
 
-各位好！分享我做的开源项目：**码流（CodeFlow）v2.10.0**。
+各位好！分享我做的开源项目：**码流（CodeFlow）v2.10.1**。
 
 ### 一句话介绍
 
@@ -31,8 +31,8 @@
 
 ### 产品组成
 
-- **桌面端 EXE**（v2.10.0，~35MB）：CDP 巡检引擎 + OCR 降级，自动催办卡住任务，Cursor 冻结自愈
-- **手机端 PWA**：发任务、看状态、读报告、扫码绑定，离线可用
+- **桌面端 EXE**（v2.10.1，~35MB）：CDP 巡检引擎 + OCR 降级，自动催办卡住任务，全量中英双语 UI
+- **手机端 PWA**（v2.3.1）：发任务、看状态、读报告、扫码绑定，离线可用
 - **MCP 插件**：在 Cursor 对话里初始化团队、派任务、读报告
 - **WebSocket 中继**：手机 ↔ PC 实时同步
 
@@ -59,6 +59,8 @@ TASK-20260414-003-PM-to-DEV.md
 4. 产品主页：https://joinwell52-ai.github.io/codeflow-pwa/promotion/
 5. GitHub：https://github.com/joinwell52-AI/codeflow-pwa
 6. CDP 技术文档：https://github.com/joinwell52-AI/codeflow-pwa/blob/main/docs/cdp-multi-agent.md
+
+v2.10.1 新增：全量 i18n 支持（130+ 翻译键），所有 API 消息、巡检轨迹、面板 UI 一键切换中英文。GitHub 社区健康度 100%。
 
 MIT 开源，中英双语。欢迎 Star 和反馈！
 

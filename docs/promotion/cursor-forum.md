@@ -7,7 +7,7 @@
 
 ---
 
-**UPDATE v2.10.0: CDP Patrol Engine + 4 team templates**
+**UPDATE v2.10.1: CDP Patrol Engine + 4 team templates + Full Bilingual UI**
 
 Big update since the last post. We replaced the OCR-based patrol with **Chrome DevTools Protocol (CDP)** — the desktop app now reads Cursor's DOM directly.
 
@@ -52,15 +52,16 @@ Phone (PWA)  <->  WebSocket Relay  <->  Desktop EXE  <->  Cursor IDE
 
 ## What's in the box
 
-### Desktop App (v2.10.0)
+### Desktop App (v2.10.1)
 - Windows EXE (~35MB), double-click to run
+- **Full i18n**: 130+ translation keys, EN/ZH switch with one setting
 - **CDP patrol engine**: reads DOM in 10ms, 100% accurate agent detection
 - 3-layer busy detection (Stop button + Spinner + Status text)
 - Auto-nudge for stuck/idle agents
 - OCR as graceful fallback when CDP unavailable
 - Real-time relay bridge to phone
 
-### Mobile PWA (v2.3.0)
+### Mobile PWA (v2.3.1)
 - Send tasks to your AI team from your phone
 - Real-time status, markdown viewer, role filtering
 - QR code binding — scan and connect in 5 seconds

@@ -7,7 +7,7 @@
 
 I wanted to see if one person could manage a complete AI development team — not by chatting with one bot, but by orchestrating PM, DEV, QA, and OPS roles that collaborate autonomously.
 
-After 17 days on a real production project (87 person-days of output, 91 deployments, zero incidents), I turned it into an open-source product: **CodeFlow (v2.10.0)**.
+After 17 days on a real production project (87 person-days of output, 91 deployments, zero incidents), I turned it into an open-source product: **CodeFlow (v2.10.1)**.
 
 **The big v2.10 upgrade: CDP Patrol Engine**
 
@@ -32,4 +32,6 @@ The desktop app used to monitor agents via OCR (slow, ~90% accurate). Now it use
 - Product page: https://joinwell52-ai.github.io/codeflow-pwa/promotion/
 - CDP Tech Doc: https://github.com/joinwell52-AI/codeflow-pwa/blob/main/docs/cdp-multi-agent.md
 
-MIT license. Feedback welcome!
+v2.10.1 just shipped: full EN/ZH bilingual UI (130+ translation keys), community health score 100%.
+
+MIT license. Star us if you find it useful!
