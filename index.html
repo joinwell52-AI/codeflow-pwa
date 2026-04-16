@@ -1114,7 +1114,13 @@
     }
     function isTaskReply(item) {
       const fn = String(item.filename || item.primary_filename || "");
-      return /to-PM|REPORT|NOTIFY/i.test(fn);
+      // 匹配回复文件：to-PM / to-ADMIN / to-ADMIN01 / REPORT / NOTIFY
+      if (/to-PM|to-ADMIN|REPORT|NOTIFY/i.test(fn)) return true;
+      // 或者 dir 是 reports
+      if ((item.dir || "") === "reports") return true;
+      // 或者 messages 里有 reports
+      if (Array.isArray(item.messages) && item.messages.some(m => (m.dir || "") === "reports")) return true;
+      return false;
     }
     function isTaskInProgress(item) {
       const p = String(item.progress || "");
