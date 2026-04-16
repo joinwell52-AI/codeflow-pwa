@@ -1168,10 +1168,11 @@
       });
     }
 
-    function openTaskListPage(filter, roleFilter) {
+    function openTaskListPage(filter, roleFilter, dirFilter) {
       _taskListFilter = filter || null;
       _taskListRoleFilter = roleFilter || null;
-      _taskListDirFilter = "tasks";
+      // "reply" 过滤器对应 reports 目录；其他默认 tasks
+      _taskListDirFilter = dirFilter || (filter === "reply" ? "reports" : "tasks");
       const filterLabel = STAT_FILTER_LABELS[currentLang] || STAT_FILTER_LABELS.zh;
       const prefix = roleFilter || (currentLang === "en" ? "All" : "全部");
       let title = filterLabel.all;
@@ -2985,11 +2986,12 @@
         else if (et === "device_roster") {
           renderDevices(data.payload?.devices || []);
           const pcNow = !!_pcDeviceId();
-          if (pcNow) {
+            if (pcNow) {
             if (!_pcWasOnline) appendLog(currentLang === "en" ? "PC online" : "PC 已上线");
             _pcWasOnline = true;
             updateHeaderStatus();
             requestDashboard();
+            setTimeout(() => requestDashboard(), 2000);  // PC刚上线时roster可能未稳定，2s后重试
             requestPatrolStatus();
             if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 30000);
             startTracePolling();
