@@ -146,6 +146,41 @@ gh api repos/joinwell52-AI/codeflow-pwa/pages/builds -X POST
 
 ---
 
+## 中继服务器更新
+
+如果改动了 `server/relay/server.py`（如新增事件白名单），需要同步更新线上中继。
+
+### 自动部署（推荐）
+
+```powershell
+py -3 D:\Bridgeflow\private\_deploy_relay.py
+```
+
+脚本会自动：上传 `server.py` → 重启 `bridgeflow-relay` 服务 → 输出运行状态。
+
+### 手动部署
+
+```bash
+# 上传
+scp server/relay/server.py root@120.55.164.16:/opt/bridgeflow/server.py
+# 重启
+ssh root@120.55.164.16 "systemctl restart bridgeflow-relay"
+# 验证
+ssh root@120.55.164.16 "systemctl is-active bridgeflow-relay && ss -ltnp | grep 5252"
+```
+
+### 常见改动
+
+| 改动 | 影响 | 需要重启中继 |
+|------|------|-------------|
+| `ALLOWED_EVENTS` 新增事件 | 新事件才能被转发 | 是 |
+| `RATE_LIMIT_COUNT` 调整 | 消息频率限制 | 是 |
+| `MAX_MESSAGE_BYTES` 调整 | 大消息传输 | 是 |
+
+> 详细的中继运维信息见 `private/relay-keepalive-guide.md`
+
+---
+
 ## 版本号规范
 
 遵循 [语义化版本](https://semver.org/lang/zh-CN/)：
