@@ -2976,7 +2976,7 @@
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
       };
-      const _silentEvents = new Set(["pong","patrol_state","dashboard_state","device_roster","bind_state","file_list","patrol_trace","agent_live_state"]);
+      const _silentEvents = new Set(["pong","patrol_state","device_roster","bind_state","file_list","patrol_trace","agent_live_state"]);
       ws.onmessage = (event) => {
         let data = null;
         try { data = JSON.parse(event.data); } catch (error) { appendLog(`收到无法解析的消息: ${error.message}`); return; }
@@ -2984,11 +2984,10 @@
         if (!_silentEvents.has(et)) appendLog(`收到事件: ${et}`);
         if (et === "dashboard_state") {
           const p = data.payload || {};
-          const _di = (p.items||[])[0];
-          if (_di) {
-            appendLog(`dashboard[0]: ${JSON.stringify(_di).slice(0,300)}`);
-          }
-          appendLog(`dashboard: items=${(p.items||[]).length}, chunk=${!!p._chunked||!!p._chunk}`);
+          const isChunked = !!p._chunked;
+          const isChunk = !!p._chunk;
+          const itemDirs = (p.items||[]).map(i=>i.dir||'?').join(',');
+          appendLog(`dashboard: items=${(p.items||[]).length} dirs=[${itemDirs}] chunked=${isChunked} chunk=${isChunk} total=${p._total_items||'-'}`);
           applyDashboard(p);
         }
         else if (et === "device_roster") {
