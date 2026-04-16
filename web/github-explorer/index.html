@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GitHub 开源仓库排行榜</title>
+<title>GitHub Repo Explorer · 开源仓库排行榜</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -13,123 +13,132 @@
   --purple:#bc8cff;--orange:#ffa657;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:100}
-.header h1{font-size:18px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.header h1 span{font-size:20px}
-.search-row{display:flex;gap:8px;flex-wrap:wrap}
-.search-box{flex:1;min-width:200px;display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
-.search-box input{flex:1;background:transparent;border:none;padding:10px 14px;color:var(--text);font-size:14px;outline:none}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px;position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.header-top h1{font-size:17px;font-weight:600;flex:1}
+.lang-toggle{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.lang-toggle button{padding:4px 10px;border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer}
+.lang-toggle button.active{background:var(--accent);color:#fff}
+.search-row{display:flex;gap:8px}
+.search-box{flex:1;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);display:flex}
+.search-box input{flex:1;background:transparent;border:none;padding:9px 12px;color:var(--text);font-size:13px;outline:none}
 .search-box input::placeholder{color:var(--muted)}
-.btn{padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
+.btn{padding:9px 14px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-primary:hover{background:#79c0ff}
 .btn-primary:disabled{background:#21262d;color:var(--muted);cursor:not-allowed}
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
-.filter-label{font-size:12px;color:var(--muted)}
-.filter-group{display:flex;gap:4px}
-.chip{padding:4px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;color:var(--muted);background:transparent;transition:all .15s}
+.hint{font-size:11px;color:var(--muted);margin-top:5px}
+.hint em{color:var(--accent);font-style:normal}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.filter-label{font-size:11px;color:var(--muted)}
+.filter-group{display:flex;gap:3px}
+.chip{padding:3px 9px;border:1px solid var(--border);border-radius:20px;font-size:11px;cursor:pointer;color:var(--muted);background:transparent;transition:all .15s}
 .chip.active{border-color:var(--accent);color:var(--accent);background:rgba(88,166,255,.1)}
 .chip:hover:not(.active){border-color:var(--muted)}
-.stats-bar{padding:10px 20px;display:flex;gap:16px;align-items:center;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
-.stat-item{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.token-tip{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.25);border-radius:7px;padding:8px 12px;font-size:11px;color:var(--yellow);margin-top:8px;line-height:1.6}
+.token-tip a{color:var(--accent)}
+.token-row{display:flex;gap:6px;margin-top:5px}
+.token-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:11px;outline:none;font-family:monospace}
+.rate-info{font-size:10px;color:var(--muted);margin-top:3px}
+.rate-ok{color:var(--green)}.rate-warn{color:var(--yellow)}.rate-bad{color:var(--red)}
+.stats-bar{padding:9px 18px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap}
+.stat-item{display:flex;align-items:center;gap:5px;color:var(--muted)}
 .stat-item strong{color:var(--text)}
-.sort-tabs{margin-left:auto;display:flex;gap:4px}
-.sort-tab{padding:4px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--muted);background:transparent}
+.kw-tags{display:flex;gap:4px;flex-wrap:wrap}
+.kw-tag{padding:2px 8px;border-radius:10px;font-size:11px;background:rgba(88,166,255,.15);color:var(--accent);border:1px solid rgba(88,166,255,.25)}
+.sort-tabs{margin-left:auto;display:flex;gap:3px}
+.sort-tab{padding:3px 10px;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;color:var(--muted);background:transparent}
 .sort-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(88,166,255,.1)}
-.container{padding:12px 20px;max-width:900px;margin:0 auto}
-.repo-grid{display:flex;flex-direction:column;gap:10px}
-.repo-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border-color .15s;cursor:pointer;text-decoration:none;display:block;color:inherit}
+.container{padding:10px 18px;max-width:900px;margin:0 auto}
+.repo-grid{display:flex;flex-direction:column;gap:8px}
+.repo-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .15s;text-decoration:none;display:block;color:inherit}
 .repo-card:hover{border-color:var(--accent)}
-.repo-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
-.rank{font-size:18px;font-weight:700;color:var(--muted);min-width:32px;text-align:center;line-height:1.2}
-.rank.top1{color:#ffd700}
-.rank.top2{color:#c0c0c0}
-.rank.top3{color:#cd7f32}
+.repo-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:7px}
+.rank{font-size:16px;font-weight:700;color:var(--muted);min-width:30px;text-align:center;line-height:1.3}
+.rank.top1{color:#ffd700}.rank.top2{color:#c0c0c0}.rank.top3{color:#cd7f32}
 .repo-info{flex:1;min-width:0}
-.repo-name{font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.repo-full{font-size:12px;color:var(--muted);margin-top:1px}
-.repo-desc{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.repo-meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
-.meta-item svg{flex-shrink:0}
-.lang-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500}
+.repo-name{font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.repo-full{font-size:11px;color:var(--muted);margin-top:1px}
+.repo-desc{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.repo-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.meta-item{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
+.lang-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.badge{padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500}
 .badge-star{background:rgba(210,153,34,.15);color:var(--yellow)}
 .badge-fork{background:rgba(63,185,80,.15);color:var(--green)}
-.badge-watch{background:rgba(188,140,255,.15);color:var(--purple)}
-.topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.topic{padding:2px 8px;border-radius:12px;font-size:11px;background:rgba(88,166,255,.1);color:var(--accent);border:1px solid rgba(88,166,255,.2)}
-.empty{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty .icon{font-size:48px;margin-bottom:12px}
-.empty p{font-size:14px;line-height:1.6}
-.loading{text-align:center;padding:40px;color:var(--muted)}
-.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+.kw-source{padding:1px 6px;border-radius:8px;font-size:10px;background:rgba(188,140,255,.1);color:var(--purple);border:1px solid rgba(188,140,255,.2)}
+.topics{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.topic{padding:1px 7px;border-radius:10px;font-size:10px;background:rgba(88,166,255,.08);color:var(--accent);border:1px solid rgba(88,166,255,.15)}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .icon{font-size:42px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.6}
+.loading{text-align:center;padding:36px;color:var(--muted)}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;max-width:300px;margin-left:auto;margin-right:auto}
 .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
-.error-msg{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;margin:12px 0}
-.token-tip{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--yellow);margin-top:8px;line-height:1.6}
-.token-tip a{color:var(--accent)}
-.token-row{display:flex;gap:8px;margin-top:6px}
-.token-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;font-family:monospace}
-.rate-info{font-size:11px;color:var(--muted);margin-top:4px}
-.rate-ok{color:var(--green)}
-.rate-warn{color:var(--yellow)}
-.rate-bad{color:var(--red)}
-.load-more{text-align:center;margin:16px 0}
+.load-more{text-align:center;margin:14px 0}
 @media(max-width:600px){
-  .header{padding:12px 14px}
-  .container{padding:10px 12px}
-  .stats-bar{padding:8px 14px}
+  .header{padding:10px 12px}
+  .container{padding:8px 10px}
+  .stats-bar{padding:7px 12px}
   .sort-tabs{margin-left:0;width:100%}
-  .repo-card{padding:12px}
+  .repo-card{padding:11px}
 }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1><span>📊</span> GitHub 开源仓库排行榜</h1>
+  <div class="header-top">
+    <h1>📊 <span data-i18n="title">GitHub 开源仓库排行榜</span></h1>
+    <div class="lang-toggle">
+      <button onclick="setLang('zh')" id="btnZh" class="active">中文</button>
+      <button onclick="setLang('en')" id="btnEn">EN</button>
+    </div>
+  </div>
   <div class="search-row">
     <div class="search-box">
-      <input type="text" id="keyword" placeholder="输入关键词，如 cursor、ai-agent、mcp..." value="cursor" autocomplete="off">
+      <input type="text" id="keyword" value="cursor" autocomplete="off"
+        placeholder="cursor, ai-agent, mcp ...">
     </div>
-    <button class="btn btn-primary" id="searchBtn" onclick="startSearch()">搜索</button>
+    <button class="btn btn-primary" id="searchBtn" onclick="startSearch()" data-i18n="search">搜索</button>
   </div>
+  <div class="hint" data-i18n="hint">多关键词用逗号分隔，如 <em>cursor, mcp, ai-agent</em>，自动并行搜索合并去重</div>
   <div class="filters">
-    <span class="filter-label">最低 Star：</span>
+    <span class="filter-label" data-i18n="minStar">最低 Star：</span>
     <div class="filter-group" id="starFilter">
-      <button class="chip" data-val="0" onclick="setFilter('star',0)">全部</button>
+      <button class="chip" data-val="0" onclick="setFilter('star',0)" data-i18n="all">全部</button>
       <button class="chip active" data-val="10" onclick="setFilter('star',10)">10+</button>
       <button class="chip" data-val="100" onclick="setFilter('star',100)">100+</button>
       <button class="chip" data-val="500" onclick="setFilter('star',500)">500+</button>
       <button class="chip" data-val="1000" onclick="setFilter('star',1000)">1k+</button>
     </div>
-    <span class="filter-label" style="margin-left:8px">更新：</span>
+    <span class="filter-label" style="margin-left:6px" data-i18n="updated">更新：</span>
     <div class="filter-group" id="dateFilter">
-      <button class="chip" data-val="" onclick="setFilter('date','')">不限</button>
-      <button class="chip active" data-val="2024-01-01" onclick="setFilter('date','2024-01-01')">近2年</button>
-      <button class="chip" data-val="2025-01-01" onclick="setFilter('date','2025-01-01')">近1年</button>
+      <button class="chip" data-val="" onclick="setFilter('date','')" data-i18n="any">不限</button>
+      <button class="chip active" data-val="2024-01-01" onclick="setFilter('date','2024-01-01')" data-i18n="2y">近2年</button>
+      <button class="chip" data-val="2025-01-01" onclick="setFilter('date','2025-01-01')" data-i18n="1y">近1年</button>
     </div>
   </div>
-  <div class="token-tip" id="tokenTip">
-    ⚡ 未认证：60次/小时限额。输入 <a href="https://github.com/settings/tokens" target="_blank">GitHub Token</a> 可提升到 5000次：
+  <div class="token-tip">
+    <span data-i18n="tokenTip">⚡ 未认证限额 60次/小时。添加 <a href="https://github.com/settings/tokens" target="_blank">GitHub Token</a> 可提升到 5000次：</span>
     <div class="token-row">
-      <input type="password" class="token-input" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx（可选）">
-      <button class="btn btn-primary" style="padding:6px 12px;font-size:12px" onclick="saveToken()">保存</button>
+      <input type="password" class="token-input" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx">
+      <button class="btn btn-primary" style="padding:5px 10px;font-size:11px" onclick="saveToken()" data-i18n="save">保存</button>
     </div>
     <div class="rate-info" id="rateInfo"></div>
   </div>
 </div>
 
 <div class="stats-bar" id="statsBar" style="display:none">
-  <div class="stat-item">🔍 关键词：<strong id="statKeyword"></strong></div>
-  <div class="stat-item">📦 找到：<strong id="statCount"></strong> 个仓库</div>
-  <div class="stat-item">⏱ 耗时：<strong id="statTime"></strong></div>
+  <div class="stat-item"><span data-i18n="keywords">关键词</span>：<div class="kw-tags" id="statKeywords"></div></div>
+  <div class="stat-item"><span data-i18n="found">找到</span>：<strong id="statCount"></strong> <span data-i18n="repos">个仓库</span></div>
+  <div class="stat-item">⏱ <strong id="statTime"></strong></div>
   <div class="sort-tabs">
     <button class="sort-tab active" onclick="setSort('stars')">⭐ Star</button>
     <button class="sort-tab" onclick="setSort('forks')">🔱 Fork</button>
-    <button class="sort-tab" onclick="setSort('updated')">📅 更新</button>
+    <button class="sort-tab" onclick="setSort('updated')" data-i18n="sortUpdated">📅 更新</button>
   </div>
 </div>
 
@@ -137,12 +146,65 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="main">
     <div class="empty">
       <div class="icon">🔭</div>
-      <p>输入关键词开始搜索<br><span style="font-size:12px;opacity:.6">搜索策略：topic标签 → 名称匹配 → 描述匹配，自动去重合并</span></p>
+      <p data-i18n="emptyHint">输入关键词开始搜索<br><span style="font-size:11px;opacity:.6">支持逗号分隔多词，三层策略：topic → 名称 → 描述</span></p>
     </div>
   </div>
 </div>
 
 <script>
+// ── i18n ─────────────────────────────────────────────────────────
+const I18N = {
+  zh:{
+    title:'GitHub 开源仓库排行榜',
+    search:'搜索',
+    hint:'多关键词用逗号分隔，如 <em>cursor, mcp, ai-agent</em>，自动并行搜索合并去重',
+    minStar:'最低 Star：',
+    updated:'更新：',
+    all:'全部', any:'不限', '2y':'近2年', '1y':'近1年',
+    tokenTip:'⚡ 未认证限额 60次/小时。添加 <a href="https://github.com/settings/tokens" target="_blank">GitHub Token</a> 可提升到 5000次：',
+    save:'保存',
+    keywords:'关键词', found:'找到', repos:'个仓库',
+    sortUpdated:'📅 更新',
+    emptyHint:'输入关键词开始搜索<br><span style="font-size:11px;opacity:.6">支持逗号分隔多词，三层策略：topic → 名称 → 描述</span>',
+    noResult:'没有找到符合条件的仓库',
+    noResultHint:'试试减少筛选条件',
+    noDesc:'暂无描述',
+    searching:'正在搜索',
+    layered:'分层搜索中，请稍候...',
+    done:'完成',
+    rateLeft:'剩余配额：',
+    rateReset:'重置',
+    loadMore:'加载更多',
+    topicLabel:'topic 标签', nameLabel:'名称匹配', descLabel:'描述匹配',
+    minAgo:'分钟前', hourAgo:'小时前', dayAgo:'天前', monthAgo:'月前', yearAgo:'年前',
+  },
+  en:{
+    title:'GitHub Repo Explorer',
+    search:'Search',
+    hint:'Separate keywords with commas, e.g. <em>cursor, mcp, ai-agent</em> — parallel search, auto dedup',
+    minStar:'Min Stars:',
+    updated:'Updated:',
+    all:'All', any:'Any', '2y':'2 yrs', '1y':'1 yr',
+    tokenTip:'⚡ Unauthenticated: 60 req/hr. Add <a href="https://github.com/settings/tokens" target="_blank">GitHub Token</a> for 5000/hr:',
+    save:'Save',
+    keywords:'Keywords', found:'Found', repos:'repos',
+    sortUpdated:'📅 Updated',
+    emptyHint:'Enter keywords to search<br><span style="font-size:11px;opacity:.6">Comma-separated · 3-layer: topic → name → description</span>',
+    noResult:'No repositories found',
+    noResultHint:'Try relaxing the filters',
+    noDesc:'No description',
+    searching:'Searching',
+    layered:'Layered search in progress...',
+    done:'Done',
+    rateLeft:'Remaining: ',
+    rateReset:'reset at',
+    loadMore:'Load more',
+    topicLabel:'topic tag', nameLabel:'name match', descLabel:'desc match',
+    minAgo:'m ago', hourAgo:'h ago', dayAgo:'d ago', monthAgo:'mo ago', yearAgo:'yr ago',
+  }
+};
+
+let lang = localStorage.getItem('gh_lang') || 'zh';
 let allRepos = [];
 let sortBy = 'stars';
 let filterStar = 10;
@@ -157,17 +219,38 @@ const LANG_COLORS = {
   'C++':'#f34b7d','C#':'#178600',Ruby:'#701516',
   Swift:'#fa7343',Kotlin:'#A97BFF',Shell:'#89e051',
   HTML:'#e34c26',CSS:'#563d7c',Vue:'#41b883',
-  React:'#61dafb',Dart:'#00B4AB',PHP:'#777bb4',
+  Dart:'#00B4AB',PHP:'#777bb4',
 };
 
-if(ghToken){
-  document.getElementById('tokenInput').value = ghToken;
-  checkRate();
+function t(k){ return I18N[lang][k] || I18N.zh[k] || k; }
+
+function setLang(l){
+  lang = l;
+  localStorage.setItem('gh_lang', l);
+  document.getElementById('btnZh').className = l==='zh'?'active':'';
+  document.getElementById('btnEn').className = l==='en'?'active':'';
+  document.documentElement.lang = l;
+  applyI18n();
+  if(allRepos.length) renderRepos();
 }
 
-document.getElementById('keyword').addEventListener('keydown', e => {
-  if(e.key === 'Enter') startSearch();
-});
+function applyI18n(){
+  document.title = t('title') + ' · GitHub Explorer';
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.dataset.i18n;
+    if(I18N[lang][k] !== undefined) el.innerHTML = I18N[lang][k];
+  });
+  document.querySelector('.sort-tab:last-child').textContent = t('sortUpdated');
+  // placeholder
+  document.getElementById('keyword').placeholder = lang === 'zh'
+    ? 'cursor, ai-agent, mcp ...'
+    : 'cursor, ai-agent, mcp ...';
+}
+
+// init
+if(ghToken){ document.getElementById('tokenInput').value = ghToken; checkRate(); }
+document.getElementById('keyword').addEventListener('keydown', e => { if(e.key==='Enter') startSearch(); });
+setLang(lang);
 
 function saveToken(){
   ghToken = document.getElementById('tokenInput').value.trim();
@@ -178,110 +261,116 @@ function saveToken(){
 async function checkRate(){
   try{
     const h = ghToken ? {'Authorization':'token '+ghToken} : {};
-    const r = await fetch('https://api.github.com/rate_limit', {headers:h});
+    const r = await fetch('https://api.github.com/rate_limit',{headers:h});
     const d = await r.json();
-    const {remaining, limit, reset} = d.rate_limit || d.resources?.core || {};
+    const core = d.resources?.core || d.rate_limit || {};
+    const {remaining,limit,reset} = core;
     const resetTime = new Date(reset*1000).toLocaleTimeString();
     const el = document.getElementById('rateInfo');
-    const cls = remaining > 100 ? 'rate-ok' : remaining > 10 ? 'rate-warn' : 'rate-bad';
-    el.className = 'rate-info ' + cls;
-    el.textContent = `剩余配额：${remaining}/${limit}，${resetTime} 重置`;
+    const cls = remaining>100?'rate-ok':remaining>10?'rate-warn':'rate-bad';
+    el.className = 'rate-info '+cls;
+    el.textContent = lang==='zh'
+      ? `${t('rateLeft')}${remaining}/${limit}，${resetTime} ${t('rateReset')}`
+      : `${t('rateLeft')}${remaining}/${limit}, ${t('rateReset')} ${resetTime}`;
   }catch(e){}
 }
 
 function setFilter(type, val){
-  if(type === 'star'){
+  if(type==='star'){
     filterStar = val;
-    document.querySelectorAll('#starFilter .chip').forEach(c => c.classList.toggle('active', +c.dataset.val === val));
+    document.querySelectorAll('#starFilter .chip').forEach(c=>c.classList.toggle('active',+c.dataset.val===val));
   } else {
     filterDate = val;
-    document.querySelectorAll('#dateFilter .chip').forEach(c => c.classList.toggle('active', c.dataset.val === val));
+    document.querySelectorAll('#dateFilter .chip').forEach(c=>c.classList.toggle('active',c.dataset.val===val));
   }
 }
 
 function setSort(s){
   sortBy = s;
-  document.querySelectorAll('.sort-tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase().includes(s)));
+  document.querySelectorAll('.sort-tab').forEach((tab,i)=>tab.classList.toggle('active',i===['stars','forks','updated'].indexOf(s)));
   renderRepos();
 }
 
+// ── 主搜索入口 ─────────────────────────────────────────────────
 async function startSearch(){
-  const kw = document.getElementById('keyword').value.trim();
-  if(!kw) return;
+  const raw = document.getElementById('keyword').value.trim();
+  if(!raw) return;
+
+  // 逗号分割多关键词
+  const keywords = raw.split(',').map(k=>k.trim()).filter(Boolean);
+
   allRepos = [];
   currentPage = 0;
   document.getElementById('statsBar').style.display = 'none';
   document.getElementById('searchBtn').disabled = true;
-  document.getElementById('searchBtn').textContent = '搜索中...';
+  document.getElementById('searchBtn').textContent = lang==='zh'?'搜索中...':'Searching...';
+
   document.getElementById('main').innerHTML = `
     <div class="loading">
       <div class="spinner"></div>
-      <div>正在搜索 "${kw}"...</div>
+      <div>${t('searching')} "${keywords.join(' + ')}"...</div>
       <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px" id="progText">分层搜索中，请稍候...</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px" id="progText">${t('layered')}</div>
     </div>`;
 
   const t0 = Date.now();
   const seen = new Set();
-
-  // 三层搜索策略
-  const queries = [
-    {q:`topic:${kw}`, label:'topic 标签'},
-    {q:`${kw} in:name`, label:'名称匹配'},
-    {q:`${kw} in:description`, label:'描述匹配'},
-  ];
-
-  const starQ = filterStar > 0 ? `+stars:>=${filterStar}` : '';
+  const starQ = filterStar>0 ? `+stars:>=${filterStar}` : '';
   const dateQ = filterDate ? `+pushed:>=${filterDate}` : '';
 
-  for(let i=0; i<queries.length; i++){
-    const {q, label} = queries[i];
-    setProgress((i/queries.length)*90, `${label}（${i+1}/${queries.length}）...`);
-    try{
-      await searchPage(q + starQ + dateQ, seen, 2);
-    }catch(e){
-      console.warn('搜索失败:', q, e);
+  // 每个关键词做三层搜索
+  const layers = [
+    {suffix: kw => `topic:${kw}`,           labelKey:'topicLabel'},
+    {suffix: kw => `${kw} in:name`,          labelKey:'nameLabel'},
+    {suffix: kw => `${kw} in:description`,   labelKey:'descLabel'},
+  ];
+
+  const total = keywords.length * layers.length;
+  let done = 0;
+
+  for(const kw of keywords){
+    for(const layer of layers){
+      const q = layer.suffix(kw) + starQ + dateQ;
+      const label = `[${kw}] ${t(layer.labelKey)}`;
+      setProgress(done/total*90, `${label} (${done+1}/${total})`);
+      try{ await searchPage(q, seen, 2, kw); }
+      catch(e){ console.warn(e); }
+      done++;
+      await sleep(250);
     }
-    await sleep(300);
   }
 
-  setProgress(100, '完成');
+  setProgress(100, t('done'));
   const elapsed = ((Date.now()-t0)/1000).toFixed(1);
 
-  // 更新统计栏
   document.getElementById('statsBar').style.display = 'flex';
-  document.getElementById('statKeyword').textContent = kw;
+  document.getElementById('statKeywords').innerHTML = keywords.map(k=>`<span class="kw-tag">${escHtml(k)}</span>`).join('');
   document.getElementById('statCount').textContent = allRepos.length;
   document.getElementById('statTime').textContent = elapsed + 's';
 
   document.getElementById('searchBtn').disabled = false;
-  document.getElementById('searchBtn').textContent = '搜索';
+  document.getElementById('searchBtn').textContent = t('search');
   checkRate();
   renderRepos();
 }
 
-async function searchPage(q, seen, maxPages=2){
+async function searchPage(q, seen, maxPages, sourceKw){
   for(let page=1; page<=maxPages; page++){
     const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=50&page=${page}`;
     const headers = {'Accept':'application/vnd.github+json'};
-    if(ghToken) headers['Authorization'] = 'token ' + ghToken;
-
+    if(ghToken) headers['Authorization'] = 'token '+ghToken;
     const r = await fetch(url, {headers});
-    if(r.status === 403){
-      const reset = r.headers.get('X-RateLimit-Reset');
-      throw new Error('API 限额已用完，请等待重置或添加 Token');
-    }
+    if(r.status===403) throw new Error('Rate limit exceeded');
     if(!r.ok) break;
-
     const d = await r.json();
-    const items = d.items || [];
-    for(const item of items){
+    for(const item of (d.items||[])){
       if(!seen.has(item.id)){
         seen.add(item.id);
+        item._sourceKw = sourceKw;
         allRepos.push(item);
       }
     }
-    if(items.length < 50) break;
+    if((d.items||[]).length < 50) break;
     await sleep(200);
   }
 }
@@ -289,54 +378,46 @@ async function searchPage(q, seen, maxPages=2){
 function setProgress(pct, text){
   const el = document.getElementById('prog');
   const tel = document.getElementById('progText');
-  if(el) el.style.width = pct + '%';
+  if(el) el.style.width = pct+'%';
   if(tel) tel.textContent = text;
 }
 
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 function renderRepos(){
   let repos = [...allRepos];
+  if(sortBy==='stars') repos.sort((a,b)=>b.stargazers_count-a.stargazers_count);
+  else if(sortBy==='forks') repos.sort((a,b)=>b.forks_count-a.forks_count);
+  else repos.sort((a,b)=>new Date(b.pushed_at)-new Date(a.pushed_at));
 
-  // 排序
-  if(sortBy === 'stars') repos.sort((a,b) => b.stargazers_count - a.stargazers_count);
-  else if(sortBy === 'forks') repos.sort((a,b) => b.forks_count - a.forks_count);
-  else repos.sort((a,b) => new Date(b.pushed_at) - new Date(a.pushed_at));
-
-  if(repos.length === 0){
+  if(!repos.length){
     document.getElementById('main').innerHTML = `
       <div class="empty">
         <div class="icon">😕</div>
-        <p>没有找到符合条件的仓库<br><span style="font-size:12px;opacity:.6">试试减少筛选条件</span></p>
+        <p>${t('noResult')}<br><span style="font-size:11px;opacity:.6">${t('noResultHint')}</span></p>
       </div>`;
     return;
   }
 
   const show = repos.slice(0, PAGE_SIZE);
   document.getElementById('main').innerHTML = `
-    <div class="repo-grid" id="repoGrid">${show.map((r,i) => repoCard(r,i+1)).join('')}</div>
-    ${repos.length > PAGE_SIZE ? `<div class="load-more"><button class="btn btn-primary" onclick="loadMore()">加载更多（${repos.length - PAGE_SIZE} 个）</button></div>` : ''}
-  `;
+    <div class="repo-grid" id="repoGrid">${show.map((r,i)=>repoCard(r,i+1)).join('')}</div>
+    ${repos.length>PAGE_SIZE ? `<div class="load-more"><button class="btn btn-primary" onclick="loadMore()">${t('loadMore')}（${repos.length-PAGE_SIZE}）</button></div>` : ''}`;
   currentPage = 1;
   window._sortedRepos = repos;
 }
 
 function loadMore(){
-  const repos = window._sortedRepos || [];
-  const start = currentPage * PAGE_SIZE;
-  const more = repos.slice(start, start + PAGE_SIZE);
+  const repos = window._sortedRepos||[];
+  const start = currentPage*PAGE_SIZE;
+  const more = repos.slice(start, start+PAGE_SIZE);
   const grid = document.getElementById('repoGrid');
   if(grid && more.length){
-    more.forEach((r,i) => {
-      grid.insertAdjacentHTML('beforeend', repoCard(r, start+i+1));
-    });
+    more.forEach((r,i)=>grid.insertAdjacentHTML('beforeend', repoCard(r, start+i+1)));
     currentPage++;
     const btn = document.querySelector('.load-more button');
-    const remain = repos.length - currentPage * PAGE_SIZE;
-    if(btn) {
-      if(remain > 0) btn.textContent = `加载更多（${remain} 个）`;
-      else btn.parentElement.remove();
-    }
+    const remain = repos.length - currentPage*PAGE_SIZE;
+    if(btn){ remain>0 ? btn.textContent=`${t('loadMore')}（${remain}）` : btn.parentElement.remove(); }
   }
 }
 
@@ -344,10 +425,11 @@ function repoCard(r, rank){
   const stars = fmtNum(r.stargazers_count);
   const forks = fmtNum(r.forks_count);
   const updated = fmtDate(r.pushed_at);
-  const langColor = LANG_COLORS[r.language] || '#8b949e';
+  const langColor = LANG_COLORS[r.language]||'#8b949e';
   const rankCls = rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
-  const topics = (r.topics||[]).slice(0,4).map(t=>`<span class="topic">${t}</span>`).join('');
-  const desc = r.description ? escHtml(r.description) : '<span style="opacity:.4">暂无描述</span>';
+  const topics = (r.topics||[]).slice(0,4).map(tp=>`<span class="topic">${tp}</span>`).join('');
+  const desc = r.description ? escHtml(r.description) : `<span style="opacity:.35">${t('noDesc')}</span>`;
+  const src = r._sourceKw ? `<span class="kw-source">${escHtml(r._sourceKw)}</span>` : '';
 
   return `
   <a class="repo-card" href="${r.html_url}" target="_blank" rel="noopener">
@@ -360,29 +442,25 @@ function repoCard(r, rank){
     </div>
     <div class="repo-desc">${desc}</div>
     <div class="repo-meta">
-      ${r.language ? `<span class="meta-item"><span class="lang-dot" style="background:${langColor}"></span>${escHtml(r.language)}</span>` : ''}
+      ${r.language?`<span class="meta-item"><span class="lang-dot" style="background:${langColor}"></span>${escHtml(r.language)}</span>`:''}
       <span class="badge badge-star">⭐ ${stars}</span>
       <span class="badge badge-fork">🔱 ${forks}</span>
+      ${src}
       <span class="meta-item" style="margin-left:auto">📅 ${updated}</span>
     </div>
-    ${topics ? `<div class="topics">${topics}</div>` : ''}
+    ${topics?`<div class="topics">${topics}</div>`:''}
   </a>`;
 }
 
-function fmtNum(n){
-  if(n >= 1000) return (n/1000).toFixed(1) + 'k';
-  return n.toString();
-}
+function fmtNum(n){ return n>=1000?(n/1000).toFixed(1)+'k':String(n); }
 
 function fmtDate(s){
-  const d = new Date(s);
-  const now = new Date();
-  const diff = (now - d) / 1000;
-  if(diff < 3600) return Math.floor(diff/60) + ' 分钟前';
-  if(diff < 86400) return Math.floor(diff/3600) + ' 小时前';
-  if(diff < 2592000) return Math.floor(diff/86400) + ' 天前';
-  if(diff < 31536000) return Math.floor(diff/2592000) + ' 月前';
-  return Math.floor(diff/31536000) + ' 年前';
+  const diff = (Date.now()-new Date(s))/1000;
+  if(diff<3600) return Math.floor(diff/60)+t('minAgo');
+  if(diff<86400) return Math.floor(diff/3600)+t('hourAgo');
+  if(diff<2592000) return Math.floor(diff/86400)+t('dayAgo');
+  if(diff<31536000) return Math.floor(diff/2592000)+t('monthAgo');
+  return Math.floor(diff/31536000)+t('yearAgo');
 }
 
 function escHtml(s){
