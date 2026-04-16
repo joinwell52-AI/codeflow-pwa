@@ -1149,18 +1149,16 @@
         allItems = [...taskRecords];
       }
       const f = _taskListFilter;
-      if (f === "today") allItems = allItems.filter(isTaskToday);
-      else if (f === "reply") allItems = allItems.filter(i => isTaskToday(i) && isTaskReply(i));
-      else if (f === "progress") allItems = allItems.filter(isTaskInProgress);
-      else if (f === "done") allItems = allItems.filter(isTaskDone);
-
-      if (_taskListDirFilter === "reports") {
-        // reports tab：显示含有 reports 消息的记录，或 dir 本身是 reports 的
-        allItems = allItems.filter(item =>
-          (item.dir || "tasks") === "reports" ||
-          (Array.isArray(item.messages) && item.messages.some(m => (m.dir || "tasks") === "reports"))
+      if (f === "reply") {
+        // 今日回复：直接从 taskItems 里取 dir=reports 的，不经过 taskRecords 合并逻辑
+        allItems = taskItems.filter(i =>
+          (i.dir || "") === "reports" ||
+          /to-ADMIN|to-PM/i.test(i.filename || "")
         );
       } else {
+        if (f === "today") allItems = allItems.filter(isTaskToday);
+        else if (f === "progress") allItems = allItems.filter(isTaskInProgress);
+        else if (f === "done") allItems = allItems.filter(isTaskDone);
         allItems = allItems.filter(item => (item.dir || "tasks") === _taskListDirFilter);
       }
 
