@@ -437,7 +437,7 @@
     .detail-tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
     .detail-view { display:none; margin-top:8px; }
     .detail-view.active { display:block; }
-    .detail-markdown { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:10px; max-height:280px; overflow:auto; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); user-select:none; -webkit-user-select:none; }
+    .detail-markdown { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:10px; max-height:280px; overflow:auto; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); user-select:text; -webkit-user-select:text; }
     .detail-file-line { margin-top:5px; font-size:11px; color:var(--text3); }
     .task-record-list { display:grid; gap:6px; }
     .task-record-item { max-width:92%; padding:8px 10px; border-radius:var(--r2); background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); color:var(--text); font-size:12px; box-shadow:inset 0 1px 2px rgba(0,0,0,.08); }
@@ -2213,7 +2213,13 @@
     }
 
     function getTaskByFilename(filename) {
-      return taskRecords.find((item) => item.filename === filename || item.primary_filename === filename || (Array.isArray(item.messages) && item.messages.some((msg) => msg.filename === filename))) || null;
+      // 先从分组记录里找
+      const rec = taskRecords.find((item) => item.filename === filename || item.primary_filename === filename || (Array.isArray(item.messages) && item.messages.some((msg) => msg.filename === filename)));
+      if (rec) return rec;
+      // fallback：直接从原始 taskItems 里找（报告文件等未被分组的 item）
+      const raw = taskItems.find(i => i.filename === filename);
+      if (raw) return { ...raw, primary_filename: raw.filename, messages: [raw] };
+      return null;
     }
 
     function tasksForRole(role) {
