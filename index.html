@@ -1150,15 +1150,19 @@
       }
       const f = _taskListFilter;
       if (f === "reply") {
-        // 今日回复：直接从 taskItems 里取 dir=reports 的，不经过 taskRecords 合并逻辑
+        // 今日回复：直接从 taskItems 里取 dir=reports 的
         allItems = taskItems.filter(i =>
           (i.dir || "") === "reports" ||
           /to-ADMIN|to-PM/i.test(i.filename || "")
         );
+      } else if (f === "done") {
+        // 已完成：tasks+reports 都找
+        allItems = taskItems.filter(i => isTaskDone(i) || /completed|done/i.test(i.status || ""));
+      } else if (f === "progress") {
+        // 进行中：tasks+reports 都找
+        allItems = taskItems.filter(isTaskInProgress);
       } else {
         if (f === "today") allItems = allItems.filter(isTaskToday);
-        else if (f === "progress") allItems = allItems.filter(isTaskInProgress);
-        else if (f === "done") allItems = allItems.filter(isTaskDone);
         allItems = allItems.filter(item => (item.dir || "tasks") === _taskListDirFilter);
       }
 
@@ -2508,6 +2512,16 @@
       // reporter/author 字段兜底为 sender
       if (!item.sender && item.reporter) item.sender = item.reporter;
       if (!item.sender && item.author) item.sender = item.author;
+      // status 字段兜底为 progress（报告文件用 status: completed）
+      if ((!item.progress || item.progress === "pending") && item.status) item.progress = item.status;
+      // 从 raw_markdown YAML 里解析 status/progress（Desktop只取了progress字段）
+      if ((!item.progress || item.progress === "pending") && item.raw_markdown) {
+        const yamlMatch = String(item.raw_markdown).match(/^---\s*\n([\s\S]*?)\n---/);
+        if (yamlMatch) {
+          const statusM = yamlMatch[1].match(/^\s*status\s*:\s*(.+)$/m);
+          if (statusM) item.progress = statusM[1].trim();
+        }
+      }
       // 从文件名兜底补全 sender/recipient
       if (!item.sender || !item.recipient) {
         const parsed = _parseRolesFromFilename(item.filename);
