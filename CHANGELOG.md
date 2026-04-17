@@ -8,6 +8,18 @@
 
 ---
 
+## [2.12.7] - 2026-04-17
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：switch_agent_focus 直接用命令面板，自动从 all_roles 获取完整 label
+
+- 切换直接走命令面板（`Ctrl+Shift+P`），不再依赖 CDP/坐标
+- `full_label` 从 CDP `all_roles` 里匹配（如 `01-PM`），确保命令面板能搜到
+- 移除之前 CDP 假成功的误判路径
+
+---
+
 ## [2.12.6] - 2026-04-17
 
 ### 桌面端（`codeflow-desktop`）

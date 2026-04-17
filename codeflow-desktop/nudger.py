@@ -2774,58 +2774,35 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                             # ── 执行切换 ──
                             if target_role:
                                 role_key = _normalize_role(target_role).upper()
-                                # 尝试找完整 label（如 "01-PM"），命令面板搜索更精准
+                                # 构建完整 label（如 "01-PM"）——命令面板必须用完整 label
+                                # 优先从 CDP all_roles 里找，其次从 _UI_LABELS，最后用纯角色名
                                 full_label = _UI_LABELS.get(role_key) or role_key
+                                try:
+                                    _cs = nudger.get_cursor_state() if nudger else {}
+                                    for _rl in (_cs.get("all_roles") or []):
+                                        _suffix = re.sub(r'^\d+[-_\s]*', '', str(_rl)).upper()
+                                        if _suffix == role_key:
+                                            full_label = str(_rl)
+                                            break
+                                except Exception:
+                                    pass
                                 _sw_clicked = False
 
                                 def _do_switch_sync():
-                                    """同步切换逻辑，三条路依次尝试，每条验证结果"""
-                                    def _verify_switched() -> bool:
-                                        """验证 Cursor 当前激活角色是否已切换到目标"""
-                                        try:
-                                            if HAS_CDP and is_cdp_available():
-                                                st = cdp_scan()
-                                                if st and st.agent_role:
-                                                    cur = re.sub(r'^\d+[-_\s]*', '', st.agent_role).upper()
-                                                    return cur == role_key
-                                        except Exception:
-                                            pass
-                                        return False  # 无法验证时继续尝试下一条
-
-                                    # ① CDP 点击 + 验证（CDP 点击不代表真正切换成功）
-                                    if HAS_CDP:
-                                        try:
-                                            if is_cdp_available():
-                                                ok = cdp_click_role(full_label) or cdp_click_role(role_key)
-                                                if ok:
-                                                    time.sleep(0.8)
-                                                    if _verify_switched():
-                                                        logger.info("switch_agent_focus ① CDP 验证成功: %s", full_label)
-                                                        return True
-                                                    logger.info("switch_agent_focus ① CDP 点击但验证未通过，降级命令面板")
-                                        except Exception as _e1:
-                                            logger.debug("switch_agent_focus CDP 异常: %s", _e1)
-
-                                    # ② 坐标点击 + 验证
-                                    if _click_agent_by_coord(role_key, 0):
-                                        time.sleep(0.8)
-                                        if _verify_switched():
-                                            logger.info("switch_agent_focus ② 坐标验证成功: %s", role_key)
-                                            return True
-                                        logger.info("switch_agent_focus ② 坐标点击但验证未通过，降级命令面板")
-
-                                    # ③ 命令面板（最可靠：不依赖坐标/CDP，直接搜索角色名）
+                                    """直接用命令面板切换——最可靠，不依赖坐标/CDP"""
                                     try:
                                         win = find_cursor_window(nudger.config) if nudger else None
-                                        if win:
-                                            focus_window(win[0])
-                                            time.sleep(0.3)
-                                            _run_command_palette_goto_agent(full_label)
-                                            logger.info("switch_agent_focus ③ 命令面板: %s", full_label)
-                                            return True
-                                    except Exception as _e3:
-                                        logger.warning("switch_agent_focus ③ 命令面板失败: %s", _e3)
-                                    return False
+                                        if not win:
+                                            logger.warning("switch_agent_focus: 未找到 Cursor 窗口")
+                                            return False
+                                        focus_window(win[0])
+                                        time.sleep(0.4)
+                                        _run_command_palette_goto_agent(full_label)
+                                        logger.info("switch_agent_focus 命令面板: %s", full_label)
+                                        return True
+                                    except Exception as _e:
+                                        logger.warning("switch_agent_focus 命令面板失败: %s", _e)
+                                        return False
 
                                 _sw_clicked = await asyncio.get_event_loop().run_in_executor(None, _do_switch_sync)
                                 if _sw_clicked:
