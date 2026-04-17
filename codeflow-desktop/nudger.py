@@ -2800,7 +2800,7 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                     except Exception as _sw_exc:
                                         logger.warning("switch_agent_focus 坐标点击失败: %s", _sw_exc)
                                 if _sw_clicked:
-                                    await asyncio.sleep(0.8)
+                                    await asyncio.sleep(1.5)  # 等 Cursor 刷新 agent_role
                             # ── 推送 live state ──
                             try:
                                 cursor_state = nudger.get_cursor_state()
