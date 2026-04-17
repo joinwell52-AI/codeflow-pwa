@@ -508,11 +508,11 @@
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     /* 普通全屏页（任务列表等）：整体滚动 */
     .fullscreen-page-content { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 12px 24px; }
-    /* 任务详情页：自身不滚动，内部 flex 竖排，MD原文卡片撑满剩余 */
-    .fp-detail-content { overflow-y:hidden; padding:10px 12px 0; display:flex; flex-direction:column; }
+    /* 任务详情页：占满 content 高度，内部 flex 竖排，MD原文卡片撑满剩余 */
+    .fp-detail-content { height:100%; box-sizing:border-box; overflow:hidden; padding:10px 12px 0; display:flex; flex-direction:column; }
     .fp-detail-content .card { flex-shrink:0; margin-bottom:8px; }
     .fp-detail-content .fp-markdown-card { flex:1; min-height:0; display:flex; flex-direction:column; margin-bottom:0; }
-    .fp-section-title { display:inline-flex; align-items:center; justify-content:center; width:4em; font-size:13px; font-weight:700; color:#fff; letter-spacing:0; margin-bottom:8px; padding:3px 0; border-radius:99px; background:linear-gradient(90deg,#2563eb 0%,#3b82f6 100%); box-shadow:0 2px 8px rgba(59,130,246,.35); }
+    .fp-section-title { display:inline-flex; align-items:center; justify-content:center; width:4em; font-size:11px; font-weight:700; color:#fff; letter-spacing:0; margin-bottom:8px; padding:3px 0; border-radius:99px; background:linear-gradient(90deg,#2563eb 0%,#3b82f6 100%); box-shadow:0 2px 8px rgba(59,130,246,.35); }
     .fp-markdown-file { font-weight:400; font-size:10px; color:var(--text3); margin-left:6px; text-transform:none; letter-spacing:0; }
     .fp-markdown-body { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
