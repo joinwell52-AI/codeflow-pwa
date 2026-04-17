@@ -75,6 +75,9 @@ desktop.ini
 # ── 私有文档（内部使用，含敏感信息，不发布到 GitHub） ──
 private/
 
+# ── 推广草稿（平台发帖内容，不公开）──
+docs/promotion/*.md
+
 # ── 临时文件 ──
 _patch_*.py
 _rebuild*.py
