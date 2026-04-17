@@ -296,7 +296,7 @@
     .stat-btn:hover { border-color:rgba(96,165,250,.4); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.15), 0 4px 0 #1a2a40, 0 6px 12px rgba(0,0,0,.25), 0 0 20px rgba(59,130,246,.1); transform:translateY(-1px); }
     .stat-btn:active { transform:translateY(3px); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 0 #1a2a40, 0 2px 4px rgba(0,0,0,.2); }
     .stat-label { font-size:11px; color:#e2e8f0; font-weight:700; letter-spacing:.02em; text-shadow:0 1px 2px rgba(0,0,0,.4); }
-    .stat-num { font-size:22px; font-weight:800; color:#162540; font-family:"Fira Code",monospace; }
+    .stat-num { font-size:22px; font-weight:800; color:#1a6ef5; font-family:"Fira Code",monospace; text-shadow: 0 0 12px rgba(26,110,245,.5); }
 
     /* ══ 2. 团队4图标 ══ */
     .team-section { margin-bottom:12px; }
@@ -797,7 +797,8 @@
     </div>
     <!-- MD原文：撑满剩余高度 -->
     <div class="card fp-markdown-card">
-      <div class="fp-section-title">MD 原文 <span id="fpMarkdownFile" class="fp-markdown-file"></span></div>
+      <div class="fp-section-title">MD 原文</div>
+      <div id="fpMarkdownFile" style="display:none;"></div>
       <div id="fpMarkdown" class="detail-markdown fp-markdown-body"></div>
     </div>
   </div>
