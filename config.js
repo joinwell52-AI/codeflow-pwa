@@ -10,7 +10,7 @@
       "码流（CodeFlow）——AI 驱动的人机协作中枢，用手机轻松驾驭 AI，让指令高效流转、直达团队。",
     appSummaryEn:
       "CodeFlow — AI-powered human-machine collaboration hub. Master AI from your mobile device, make commands flow efficiently and reach your team directly.",
-    appVersion: "2.4.15",
+    appVersion: "2.4.16",
     relayUrl: "wss://ai.chedian.cc/codeflow/ws/",
     relayLabel: "公网正式中继",
     roomKey: "codeflow-default",

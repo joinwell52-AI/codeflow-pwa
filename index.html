@@ -102,6 +102,13 @@
     }
     .header-my-btn:hover { background:linear-gradient(180deg,#60a5fa,#3b82f6); }
     .header-my-btn:active { transform:translateY(1px); box-shadow: 0 1px 4px rgba(37,99,235,.3); }
+    .header-refresh-btn {
+      background: none; border: none; color: var(--text3); font-size: 16px; padding: 4px 6px;
+      cursor: pointer; line-height: 1; width: auto; margin: 0; opacity: 0.7; transition: opacity .2s, transform .4s;
+    }
+    .header-refresh-btn:hover { opacity: 1; color: #60a5fa; }
+    .header-refresh-btn.spin { animation: spin 0.6s linear; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .header-rail-btn {
       display: none;
       width: auto;
@@ -614,6 +621,7 @@
       <div class="header-right">
         <span id="statusLight" class="status-light"></span>
         <span id="statusText" style="font-size:11px;color:var(--text3);white-space:nowrap;">巡检器离线</span>
+        <button id="headerRefreshBtn" class="header-refresh-btn" type="button" title="刷新数据" style="display:none">↻</button>
         <button id="agentRailSideBtn" class="header-rail-btn" type="button" title="切换 Agent 栏左右">⇄</button>
         <button id="myQuickBtn" class="header-my-btn" type="button">我的</button>
       </div>
@@ -735,7 +743,6 @@
   <header class="fullscreen-page-header">
     <button id="taskListBackBtn" class="fullscreen-back-btn" type="button">← 返回</button>
     <span id="taskListPageTitle" class="fullscreen-page-title">任务列表</span>
-    <button id="taskListRefreshBtn" class="fullscreen-refresh-btn" type="button" title="刷新">↻</button>
   </header>
   <div class="fullscreen-page-content">
     <div id="taskListTabs" class="task-list-tabs">
@@ -1297,15 +1304,6 @@
 
     taskListBackBtnEl.onclick = closeTaskListPage;
     taskDetailBackBtnEl.onclick = closeTaskDetailPage;
-    const taskListRefreshBtnEl = document.getElementById("taskListRefreshBtn");
-    if (taskListRefreshBtnEl) {
-      taskListRefreshBtnEl.onclick = () => {
-        taskListRefreshBtnEl.classList.add("spinning");
-        setTimeout(() => taskListRefreshBtnEl.classList.remove("spinning"), 700);
-        requestDashboard();
-        setTimeout(() => _renderTaskListItems(), 1500);
-      };
-    }
     fpRecordTabBtnEl.onclick = () => { fpViewMode = "record"; syncFpTabs(); };
     fpMarkdownTabBtnEl.onclick = () => {
       fpViewMode = "markdown"; syncFpTabs();
@@ -1916,6 +1914,8 @@
       }
       if (statusTextEl) statusTextEl.textContent = text;
       if (statusLightEl) statusLightEl.classList.toggle("ok", isOk);
+      const hRefBtn = document.getElementById("headerRefreshBtn");
+      if (hRefBtn) hRefBtn.style.display = (_pcWasOnline && _wsConnected) ? "" : "none";
     }
 
     function updateConnectInfo(extraText) {
@@ -3094,7 +3094,10 @@
             _pcWasOnline = true;
             updateHeaderStatus();
             requestDashboard();
-            setTimeout(() => requestDashboard(), 2000);  // PC刚上线时roster可能未稳定，2s后重试
+            // PC 刚上线时连接可能未稳定，递增重试 2s/5s/12s
+            setTimeout(() => requestDashboard(), 2000);
+            setTimeout(() => requestDashboard(), 5000);
+            setTimeout(() => requestDashboard(), 12000);
             requestPatrolStatus();
             if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 30000);
             startTracePolling();
@@ -3361,6 +3364,16 @@
     langZhBtnEl.onclick = () => { currentLang = "zh"; localStorage.setItem("codeflow_lang", currentLang); applyLanguage(); };
     langEnBtnEl.onclick = () => { currentLang = "en"; localStorage.setItem("codeflow_lang", currentLang); applyLanguage(); };
     targetRoleEl.onchange = () => { localStorage.setItem("codeflow_target_device_id", targetRoleEl.value); renderTeam(onlineDevices, targetRoleEl.value); updateMeta(); requestDashboard(); };
+    const headerRefreshBtnEl = document.getElementById("headerRefreshBtn");
+    if (headerRefreshBtnEl) {
+      headerRefreshBtnEl.onclick = () => {
+        headerRefreshBtnEl.classList.add("spin");
+        setTimeout(() => headerRefreshBtnEl.classList.remove("spin"), 700);
+        requestDashboard();
+        setTimeout(() => requestDashboard(), 2000);
+        setTimeout(() => _renderTaskListItems(), 2500);
+      };
+    }
     const agentRailSideBtnEl = document.getElementById("agentRailSideBtn");
     if (agentRailSideBtnEl) {
       agentRailSideBtnEl.onclick = () => {
