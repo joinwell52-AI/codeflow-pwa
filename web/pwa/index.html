@@ -3439,14 +3439,23 @@
           }
         } catch (e) { /* SW 不可用时静默忽略 */ }
         if (!updated) {
-          // 没有新版本：重新握手 + 强制拉取（效果等同重新绑定）
+          // 没有新版本：走和扫码绑定完全一样的逻辑
           if (ws && ws.readyState === WebSocket.OPEN) {
-            sendEvent("hello", { device_id: localMobileDeviceId, device_name: t("mobile"), owner_role: "ADMIN" });
-            requestDeviceRoster();
-            setTimeout(() => requestBindState(), 500);
-            setTimeout(() => requestDashboardForce(), 1000);
+            const target = currentTargetDevice() || onlineDevices[0];
+            if (target) {
+              sendEvent("request_bind_code", {
+                target_device_id: target.device_id,
+                mobile_device_id: localMobileDeviceId,
+                mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}`
+              });
+            } else {
+              // 没有 PC 设备，先重新握手再拉
+              sendEvent("hello", { device_id: localMobileDeviceId, device_name: t("mobile"), owner_role: "ADMIN" });
+              requestDeviceRoster();
+              setTimeout(() => requestDashboardForce(), 1500);
+            }
           } else {
-            requestDashboardForce();
+            connect(true);
           }
         }
       };
