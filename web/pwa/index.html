@@ -2429,6 +2429,11 @@
       _agentMonitorRole = null;
       if (_agentMonitorEl) _agentMonitorEl.classList.remove("visible");
       if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.classList.remove("visible");
+      // 关闭工作实况 → 通知 PC 恢复巡检
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const did = _pcDeviceId();
+        sendEvent("resume_patrol", did ? { target_device_id: did } : {});
+      }
     }
 
     function openAgentMonitor(role) {
@@ -2440,7 +2445,10 @@
       if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.classList.add("visible");
       if (ws && ws.readyState === WebSocket.OPEN) {
         const did = _pcDeviceId();
-        sendEvent("request_agent_live", did ? { target_device_id: did } : {});
+        // 发送切换指令：PC 会切换 Cursor 到对应 Agent 再推 live state
+        const payload = { role: role };
+        if (did) payload.target_device_id = did;
+        sendEvent("switch_agent_focus", payload);
       }
     }
 
@@ -2535,14 +2543,16 @@
       const liveRole = (s.agent_role || "").replace(/^\d+-?/, "").toUpperCase();
       const cardRole = (_agentMonitorRole || "").replace(/^\d+-?/, "").toUpperCase();
       if (liveRole && cardRole && liveRole !== cardRole) {
-        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span> ${currentLang === "en" ? "Not active" : "未激活"}`;
-        _agentMonitorMetaEl.innerHTML = "";
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot running"></span> ${currentLang === "en" ? "Switching…" : "切换中…"}`;
+        _agentMonitorMetaEl.innerHTML = s.patrol_paused
+          ? `<span style="color:#f59e0b;">⏸ ${currentLang === "en" ? "Patrol paused" : "巡检已暂停"}</span>`
+          : "";
         _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
-          <div style="font-size:28px;margin-bottom:8px;">💤</div>
+          <div style="font-size:28px;margin-bottom:8px;">🔄</div>
           <div>${currentLang === "en"
-            ? `Cursor is running <b>${s.agent_role}</b>, not this role`
-            : `当前 Cursor 激活的是 <b>${s.agent_role}</b>，非此角色`}</div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3)">${currentLang === "en" ? "Switch to this agent in Cursor to view its live status." : "请在 Cursor 切换到该角色，即可查看工作实况"}</div>
+            ? `Switching to <b>${_agentMonitorRole}</b>…`
+            : `正在切换到 <b>${_agentMonitorRole}</b>…`}</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">${currentLang === "en" ? "Please wait a moment." : "请稍候，Cursor 正在切换"}</div>
         </div>`;
         return;
       }
@@ -2556,6 +2566,7 @@
       }
 
       const metaParts = [];
+      if (s.patrol_paused) metaParts.push(`⏸ ${currentLang === "en" ? "Patrol paused" : "巡检已暂停"}`);
       if (s.message_count) metaParts.push(`${s.message_count} ${t("agentMsgCountLabel")}`);
       if (s.model_name) metaParts.push(s.model_name);
       if (s.current_mode) metaParts.push(s.current_mode);

@@ -8,6 +8,29 @@
 
 ---
 
+## [2.12.4] - 2026-04-17
+
+### 桌面端 + PWA
+
+#### 新增：工作实况打开时自动暂停巡检，关闭时恢复
+
+- **`nudger.py` switch_agent_focus**：收到切换指令时先将 `nudger._running = False` 暂停巡检，切换完成后推送 `patrol_paused=true` 的 live state；60 秒超时自动恢复（防止忘关弹窗）
+- **`nudger.py` resume_patrol**：新增事件，PWA 关闭工作实况时触发，立即恢复 `nudger._running = True` 并唤醒巡检循环
+- **`pwa/index.html` closeAgentMonitor**：关闭弹窗时自动发送 `resume_patrol` 事件给 PC
+- **`pwa/index.html` 状态3.5**：切换中显示"🔄 切换中…"；状态4元数据显示"⏸ 巡检已暂停"提示
+
+---
+
+## [2.12.3] - 2026-04-17
+
+### 桌面端（`codeflow-desktop`）
+
+#### 新增：手机端点击角色卡片自动切换 Cursor Agent
+
+- **`nudger.py` switch_agent_focus**：PWA 工作实况点击角色卡片时，PC 端自动切换 Cursor 到对应 Agent（优先 CDP 通道，回退坐标点击，与「切换实测」逻辑完全一致），切换完成后推送最新 live state
+
+---
+
 ## [2.12.2] - 2026-04-17
 
 ### 桌面端（`codeflow-desktop`）

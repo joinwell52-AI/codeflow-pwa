@@ -2753,6 +2753,87 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                             result = _handle_desktop_action(action, nudger)
                             await _send("desktop_action_result", result)
 
+                        elif et == "switch_agent_focus":
+                            # PWA 点击角色卡片 → 暂停巡检 → 切换 Cursor Agent → 推 live state
+                            # 复用切换实测双通道：优先 CDP，回退坐标点击
+                            target_role = str(payload.get("role", "")).strip()
+                            logger.info("收到 switch_agent_focus 请求: role=%s", target_role)
+                            _was_running = nudger._running if nudger else False
+                            # ── 暂停巡检（避免与巡检器争抢 Cursor 焦点）──
+                            if nudger and _was_running:
+                                nudger._running = False
+                                logger.info("switch_agent_focus 暂停巡检器")
+                                # 60 秒超时自动恢复，防止用户未关闭工作实况导致永久停止
+                                async def _auto_resume():
+                                    await asyncio.sleep(60)
+                                    if nudger and not nudger._running and _was_running:
+                                        nudger._running = True
+                                        nudger._wake_event.set()
+                                        logger.info("switch_agent_focus 超时自动恢复巡检器")
+                                asyncio.ensure_future(_auto_resume())
+                            # ── 执行切换 ──
+                            if target_role:
+                                role_key = _normalize_role(target_role).upper()
+                                _sw_clicked = False
+                                # ① CDP 通道
+                                try:
+                                    from cursor_cdp import is_cdp_available as _cdp_avail2
+                                    if _cdp_avail2():
+                                        from cursor_cdp import click_role as _cdp_click2
+                                        _sw_clicked = await asyncio.get_event_loop().run_in_executor(
+                                            None, lambda: _cdp_click2(role_key) or _cdp_click2(target_role)
+                                        )
+                                        logger.info("switch_agent_focus CDP 点击: %s", _sw_clicked)
+                                except Exception as _cdp_sw_exc:
+                                    logger.debug("switch_agent_focus CDP 不可用: %s", _cdp_sw_exc)
+                                # ② 坐标点击回退
+                                if not _sw_clicked:
+                                    try:
+                                        win = find_cursor_window(nudger.config) if nudger else None
+                                        if win:
+                                            import ctypes as _ct2
+                                            _u = _ct2.windll.user32
+                                            _u.ShowWindow(win[0], 3 if _u.IsZoomed(win[0]) else 5)
+                                            _u.SetForegroundWindow(win[0])
+                                        _sw_clicked = _click_agent_by_coord(target_role, win[0] if win else 0)
+                                        logger.info("switch_agent_focus 坐标点击: %s", _sw_clicked)
+                                    except Exception as _sw_exc:
+                                        logger.warning("switch_agent_focus 坐标点击失败: %s", _sw_exc)
+                                if _sw_clicked:
+                                    await asyncio.sleep(0.8)
+                            # ── 推送 live state ──
+                            try:
+                                cursor_state = nudger.get_cursor_state()
+                                live_payload = {
+                                    "found": bool(cursor_state.get("found")),
+                                    "has_cdp": cursor_state.get("has_cdp", HAS_CDP),
+                                    "cdp_active": _cdp_active,
+                                    "agent_role": cursor_state.get("agent_role", ""),
+                                    "all_roles": cursor_state.get("all_roles", []),
+                                    "agent_status": cursor_state.get("agent_status", "unknown"),
+                                    "is_busy": cursor_state.get("is_busy", False),
+                                    "busy_hint": cursor_state.get("busy_hint", ""),
+                                    "model_name": cursor_state.get("model_name", ""),
+                                    "current_mode": cursor_state.get("current_mode", ""),
+                                    "message_count": cursor_state.get("message_count", 0),
+                                    "pending_approvals": cursor_state.get("pending_approvals", 0),
+                                    "recent_messages": cursor_state.get("recent_messages", []),
+                                    "role_messages": cursor_state.get("role_messages", get_role_messages_cache()),
+                                    "switch_requested": target_role,
+                                    "patrol_paused": _was_running,
+                                }
+                                await _send("agent_live_state", live_payload)
+                            except Exception as _sw_live_exc:
+                                logger.warning("switch_agent_focus live 推送失败: %s", _sw_live_exc)
+
+                        elif et == "resume_patrol":
+                            # PWA 关闭工作实况 → 恢复巡检
+                            if nudger and not nudger._running:
+                                nudger._running = True
+                                nudger._wake_event.set()
+                                logger.info("resume_patrol: 巡检器已恢复")
+                                await _send("patrol_state", {"running": True, "resumed_by": "pwa"})
+
                         elif et == "request_agent_live":
                             logger.info("收到 PWA request_agent_live 请求")
                             try:
