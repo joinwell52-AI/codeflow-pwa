@@ -2440,6 +2440,8 @@
       _initMonitorEls();
       if (!_agentMonitorEl) return;
       _agentMonitorRole = role;
+      _switchRetryCount = 0;  // 每次打开重置重试计数
+      if (_switchRetryTimer) { clearTimeout(_switchRetryTimer); _switchRetryTimer = null; }
       renderAgentMonitor();
       _agentMonitorEl.classList.add("visible");
       if (_agentMonitorOverlayEl) _agentMonitorOverlayEl.classList.add("visible");
@@ -2543,16 +2545,31 @@
       const liveRole = (s.agent_role || "").replace(/^\d+-?/, "").toUpperCase();
       const cardRole = (_agentMonitorRole || "").replace(/^\d+-?/, "").toUpperCase();
       if (liveRole && cardRole && liveRole !== cardRole) {
-        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot running"></span> ${currentLang === "en" ? "Switching…" : "切换中…"}`;
+        const isSwitching = !!s.switch_requested && _switchRetryCount < 3;
+        const switchFailed = _switchRetryCount >= 3;
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot ${isSwitching ? "running" : "idle"}"></span> ${
+          isSwitching ? (currentLang === "en" ? "Switching…" : "切换中…")
+          : switchFailed ? (currentLang === "en" ? "Switch failed" : "切换失败")
+          : (currentLang === "en" ? "Not active" : "未激活")}`;
         _agentMonitorMetaEl.innerHTML = s.patrol_paused
           ? `<span style="color:#f59e0b;">⏸ ${currentLang === "en" ? "Patrol paused" : "巡检已暂停"}</span>`
           : "";
         _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
-          <div style="font-size:28px;margin-bottom:8px;">🔄</div>
-          <div>${currentLang === "en"
-            ? `Switching to <b>${_agentMonitorRole}</b>…`
-            : `正在切换到 <b>${_agentMonitorRole}</b>…`}</div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text3)">${currentLang === "en" ? "Please wait a moment." : "请稍候，Cursor 正在切换"}</div>
+          <div style="font-size:28px;margin-bottom:8px;">${isSwitching ? "🔄" : switchFailed ? "⚠️" : "💤"}</div>
+          <div>${isSwitching
+            ? (currentLang === "en" ? `Switching to <b>${_agentMonitorRole}</b>…` : `正在切换到 <b>${_agentMonitorRole}</b>…`)
+            : switchFailed
+              ? (currentLang === "en"
+                  ? `Could not switch — Cursor is on <b>${s.agent_role}</b>`
+                  : `切换失败，Cursor 当前是 <b>${s.agent_role}</b>`)
+              : (currentLang === "en"
+                  ? `Cursor is on <b>${s.agent_role}</b>, tap card to switch`
+                  : `Cursor 当前是 <b>${s.agent_role}</b>，点击卡片可切换`)
+          }</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">${isSwitching
+            ? (currentLang === "en" ? "Please wait…" : "请稍候，Cursor 正在切换")
+            : (currentLang === "en" ? "Tap the role card again to retry." : "可重新点击角色卡片再试")
+          }</div>
         </div>`;
         return;
       }
@@ -2599,11 +2616,30 @@
       _agentMonitorMsgsEl.scrollTop = _agentMonitorMsgsEl.scrollHeight;
     }
 
+    let _switchRetryCount = 0;
+    let _switchRetryTimer = null;
+
     function applyAgentLiveState(payload) {
       _agentLiveState = payload;
       renderTeam(onlineDevices, typeof targetRoleEl !== "undefined" ? targetRoleEl.value : "");
       _initMonitorEls();
       if (_agentMonitorRole && _agentMonitorEl && _agentMonitorEl.classList.contains("visible")) {
+        // 如果是切换响应但角色还未匹配，自动重试拉取（最多3次，每次1.5秒后）
+        const liveRole = (payload.agent_role || "").replace(/^\d+-?/, "").toUpperCase();
+        const cardRole = (_agentMonitorRole || "").replace(/^\d+-?/, "").toUpperCase();
+        const wasSwitching = !!payload.switch_requested;
+        if (wasSwitching && liveRole && cardRole && liveRole !== cardRole && _switchRetryCount < 3) {
+          _switchRetryCount++;
+          if (_switchRetryTimer) clearTimeout(_switchRetryTimer);
+          _switchRetryTimer = setTimeout(() => {
+            if (_agentMonitorEl && _agentMonitorEl.classList.contains("visible") && ws && ws.readyState === WebSocket.OPEN) {
+              const did = _pcDeviceId();
+              sendEvent("request_agent_live", did ? { target_device_id: did } : {});
+            }
+          }, 1500);
+        } else {
+          _switchRetryCount = 0;
+        }
         renderAgentMonitor();
       }
     }
