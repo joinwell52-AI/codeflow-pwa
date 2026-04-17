@@ -2817,6 +2817,12 @@
       _dashboardLastSent = now;
       sendEvent("request_dashboard", { target_device_id: target.device_id });
     }
+    function requestDashboardForce() {
+      // 强制拉取，绕过节流（用于页面刷新/重连后）
+      if (_dashboardThrottleTimer) { clearTimeout(_dashboardThrottleTimer); _dashboardThrottleTimer = null; }
+      _dashboardLastSent = 0;
+      requestDashboard();
+    }
 
     let _taskDetailTimer = null;
     function requestTaskDetail(filename) {
@@ -3116,7 +3122,7 @@
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
         // 连接成功后主动拉一次 dashboard（roster 回来后也会拉，节流合并）
-        setTimeout(() => requestDashboard(), 2000);
+        setTimeout(() => requestDashboardForce(), 2000);
       };
       const _silentEvents = new Set(["pong","patrol_state","device_roster","bind_state","file_list","patrol_trace","agent_live_state"]);
       ws.onmessage = (event) => {
@@ -3143,7 +3149,7 @@
             _pcWasOnline = true;
             updateHeaderStatus();
             // PC 上线后稍等再拉，节流函数会自动合并重复请求
-            setTimeout(() => requestDashboard(), 1000);
+            setTimeout(() => requestDashboardForce(), 1000);
             requestPatrolStatus();
             if (!patrolPolling) patrolPolling = setInterval(requestPatrolStatus, 30000);
             startTracePolling();
