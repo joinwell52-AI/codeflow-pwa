@@ -31,6 +31,20 @@ We published the methodology — [**How to Build an Automated AI Development Tea
   <img src="docs/images/product.png" width="260" alt="CodeFlow — Command AI from Mobile" />
 </p>
 
+### Why CDP / 为什么用 CDP
+
+| | OCR (legacy) | **CDP — CodeFlow** |
+|---|---|---|
+| Latency 延迟 | 300–800ms | **10–15ms** |
+| Accuracy 精度 | ~90% | **100%** |
+| Agent Detection 角色识别 | Screenshot guess | DOM exact match |
+| Setup 配置 | Manual shortcut edits | **Zero — auto-injected** |
+| Fallback 降级 | None | Auto-falls back to OCR |
+
+> **Zero-config CDP injection**: CodeFlow detects on startup whether Cursor has the debug port open. If not, it silently restarts Cursor with `--remote-debugging-port=9222` — no manual shortcut edits, no config files, nothing.
+>
+> **零配置 CDP 注入**：Desktop 启动时自动检测 Cursor 是否开启调试端口，若未开启则静默重启并自动注入参数，用户无需手动改快捷方式或任何配置文件。
+
 ---
 
 ### From Theory to Tool / 从理论到工具
