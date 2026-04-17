@@ -422,6 +422,13 @@
     .detail-field { background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:8px 10px; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); }
     .detail-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; }
     .detail-value { margin-top:4px; font-size:12px; color:var(--text); word-break:break-all; }
+    /* 任务详情压缩头部 */
+    .detail-compact-header { padding:8px 10px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); margin-bottom:4px; }
+    .detail-compact-id { font-size:11px; color:var(--text3); font-family:"Fira Code",monospace; }
+    .detail-compact-file { font-size:12px; color:var(--text); font-family:"Fira Code",monospace; font-weight:600; margin-top:2px; word-break:break-all; }
+    .detail-compact-pills { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+    .detail-pill { display:inline-flex; align-items:center; gap:3px; background:rgba(255,255,255,.06); border:1px solid rgba(180,200,220,.12); border-radius:20px; padding:2px 7px; font-size:10px; color:var(--text3); white-space:nowrap; }
+    .detail-pill b { color:var(--text2); font-weight:600; }
     .detail-section { margin-top:8px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r); padding:10px; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); }
     .detail-section h4 { margin:0 0 6px; font-size:12px; font-family:"Fira Code",monospace; color:var(--text2); }
     .detail-body-text { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; max-height:260px; overflow-y:auto; }
@@ -430,7 +437,7 @@
     .detail-tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
     .detail-view { display:none; margin-top:8px; }
     .detail-view.active { display:block; }
-    .detail-markdown { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:10px; max-height:280px; overflow:auto; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); }
+    .detail-markdown { white-space:pre-wrap; line-height:1.7; color:var(--text2); font-size:12px; background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); border-radius:var(--r2); padding:10px; max-height:280px; overflow:auto; box-shadow:inset 0 1px 3px rgba(0,0,0,.1); user-select:none; -webkit-user-select:none; }
     .detail-file-line { margin-top:5px; font-size:11px; color:var(--text3); }
     .task-record-list { display:grid; gap:6px; }
     .task-record-item { max-width:92%; padding:8px 10px; border-radius:var(--r2); background:rgba(20,30,48,.55); border:1px solid rgba(180,200,220,.12); color:var(--text); font-size:12px; box-shadow:inset 0 1px 2px rgba(0,0,0,.08); }
@@ -690,15 +697,17 @@
         <h3 id="detailTitle" class="card-title">任务详情</h3>
         <span id="detailMeta" class="muted">未选择任务</span>
       </div>
-      <div class="detail-grid">
-        <div class="detail-field"><div id="detailIdLabel" class="detail-label">任务编号</div><div id="detailTaskId" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailFileLabel" class="detail-label">关联文件</div><div id="detailFileName" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailPriorityLabel" class="detail-label">优先级</div><div id="detailPriorityValue" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailTypeLabel" class="detail-label">任务类型</div><div id="detailTypeValue" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailSenderLabel" class="detail-label">发起人</div><div id="detailSenderValue" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailRecipientLabel" class="detail-label">接收人</div><div id="detailRecipientValue" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailTimeLabel" class="detail-label">时间</div><div id="detailTimeValue" class="detail-value">--</div></div>
-        <div class="detail-field"><div id="detailStatusLabel" class="detail-label">状态</div><div id="detailStatusValue" class="detail-value">--</div></div>
+      <div class="detail-compact-header">
+        <div class="detail-compact-id" id="detailTaskId">--</div>
+        <div class="detail-compact-file" id="detailFileName">--</div>
+        <div class="detail-compact-pills">
+          <span class="detail-pill"><span id="detailPriorityLabel" style="display:none"></span><b id="detailPriorityValue">--</b></span>
+          <span class="detail-pill"><span id="detailTypeLabel" style="display:none"></span><b id="detailTypeValue">--</b></span>
+          <span class="detail-pill">👤 <b id="detailSenderValue">--</b></span>
+          <span class="detail-pill">→ <b id="detailRecipientValue">--</b></span>
+          <span class="detail-pill">🕐 <b id="detailTimeValue">--</b></span>
+          <span class="detail-pill" id="detailStatusPill">⬤ <b id="detailStatusValue">--</b></span>
+        </div>
       </div>
       <div class="detail-section"><h4 id="detailFlowLabel">流转路径</h4><div id="detailFlowValue" class="detail-body-text">--</div></div>
       <div class="detail-section"><h4 id="detailBodyLabel">任务正文</h4><div id="detailBody" class="detail-body-text">请选择任务查看详情。</div></div>
@@ -762,21 +771,17 @@
     <span id="taskDetailPageTitle" class="fullscreen-page-title">任务详情</span>
   </header>
   <div class="fullscreen-page-content">
-    <div class="card">
-      <div class="detail-grid">
-        <div class="detail-field"><div class="detail-label">任务编号</div><div id="fpDetailTaskId" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">关联文件</div><div id="fpDetailFileName" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">优先级</div><div id="fpDetailPriority" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">任务类型</div><div id="fpDetailType" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">发起人</div><div id="fpDetailSender" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">接收人</div><div id="fpDetailRecipient" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">时间</div><div id="fpDetailTime" class="detail-value">--</div></div>
-        <div class="detail-field"><div class="detail-label">状态</div><div id="fpDetailStatus" class="detail-value">--</div></div>
+    <div class="detail-compact-header" style="margin:0 0 4px;">
+      <div class="detail-compact-id" id="fpDetailTaskId">--</div>
+      <div class="detail-compact-file" id="fpDetailFileName">--</div>
+      <div class="detail-compact-pills">
+        <span class="detail-pill"><b id="fpDetailPriority">--</b></span>
+        <span class="detail-pill"><b id="fpDetailType">--</b></span>
+        <span class="detail-pill">👤 <b id="fpDetailSender">--</b></span>
+        <span class="detail-pill">→ <b id="fpDetailRecipient">--</b></span>
+        <span class="detail-pill">🕐 <b id="fpDetailTime">--</b></span>
+        <span class="detail-pill">⬤ <b id="fpDetailStatus">--</b></span>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3 id="fpFlowTitle" class="card-title">流转路径</h3></div>
-      <div id="fpDetailFlow" class="detail-body-text">--</div>
     </div>
     <div class="card">
       <div class="detail-tabs">
