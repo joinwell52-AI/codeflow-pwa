@@ -2927,6 +2927,8 @@
 
     if (traceRefreshBtn) traceRefreshBtn.addEventListener("click", () => {
       requestPatrolStatus(); // 点刷新时触发 PC 推送最新轨迹
+      requestDashboard();    // 同时刷新任务列表
+      setTimeout(() => requestDashboard(), 2000);
     });
 
     let _lastFileListTotal = -1;
@@ -3068,6 +3070,9 @@
         requestDeviceRoster();
         if (rosterPolling) clearInterval(rosterPolling);
         rosterPolling = setInterval(requestDeviceRoster, 15000);
+        // 连接成功后主动拉一次 dashboard（不依赖 roster 先到）
+        setTimeout(() => requestDashboard(), 1500);
+        setTimeout(() => requestDashboard(), 4000);
       };
       const _silentEvents = new Set(["pong","patrol_state","device_roster","bind_state","file_list","patrol_trace","agent_live_state"]);
       ws.onmessage = (event) => {
