@@ -2789,43 +2789,13 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                 _sw_clicked = False
 
                                 def _do_switch_sync():
-                                    """命令面板切换 agent（最可靠，必须先强制前置窗口）"""
-                                    win = find_cursor_window(nudger.config) if nudger else None
-                                    if not win:
-                                        logger.warning("switch_agent_focus: 未找到 Cursor 窗口")
-                                        return False
-                                    hwnd = win[0]
+                                    """CDP click_role 切换（和消息轮询完全相同的调用，无需窗口焦点）"""
                                     try:
-                                        import ctypes as _ct
-                                        u32 = _ct.windll.user32
-                                        k32 = _ct.windll.kernel32
-                                        # 恢复最小化
-                                        if u32.IsIconic(hwnd):
-                                            u32.ShowWindow(hwnd, 9)
-                                            time.sleep(0.3)
-                                        # AttachThreadInput 强制拿焦点
-                                        cur_tid = k32.GetCurrentThreadId()
-                                        fg_hwnd = u32.GetForegroundWindow()
-                                        fg_tid = u32.GetWindowThreadProcessId(fg_hwnd, None)
-                                        attached = False
-                                        if fg_tid and fg_tid != cur_tid:
-                                            u32.AttachThreadInput(cur_tid, fg_tid, True)
-                                            attached = True
-                                        u32.ShowWindow(hwnd, 5)
-                                        u32.SetForegroundWindow(hwnd)
-                                        u32.BringWindowToTop(hwnd)
-                                        if attached:
-                                            u32.AttachThreadInput(cur_tid, fg_tid, False)
-                                        time.sleep(0.5)
-                                    except Exception as _fe:
-                                        logger.warning("强制前置失败: %s", _fe)
-                                    # 命令面板切换
-                                    try:
-                                        _run_command_palette_goto_agent(full_label)
-                                        logger.info("switch_agent_focus 命令面板成功: %s", full_label)
-                                        return True
+                                        ok = cdp_click_role(full_label) or cdp_click_role(role_key)
+                                        logger.info("switch_agent_focus CDP click=%s label=%s", ok, full_label)
+                                        return bool(ok)
                                     except Exception as _e:
-                                        logger.warning("switch_agent_focus 命令面板失败: %s", _e)
+                                        logger.warning("switch_agent_focus CDP 失败: %s", _e)
                                         return False
 
                                 _sw_clicked = await asyncio.get_event_loop().run_in_executor(None, _do_switch_sync)
