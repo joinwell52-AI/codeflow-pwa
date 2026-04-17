@@ -3164,12 +3164,22 @@ def _handle_desktop_action(action: str, nudger: Nudger) -> dict:
             return {"action": action, "ok": True, "message": _T("patrol_stopped")}
         return {"action": action, "ok": True, "message": _T("patrol_not_running")}
     elif action == "restart":
-        nudger.stop_patrol()
-        import time as _time
-        _time.sleep(1)
-        _relay_start_patrol(nudger)
+        import sys as _sys, os as _os, subprocess as _sp
         patrol_trace("desktop", _T("tr_relay_restart"), action=action, ok=True)
-        return {"action": action, "ok": True, "message": _T("patrol_restarted")}
+        logger.info("PWA 远程触发 Desktop 重启")
+        def _do_restart():
+            import time as _t
+            _t.sleep(1.0)
+            exe = _sys.executable
+            args = _sys.argv[:]
+            try:
+                _sp.Popen([exe] + args, cwd=_os.path.dirname(exe))
+            except Exception as _re:
+                logger.warning("Desktop 重启失败: %s", _re)
+            _t.sleep(0.3)
+            _os._exit(0)
+        threading.Thread(target=_do_restart, daemon=True).start()
+        return {"action": action, "ok": True, "message": _T("restarting")}
     else:
         return {"action": action, "ok": False, "message": _T("unknown_action", action=action)}
 
