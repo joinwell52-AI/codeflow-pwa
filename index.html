@@ -3454,23 +3454,18 @@
         if (!updated) {
           // 没有新版本：和扫码绑定一样，找 PC 设备发 request_bind_code
           const pcDid = _pcDeviceId();
-          appendLog(`刷新按钮：ws=${ws?.readyState} pcDid=${pcDid} onlineDevices=${onlineDevices.length}`);
           if (ws && ws.readyState === WebSocket.OPEN && pcDid) {
             sendEvent("request_bind_code", {
               target_device_id: pcDid,
               mobile_device_id: localMobileDeviceId,
               mobile_device_name: `${currentLang === "en" ? "Mobile" : "手机"} / ${navigator.platform || "Unknown"}`
             });
-            appendLog("刷新：request_bind_code → " + pcDid);
           } else if (ws && ws.readyState === WebSocket.OPEN) {
-            // PC 不在 roster，先 hello + roster，等 roster 回来自动触发
             _pendingRefreshBind = true;
             sendEvent("hello", { device_id: localMobileDeviceId, device_name: t("mobile"), owner_role: "ADMIN" });
             requestDeviceRoster();
-            appendLog("刷新：PC 不在线，等待 roster...");
           } else {
             connect(true);
-            appendLog("刷新：WS 未连接，尝试重连...");
           }
         }
       };
