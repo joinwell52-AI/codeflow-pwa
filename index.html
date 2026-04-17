@@ -2531,6 +2531,22 @@
         return;
       }
 
+      // ── 状态 3.5：已有数据，但激活的 agent 不是当前选中角色 ──
+      const liveRole = (s.agent_role || "").replace(/^\d+-?/, "").toUpperCase();
+      const cardRole = (_agentMonitorRole || "").replace(/^\d+-?/, "").toUpperCase();
+      if (liveRole && cardRole && liveRole !== cardRole) {
+        _agentMonitorStatusEl.innerHTML = `<span class="agent-live-dot idle"></span> ${currentLang === "en" ? "Not active" : "未激活"}`;
+        _agentMonitorMetaEl.innerHTML = "";
+        _agentMonitorMsgsEl.innerHTML = `<div class="agent-monitor-empty">
+          <div style="font-size:28px;margin-bottom:8px;">💤</div>
+          <div>${currentLang === "en"
+            ? `Cursor is running <b>${s.agent_role}</b>, not this role`
+            : `当前 Cursor 激活的是 <b>${s.agent_role}</b>，非此角色`}</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">${currentLang === "en" ? "Switch to this agent in Cursor to view its live status." : "请在 Cursor 切换到该角色，即可查看工作实况"}</div>
+        </div>`;
+        return;
+      }
+
       // ── 状态 4：正常数据 ──
       const live = agentLiveHintForRole(_agentMonitorRole);
       if (live) {
