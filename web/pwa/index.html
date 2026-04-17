@@ -1294,7 +1294,7 @@
       }
       document.getElementById("fpMarkdown").textContent = mdContent || (currentLang === "en" ? "(Loading MD...)" : "（正在加载 MD 内容…）");
       document.getElementById("fpMarkdownFile").textContent = currentLang === "en" ? `Source: ${item.filename || "--"}` : `关联文件：${item.filename || "--"}`;
-      appendLog(`MD原文: len=${mdContent.length}, keys=${Object.keys(item).join(",")}, md50=${(item.markdown||'').slice(0,50)}, body50=${(item.body||'').slice(0,50)}`);
+      appendLog(`MD原文: len=${(mdContent||'').length}, keys=${Object.keys(item).join(",")}, md50=${(item.markdown||'').slice(0,50)}, body50=${(item.body||'').slice(0,50)}`);
       _fpDetailFilename = item.primary_filename || item.filename;
       fpViewMode = "record";
       syncFpTabs();
