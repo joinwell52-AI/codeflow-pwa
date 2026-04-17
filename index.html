@@ -2505,6 +2505,9 @@
       return m ? { sender: m[1].toUpperCase(), recipient: m[2].toUpperCase() } : null;
     }
     function _ensureItemMd(item) {
+      // reporter/author 字段兜底为 sender
+      if (!item.sender && item.reporter) item.sender = item.reporter;
+      if (!item.sender && item.author) item.sender = item.author;
       // 从文件名兜底补全 sender/recipient
       if (!item.sender || !item.recipient) {
         const parsed = _parseRolesFromFilename(item.filename);
