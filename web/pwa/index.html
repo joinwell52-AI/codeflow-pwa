@@ -2326,12 +2326,16 @@
 
     function renderTaskList() {
       const items = tasksForRole(selectedRole || "PM");
-      const display = items.slice(0, 3);
+      const display = items.slice(0, 2);
       renderTaskCollection(taskListEl, display, t("noTask"), "workspace");
+      // 预览卡片点击 → 进入该 agent 全部任务列表，而不是打开详情
+      taskListEl.querySelectorAll(".task-card").forEach((node) => {
+        node.onclick = () => openTaskListPage(null, selectedRole);
+      });
       const listDescEl = document.getElementById("listDesc");
       if (listDescEl) {
-        const more = items.length > 3 ? ` · +${items.length - 3} 条` : "";
-        listDescEl.innerHTML = `${selectedRole || "PM"} · ${items.length} ${currentLang === "en" ? "tasks" : "条"}${more} <span style="font-size:14px;opacity:.6;">›</span>`;
+        const more = items.length > 2 ? ` · 共 ${items.length} 条` : "";
+        listDescEl.innerHTML = `${selectedRole || "PM"}${more} <span style="font-size:14px;opacity:.6;">›</span>`;
       }
       updateCurrentTaskSummary();
     }
