@@ -507,6 +507,13 @@
     .fullscreen-refresh-btn.spinning { animation: spin 0.6s linear; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .fullscreen-page-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 12px 24px; }
+    /* 任务详情页：整体 flex 竖排，MD 原文撑满剩余高度 */
+    .fp-detail-content { display:flex; flex-direction:column; overflow-y:hidden; padding-bottom:0; }
+    .fp-detail-content .card { flex-shrink:0; }
+    .fp-detail-content .fp-markdown-card { flex:1; display:flex; flex-direction:column; min-height:0; margin-bottom:0; }
+    .fp-section-title { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+    .fp-markdown-file { font-weight:400; font-size:10px; color:var(--text3); margin-left:6px; text-transform:none; letter-spacing:0; }
+    .fp-markdown-body { flex:1; max-height:none !important; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
     .task-list-tabs { display:flex; gap:0; margin-bottom:10px; border-radius:10px; overflow:hidden; background:rgba(30,40,60,.5); }
     .tl-tab { flex:1; padding:8px 0; text-align:center; font-size:12px; font-weight:600; color:var(--text3); background:transparent; border:none; cursor:pointer; transition:all .2s; }
@@ -770,8 +777,8 @@
     <button id="taskDetailBackBtn" class="fullscreen-back-btn" type="button">← 返回</button>
     <span id="taskDetailPageTitle" class="fullscreen-page-title">任务详情</span>
   </header>
-  <div class="fullscreen-page-content">
-    <div class="detail-compact-header" style="margin:0 0 4px;">
+  <div class="fullscreen-page-content fp-detail-content">
+    <div class="detail-compact-header" style="margin:0 0 6px;">
       <div class="detail-compact-id" id="fpDetailTaskId">--</div>
       <div class="detail-compact-file" id="fpDetailFileName">--</div>
       <div class="detail-compact-pills">
@@ -783,18 +790,15 @@
         <span class="detail-pill">⬤ <b id="fpDetailStatus">--</b></span>
       </div>
     </div>
-    <div class="card">
-      <div class="detail-tabs">
-        <button id="fpRecordTabBtn" class="detail-tab-btn active" type="button">任务记录</button>
-        <button id="fpMarkdownTabBtn" class="detail-tab-btn" type="button">MD原文</button>
-      </div>
-      <div id="fpRecordView" class="detail-view active">
-        <div id="fpMessages" class="task-record-list"></div>
-      </div>
-      <div id="fpMarkdownView" class="detail-view">
-        <div id="fpMarkdown" class="detail-markdown"></div>
-        <div id="fpMarkdownFile" class="detail-file-line"></div>
-      </div>
+    <!-- 任务记录 -->
+    <div class="card" style="margin-bottom:8px;">
+      <div class="fp-section-title">任务记录</div>
+      <div id="fpMessages" class="task-record-list"></div>
+    </div>
+    <!-- MD原文：撑满剩余高度 -->
+    <div class="card fp-markdown-card">
+      <div class="fp-section-title">MD 原文 <span id="fpMarkdownFile" class="fp-markdown-file"></span></div>
+      <div id="fpMarkdown" class="detail-markdown fp-markdown-body"></div>
     </div>
   </div>
 </div>
@@ -1124,11 +1128,11 @@
     const taskDetailPageEl = document.getElementById("taskDetailPage");
     const taskDetailBackBtnEl = document.getElementById("taskDetailBackBtn");
     const taskDetailPageTitleEl = document.getElementById("taskDetailPageTitle");
-    const fpRecordTabBtnEl = document.getElementById("fpRecordTabBtn");
-    const fpMarkdownTabBtnEl = document.getElementById("fpMarkdownTabBtn");
-    const fpRecordViewEl = document.getElementById("fpRecordView");
-    const fpMarkdownViewEl = document.getElementById("fpMarkdownView");
-    let fpViewMode = "record";
+    // tab 元素已移除，保留空引用避免 syncFpTabs 报错
+    const fpRecordTabBtnEl = null;
+    const fpMarkdownTabBtnEl = null;
+    const fpRecordViewEl = null;
+    const fpMarkdownViewEl = null;
 
     function isTaskToday(item) {
       const t = item.time || item.created_at || "";
@@ -1303,34 +1307,16 @@
         _fpDetailFilename = filename;
       }
       // 无论如何都要打开页面
-      fpViewMode = "record";
-      syncFpTabs();
       taskDetailPageEl.classList.add("open");
       requestTaskDetail(_fpDetailFilename);
     }
 
     function closeTaskDetailPage() { taskDetailPageEl.classList.remove("open"); }
 
-    function syncFpTabs() {
-      fpRecordTabBtnEl.classList.toggle("active", fpViewMode === "record");
-      fpMarkdownTabBtnEl.classList.toggle("active", fpViewMode === "markdown");
-      fpRecordViewEl.classList.toggle("active", fpViewMode === "record");
-      fpMarkdownViewEl.classList.toggle("active", fpViewMode === "markdown");
-    }
+    function syncFpTabs() { /* tabs removed, no-op */ }
 
     taskListBackBtnEl.onclick = closeTaskListPage;
     taskDetailBackBtnEl.onclick = closeTaskDetailPage;
-    fpRecordTabBtnEl.onclick = () => { fpViewMode = "record"; syncFpTabs(); };
-    fpMarkdownTabBtnEl.onclick = () => {
-      fpViewMode = "markdown"; syncFpTabs();
-      const fpMd = document.getElementById("fpMarkdown");
-      if (fpMd && (!fpMd.textContent || fpMd.textContent.includes("正在加载") || fpMd.textContent.includes("暂无") || fpMd.textContent.startsWith("# TASK-"))) {
-        if (_fpDetailFilename) {
-          fpMd.textContent = currentLang === "en" ? "Loading..." : "加载中…";
-          requestTaskDetail(_fpDetailFilename);
-        }
-      }
-    };
 
     document.querySelectorAll(".stat-btn[data-filter]").forEach((btn) => {
       btn.onclick = () => openTaskListPage(btn.dataset.filter);
