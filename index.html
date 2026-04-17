@@ -3439,8 +3439,15 @@
           }
         } catch (e) { /* SW 不可用时静默忽略 */ }
         if (!updated) {
-          // 没有新版本，正常刷新任务数据
-          requestDashboard();
+          // 没有新版本：重新握手 + 强制拉取（效果等同重新绑定）
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            sendEvent("hello", { device_id: localMobileDeviceId, device_name: t("mobile"), owner_role: "ADMIN" });
+            requestDeviceRoster();
+            setTimeout(() => requestBindState(), 500);
+            setTimeout(() => requestDashboardForce(), 1000);
+          } else {
+            requestDashboardForce();
+          }
         }
       };
     }
