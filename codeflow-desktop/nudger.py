@@ -2798,24 +2798,25 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                     try:
                                         import ctypes as _ct
                                         u32 = _ct.windll.user32
+                                        k32 = _ct.windll.kernel32
                                         # 恢复最小化
                                         if u32.IsIconic(hwnd):
                                             u32.ShowWindow(hwnd, 9)
                                             time.sleep(0.3)
-                                        # AttachThreadInput 强制拿焦点（绕过 Windows 焦点保护）
-                                        cur_tid = u32.GetCurrentThreadId()
+                                        # AttachThreadInput 强制拿焦点
+                                        cur_tid = k32.GetCurrentThreadId()
                                         fg_hwnd = u32.GetForegroundWindow()
                                         fg_tid = u32.GetWindowThreadProcessId(fg_hwnd, None)
                                         attached = False
                                         if fg_tid and fg_tid != cur_tid:
                                             u32.AttachThreadInput(cur_tid, fg_tid, True)
                                             attached = True
-                                        u32.ShowWindow(hwnd, 5)   # SW_SHOW
+                                        u32.ShowWindow(hwnd, 5)
                                         u32.SetForegroundWindow(hwnd)
                                         u32.BringWindowToTop(hwnd)
                                         if attached:
                                             u32.AttachThreadInput(cur_tid, fg_tid, False)
-                                        time.sleep(0.4)
+                                        time.sleep(0.5)
                                     except Exception as _fe:
                                         logger.warning("强制前置失败: %s", _fe)
                                     # 命令面板切换

@@ -8,6 +8,16 @@
 
 ---
 
+## [2.12.11] - 2026-04-17
+
+### 桌面端
+
+#### 修复：GetCurrentThreadId 改用 kernel32，窗口前置成功
+
+- 修复 `GetCurrentThreadId not found` 错误（从 user32 改为 kernel32 调用）
+
+---
+
 ## [2.12.10] - 2026-04-17
 
 ### 桌面端
