@@ -99,6 +99,30 @@ except ImportError:
 # CDP 运行时状态：启动时探测，成功后优先走 CDP
 _cdp_active = False
 
+# 各角色消息缓存：{ "PM": [...messages], "DEV": [...] }
+# 巡检切 tab 时顺带更新；后台轮询定期刷新
+_role_messages_cache: dict = {}
+_role_messages_cache_lock = threading.Lock()
+_role_messages_cache_ts: dict = {}   # 每个角色最后更新时间戳
+
+
+def _update_role_messages_cache(role: str, messages: list) -> None:
+    """更新指定角色的消息缓存（线程安全）。"""
+    if not role or not isinstance(messages, list):
+        return
+    key = re.sub(r'^\d+[-_\s]*', '', role).upper().strip()
+    if not key:
+        return
+    with _role_messages_cache_lock:
+        _role_messages_cache[key] = messages[-20:]
+        _role_messages_cache_ts[key] = time.time()
+
+
+def get_role_messages_cache() -> dict:
+    """返回所有角色消息缓存的快照（线程安全）。"""
+    with _role_messages_cache_lock:
+        return dict(_role_messages_cache)
+
 try:
     from cursor_vision import (
         scan as vision_scan,
@@ -917,6 +941,14 @@ def _switch_and_send_with_cdp(role: str, resolved: str, message: str,
         sent = cdp_press_enter()
         if sent:
             logger.info("CDP[完成] 消息已发送 → %s", resolved)
+            # 发送成功后顺带缓存该角色当前消息（小延迟等 AI 开始回复）
+            try:
+                time.sleep(0.3)
+                _snap = cdp_scan()
+                if _snap.found and _snap.messages:
+                    _update_role_messages_cache(resolved, _snap.messages)
+            except Exception:
+                pass
         return sent
 
     except Exception as e:
@@ -2482,7 +2514,13 @@ class Nudger:
             try:
                 state = cdp_scan()
                 if state.found:
-                    return state.to_dict()
+                    d = state.to_dict()
+                    # 附带所有角色消息缓存
+                    d["role_messages"] = get_role_messages_cache()
+                    # 更新当前激活角色的缓存
+                    if state.agent_role and state.messages:
+                        _update_role_messages_cache(state.agent_role, state.messages)
+                    return d
                 logger.info("CDP scan 未找到目标，降级到 OCR")
             except Exception as e:
                 logger.info("CDP scan 异常 %s，降级到 OCR", e)
@@ -2493,6 +2531,55 @@ class Nudger:
             return state.to_dict()
         except Exception as e:
             return {"error": str(e), "has_vision": True, "has_cdp": HAS_CDP}
+
+    def scan_all_roles_messages(self, all_roles: list[str]) -> None:
+        """CDP 模式下静默轮流切换各 Agent Tab，缓存每个角色的消息。
+        只在 CDP 激活且巡检空闲时调用，避免干扰正常巡检切换。
+        """
+        if not _cdp_active or not HAS_CDP:
+            return
+        if not all_roles:
+            return
+        logger.info("[消息轮询] 开始静默轮询 %d 个角色消息缓存", len(all_roles))
+        try:
+            # 先记录当前激活角色，轮询结束后切回
+            cur_state = cdp_scan()
+            original_role = cur_state.agent_role if cur_state.found else ""
+
+            for role in all_roles:
+                try:
+                    role_key = re.sub(r'^\d+[-_\s]*', '', role).upper().strip()
+                    # 如果缓存还新鲜（60秒内），跳过
+                    last_ts = _role_messages_cache_ts.get(role_key, 0)
+                    if time.time() - last_ts < 60:
+                        continue
+                    # 切到该角色 tab
+                    full_role = _UI_LABELS.get(role_key) or role
+                    clicked = cdp_click_role(full_role)
+                    if not clicked:
+                        clicked = cdp_click_role(role_key)
+                    if not clicked:
+                        logger.debug("[消息轮询] 找不到角色 tab: %s", role)
+                        continue
+                    time.sleep(0.4)
+                    snap = cdp_scan()
+                    if snap.found and snap.messages:
+                        _update_role_messages_cache(role, snap.messages)
+                        logger.info("[消息轮询] 缓存 %s: %d 条消息", role_key, len(snap.messages))
+                except Exception as e:
+                    logger.debug("[消息轮询] 角色 %s 异常: %s", role, e)
+
+            # 切回原角色
+            if original_role:
+                try:
+                    full_orig = _UI_LABELS.get(re.sub(r'^\d+[-_\s]*', '', original_role).upper()) or original_role
+                    cdp_click_role(full_orig)
+                    time.sleep(0.3)
+                except Exception:
+                    pass
+            logger.info("[消息轮询] 完成，缓存角色: %s", list(_role_messages_cache.keys()))
+        except Exception as e:
+            logger.warning("[消息轮询] 异常: %s", e)
 
 
 # ─── 中继客户端 ───────────────────────────────────────────
@@ -2684,11 +2771,12 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                     "message_count": cursor_state.get("message_count", 0),
                                     "pending_approvals": cursor_state.get("pending_approvals", 0),
                                     "recent_messages": cursor_state.get("recent_messages", []),
+                                    "role_messages": cursor_state.get("role_messages", get_role_messages_cache()),
                                 }
                                 if cursor_state.get("error"):
                                     live_payload["error"] = str(cursor_state["error"])[:200]
                                 await _send("agent_live_state", live_payload)
-                                logger.info("已响应 request_agent_live: found=%s role=%s", live_payload["found"], live_payload["agent_role"])
+                                logger.info("已响应 request_agent_live: found=%s role=%s roles_cached=%s", live_payload["found"], live_payload["agent_role"], list(live_payload["role_messages"].keys()))
                             except Exception as _req_exc:
                                 logger.warning("响应 request_agent_live 失败: %s", _req_exc)
                                 await _send("agent_live_state", {"found": False, "error": str(_req_exc)})
@@ -2728,14 +2816,16 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                 "message_count": cursor_state.get("message_count", 0),
                                 "pending_approvals": cursor_state.get("pending_approvals", 0),
                                 "recent_messages": cursor_state.get("recent_messages", []),
+                                "role_messages": cursor_state.get("role_messages", get_role_messages_cache()),
                             }
                             if cursor_state.get("error"):
                                 live_payload["error"] = str(cursor_state["error"])[:200]
                             msg = _make_msg("agent_live_state", live_payload)
                             msg_kb = len(msg.encode("utf-8")) / 1024
                             await ws.send(msg)
-                            logger.info("已推送 agent_live_state (%.1fKB) found=%s role=%s msgs=%d",
-                                        msg_kb, live_payload.get("found"), live_payload.get("agent_role", ""), len(live_payload.get("recent_messages", [])))
+                            logger.info("已推送 agent_live_state (%.1fKB) found=%s role=%s msgs=%d roles_cached=%s",
+                                        msg_kb, live_payload.get("found"), live_payload.get("agent_role", ""),
+                                        len(live_payload.get("recent_messages", [])), list(live_payload["role_messages"].keys()))
                         except Exception as _cdp_exc:
                             logger.warning("推送 agent_live_state 失败: %s", _cdp_exc)
                         logger.debug("已推送 PWA 快照 (%s)", reason)
@@ -2776,6 +2866,13 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                 _heartbeat_counter += 1
                                 if _heartbeat_counter % 3 == 0:
                                     await _push_desktop_snapshot("heartbeat")
+                                # 每 5 次心跳（~75s）静默轮询各角色消息缓存
+                                if _cdp_active and _heartbeat_counter % 5 == 0:
+                                    all_roles = nudger.get_cursor_state().get("all_roles", [])
+                                    if all_roles:
+                                        await asyncio.get_event_loop().run_in_executor(
+                                            None, nudger.scan_all_roles_messages, all_roles
+                                        )
                             _consecutive_errors = 0
                         except websockets.exceptions.ConnectionClosed as _cc:
                             logger.warning("poll_and_push: 连接已关闭 %s，退出", _cc)
@@ -2912,7 +3009,8 @@ def _build_dashboard(config, nudger: Nudger) -> dict:
         "leader": team_info.get("leader", ""),
         "stats": {
             "today_tasks": tasks_count,
-            "today_replies": reports_count,
+            # 今日回复 = 只统计发给 ADMIN 的报告（交付报告），不含角色间中间报告
+            "today_replies": sum(1 for i in items if i.get("dir") == "reports" and "ADMIN" in str(i.get("recipient", "")).upper()),
             "in_progress_threads": sum(1 for i in items if i.get("progress") in ("pending", "in_progress")),
             "replied_threads": sum(1 for i in items if i.get("dir") == "reports" and "ADMIN" in str(i.get("recipient", "")).upper()),
             "nudge_ok": stats.get("nudge_ok", 0),
