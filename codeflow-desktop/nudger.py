@@ -400,7 +400,7 @@ def _find_cursor_window_once() -> tuple[int, str] | None:
         win = vision_find_window()
         if win:
             return (win.hwnd, win.title)
-        return None
+        # vision 找不到时继续用 EnumWindows 兜底
 
     import ctypes
     from ctypes import wintypes

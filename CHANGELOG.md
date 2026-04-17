@@ -8,6 +8,17 @@
 
 ---
 
+## [2.12.10] - 2026-04-17
+
+### 桌面端
+
+#### 修复：find_cursor_window vision 失败时继续用 EnumWindows 兜底
+
+- vision_find_window 返回 None 时不再直接 return，改为继续 EnumWindows 查找
+- 修复另一台电脑上 switch_agent_focus 报「未找到 Cursor 窗口」的问题
+
+---
+
 ## [2.12.9] - 2026-04-17
 
 ### 桌面端
