@@ -8,6 +8,16 @@
 
 ---
 
+## [2.12.6] - 2026-04-17
+
+### 桌面端（`codeflow-desktop`）
+
+#### 修复：CDP 切换后验证 agent_role，不匹配则降级命令面板
+
+- **`nudger.py` switch_agent_focus**：CDP/坐标点击后等 0.8s 调用 `cdp_scan()` 验证是否真正切换；未通过验证时继续走命令面板（`Ctrl+Shift+P`），避免"点了没切过去"的假成功
+
+---
+
 ## [2.12.5] - 2026-04-17
 
 ### 桌面端（`codeflow-desktop`）

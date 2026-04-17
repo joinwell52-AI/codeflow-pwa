@@ -43,7 +43,7 @@ import webbrowser
 from pathlib import Path
 
 
-VERSION = "2.12.5"
+VERSION = "2.12.6"
 
 
 logger = logging.getLogger("codeflow")
