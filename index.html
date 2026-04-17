@@ -1228,7 +1228,14 @@
       document.querySelectorAll("#taskListTabs .tl-tab").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.dir === _taskListDirFilter);
       });
+      // 先渲染现有数据；若 taskItems 为空，主动拉一次
       _renderTaskListItems();
+      if (taskItems.length === 0) {
+        fullTaskListEl.innerHTML = `<div class="muted" style="text-align:center;padding:24px;">⏳ ${currentLang === "en" ? "Loading..." : "加载中..."}</div>`;
+        requestDashboard();
+        setTimeout(() => _renderTaskListItems(), 2500);
+        setTimeout(() => _renderTaskListItems(), 5000);
+      }
       taskListPageEl.classList.add("open");
     }
 
@@ -2650,6 +2657,10 @@
       renderTaskList();
       renderTeam(onlineDevices, targetRoleEl.value);
       renderRolePanel();
+      // 如果任务列表全屏页正在打开，自动刷新列表内容
+      if (taskListPageEl && taskListPageEl.classList.contains("open")) {
+        _renderTaskListItems();
+      }
     }
 
     function formatNow() {
