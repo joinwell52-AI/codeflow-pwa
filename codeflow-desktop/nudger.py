@@ -2562,14 +2562,16 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                 _relay_connected = True
                 logger.info("已连接中继: %s", config.relay_url)
 
-                # 延迟 3 秒后推送初始 dashboard（避免触发中继 rate limit）
+                # 连接后推送初始 dashboard（3s + 10s 各一次，确保 PWA 收到）
                 async def _delayed_init_dashboard():
-                    await asyncio.sleep(3)
-                    try:
-                        await _send_chunked(ws, "dashboard_state", _build_dashboard(config, nudger))
-                        logger.info("已推送初始 dashboard_state")
-                    except Exception as _init_exc:
-                        logger.warning("推送初始 dashboard 失败: %s", _init_exc)
+                    for delay in (3, 10):
+                        await asyncio.sleep(delay if delay == 3 else 7)  # 3s 后第一次，再等 7s 第二次
+                        try:
+                            await _send_chunked(ws, "dashboard_state", _build_dashboard(config, nudger))
+                            logger.info("已推送初始 dashboard_state (delay=%ds)", delay)
+                        except Exception as _init_exc:
+                            logger.warning("推送初始 dashboard 失败: %s", _init_exc)
+                            break
                 asyncio.ensure_future(_delayed_init_dashboard())
 
                 async def _send(event_type: str, payload: dict):
@@ -2743,7 +2745,7 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                 async def poll_and_push():
                     _last_file_snapshot = ""
                     _last_push_ver = -1
-                    _push_interval = 15
+                    _push_interval = 5
                     _heartbeat_counter = 0
                     _consecutive_errors = 0
                     while not _stop.is_set():
@@ -2867,10 +2869,10 @@ def _build_dashboard(config, nudger: Nudger) -> dict:
                 "filename": f.name,
                 "dir": d,
                 "task_id": front.get("task_id", f.stem),
-                "sender": front.get("sender", ""),
+                "sender": front.get("sender", "") or front.get("reporter", "") or front.get("author", ""),
                 "recipient": front.get("recipient", ""),
                 "priority": front.get("priority", ""),
-                "progress": front.get("progress", "pending"),
+                "progress": front.get("progress") or front.get("status", "pending"),
                 "type": front.get("type", d.rstrip("s")),
                 "created_at": front.get("created_at", ""),
                 "thread_key": front.get("thread_key", ""),
@@ -2901,7 +2903,7 @@ def _build_dashboard(config, nudger: Nudger) -> dict:
             "today_tasks": tasks_count,
             "today_replies": reports_count,
             "in_progress_threads": sum(1 for i in items if i.get("progress") in ("pending", "in_progress")),
-            "replied_threads": sum(1 for i in items if i.get("type") == "report"),
+            "replied_threads": sum(1 for i in items if i.get("dir") == "reports" and "ADMIN" in str(i.get("recipient", "")).upper()),
             "nudge_ok": stats.get("nudge_ok", 0),
             "nudge_fail": stats.get("nudge_fail", 0),
         },
