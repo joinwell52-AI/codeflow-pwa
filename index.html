@@ -1466,7 +1466,7 @@
         patrolDesc: "远程控制 PC 端巡检器，日志实时同步。",
         patrolStart: "开始巡检",
         patrolStop: "停止巡检",
-        pcReset: "重置 PC",
+        pcReset: "重启 Desktop",
         patrolNotStarted: "未启动",
         patrolRunning: "运行中",
         patrolStopped: "已停止",
@@ -1487,7 +1487,7 @@
         qrNotCodeFlow: "检测到二维码，但不是 CodeFlow 码",
         qrCameraFailed: "摄像头启动失败：",
         noTraceYet: "暂无轨迹",
-        confirmResetPc: "确定重置 PC 端 CodeFlow Desktop 进程？",
+        confirmResetPc: "确定重启 CodeFlow Desktop？重启后约 5-10 秒恢复连接。",
         confirmUnbind: "确认解除绑定？"
       },
       en: {
@@ -1636,7 +1636,7 @@
         patrolDesc: "Remote control PC patrol agent, logs synced in real-time.",
         patrolStart: "Start Patrol",
         patrolStop: "Stop Patrol",
-        pcReset: "Reset PC",
+        pcReset: "Restart Desktop",
         patrolNotStarted: "Not Started",
         patrolRunning: "Running",
         patrolStopped: "Stopped",
@@ -1657,7 +1657,7 @@
         qrNotCodeFlow: "QR code detected, but not a CodeFlow code",
         qrCameraFailed: "Camera failed: ",
         noTraceYet: "No trace yet",
-        confirmResetPc: "Reset PC CodeFlow Desktop process?",
+        confirmResetPc: "Restart CodeFlow Desktop? It will reconnect in ~5-10s.",
         confirmUnbind: "Unbind this PC?"
       }
     };
@@ -2923,9 +2923,7 @@
     }
 
     if (traceRefreshBtn) traceRefreshBtn.addEventListener("click", () => {
-      requestPatrolStatus(); // 点刷新时触发 PC 推送最新轨迹
-      requestDashboard();    // 同时刷新任务列表
-      setTimeout(() => requestDashboard(), 2000);
+      requestPatrolStatus(); // 刷新巡检状态和轨迹
     });
 
     let _lastFileListTotal = -1;
