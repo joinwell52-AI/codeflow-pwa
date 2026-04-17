@@ -477,23 +477,46 @@ _JS_EXTRACT_STATE = r"""
         const imgEls = el.querySelectorAll('img:not([width="16"]):not([height="16"]):not([class*="icon"]):not([class*="avatar"])');
         const hasImage = imgEls.length > 0;
 
-        // 纯文本提取（排除代码块、工具调用等子元素的文本）
-        let plainText = '';
-        const clone = el.cloneNode(true);
-        clone.querySelectorAll('pre, [class*="code-block"], [class*="terminal"], [class*="tool-call"], [class*="tool-use"], [class*="thinking"], [class*="thought"]').forEach(n => n.remove());
-        plainText = (clone.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 300);
+        // 提取完整 markdown 文本（保留换行结构，用于 PWA Markdown 渲染）
+        function elToMd(node) {
+            let md = '';
+            node.childNodes.forEach(child => {
+                if (child.nodeType === 3) { // text node
+                    md += child.textContent;
+                } else if (child.nodeType === 1) {
+                    const tag = child.tagName.toLowerCase();
+                    if (tag === 'br') { md += '\n'; }
+                    else if (tag === 'p') { md += elToMd(child) + '\n\n'; }
+                    else if (tag === 'strong' || tag === 'b') { md += '**' + elToMd(child) + '**'; }
+                    else if (tag === 'em' || tag === 'i') { md += '_' + elToMd(child) + '_'; }
+                    else if (tag === 'code') { md += '`' + child.textContent + '`'; }
+                    else if (tag === 'pre') { md += '\n```\n' + child.textContent.trim() + '\n```\n'; }
+                    else if (tag === 'li') { md += '• ' + elToMd(child).trim() + '\n'; }
+                    else if (tag === 'ul' || tag === 'ol') { md += '\n' + elToMd(child) + '\n'; }
+                    else if (tag.match(/^h[1-6]$/)) { md += '\n**' + elToMd(child).trim() + '**\n'; }
+                    else if (tag === 'a') { md += elToMd(child); }
+                    else if (['script','style','svg'].includes(tag)) { /* skip */ }
+                    else { md += elToMd(child); }
+                }
+            });
+            return md;
+        }
+        // 完整 markdown（最多 3000 字节供 PWA 渲染）
+        const fullMd = elToMd(el).trim().replace(/\n{3,}/g, '\n\n').substring(0, 3000);
+        // 纯文本摘要（折叠用）
+        let plainText = (el.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 200);
 
-        // 分类 + 生成摘要
+        // 分类
         if (hasThinking) {
             msg.type = 'thinking';
-            const preview = (thinkEls[0]?.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 120);
+            const preview = (thinkEls[0]?.textContent || '').trim().replace(/\s+/g, ' ').substring(0, 200);
             msg.summary = preview || 'thinking...';
         } else if (hasTool) {
             msg.type = 'tool';
-            msg.summary = (toolName ? toolName + ': ' : '') + (plainText.substring(0, 150) || 'tool call');
+            msg.summary = (toolName ? toolName + ': ' : '') + plainText.substring(0, 150);
         } else if (hasTerminal) {
             msg.type = 'terminal';
-            const cmd = (termEls[0]?.textContent || '').trim().split('\n')[0].substring(0, 100);
+            const cmd = (termEls[0]?.textContent || '').trim().split('\n').slice(0, 2).join(' ↵ ').substring(0, 120);
             msg.summary = cmd || 'terminal';
         } else if (hasFileDiff) {
             msg.type = 'file_edit';
@@ -501,8 +524,7 @@ _JS_EXTRACT_STATE = r"""
             msg.summary = fileNames.join(', ') || `${fileEls.length} file(s)`;
         } else if (codeCount > 0 && codeLines > 3) {
             msg.type = 'code';
-            const codeHint = plainText.substring(0, 120) || `${codeLines} lines`;
-            msg.summary = codeHint;
+            msg.summary = plainText.substring(0, 150) || `${codeLines} lines`;
             if (codeLangs.length > 0) msg.lang = codeLangs[0];
         } else if (hasImage) {
             msg.type = 'image';
@@ -512,9 +534,9 @@ _JS_EXTRACT_STATE = r"""
             msg.summary = plainText.substring(0, 200);
         }
 
-        // 附加：纯文本开头（所有类型都带一点上下文）
-        if (msg.type !== 'text' && plainText.length > 0) {
-            msg.context = plainText.substring(0, 100);
+        // 完整 markdown 内容（PWA 渲染用）
+        if (fullMd.length > 0) {
+            msg.md = fullMd;
         }
 
         state.recentMessages.push(msg);

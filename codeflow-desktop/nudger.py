@@ -2827,9 +2827,19 @@ def _read_team_info(config) -> dict:
             }
             role_defs = TEAM_TEMPLATES.get(team_id, [])
         roles = [rd.get("code","").upper() for rd in role_defs if rd.get("code")]
-        return {"roles": roles, "team_name": team_name}
+        # leader：从 codeflow.json 取，或 role_defs 中第一个 is_leader=true，或按模板默认
+        leader = cfg.get("leader", "")
+        if not leader:
+            for rd in role_defs:
+                if rd.get("is_leader") or rd.get("leader"):
+                    leader = rd.get("code", "")
+                    break
+        if not leader:
+            TEAM_LEADERS = {"dev-team": "PM", "media-team": "PUBLISHER", "mvp-team": "MARKETER", "qa-team": "LEAD-QA"}
+            leader = TEAM_LEADERS.get(team_id, roles[0] if roles else "")
+        return {"roles": roles, "team_name": team_name, "leader": leader.upper()}
     except Exception:
-        return {"roles": [], "team_name": ""}
+        return {"roles": [], "team_name": "", "leader": ""}
 
 
 def _build_dashboard(config, nudger: Nudger) -> dict:
@@ -2899,6 +2909,7 @@ def _build_dashboard(config, nudger: Nudger) -> dict:
         "items": items,
         "team_roles": team_info["roles"],
         "team_name": team_info["team_name"],
+        "leader": team_info.get("leader", ""),
         "stats": {
             "today_tasks": tasks_count,
             "today_replies": reports_count,
