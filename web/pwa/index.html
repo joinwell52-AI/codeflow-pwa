@@ -3392,12 +3392,30 @@
     targetRoleEl.onchange = () => { localStorage.setItem("codeflow_target_device_id", targetRoleEl.value); renderTeam(onlineDevices, targetRoleEl.value); updateMeta(); requestDashboard(); };
     const headerRefreshBtnEl = document.getElementById("headerRefreshBtn");
     if (headerRefreshBtnEl) {
-      headerRefreshBtnEl.onclick = () => {
+      headerRefreshBtnEl.onclick = async () => {
         headerRefreshBtnEl.classList.add("spin");
-        setTimeout(() => headerRefreshBtnEl.classList.remove("spin"), 700);
-        requestDashboard();
-        setTimeout(() => requestDashboard(), 2000);
-        setTimeout(() => _renderTaskListItems(), 2500);
+        setTimeout(() => headerRefreshBtnEl.classList.remove("spin"), 800);
+        // 先检查 Service Worker 是否有新版本
+        let updated = false;
+        try {
+          if ("serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) {
+              await reg.update();
+              if (reg.waiting) {
+                // 有等待中的新版本，激活并刷新
+                reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                showToast(currentLang === "en" ? "New version found, reloading…" : "发现新版本，正在更新…", "ok");
+                setTimeout(() => location.reload(), 800);
+                updated = true;
+              }
+            }
+          }
+        } catch (e) { /* SW 不可用时静默忽略 */ }
+        if (!updated) {
+          // 没有新版本，正常刷新任务数据
+          requestDashboard();
+        }
       };
     }
     const agentRailSideBtnEl = document.getElementById("agentRailSideBtn");
