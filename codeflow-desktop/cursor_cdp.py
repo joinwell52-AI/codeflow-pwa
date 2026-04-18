@@ -599,19 +599,22 @@ def _js_find_role_position(role_name: str) -> str:
             return n === target || m[2].toUpperCase() === shortName;
         }}
 
-        // 优先：Tab 栏 div[role="tab"]
-        for (const tab of document.querySelectorAll('div[role="tab"]')) {{
-            if (match(tab.textContent || '')) {{
-                const rect = tab.getBoundingClientRect();
-                return {{ found: true, x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2), text: tab.textContent.trim(), source: 'tab' }};
-            }}
-        }}
-
-        // 其次：侧栏 span.agent-sidebar-cell-text
-        for (const cell of document.querySelectorAll('span.agent-sidebar-cell-text')) {{
-            if (match(cell.textContent || '')) {{
-                const rect = cell.getBoundingClientRect();
-                return {{ found: true, x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2), text: cell.textContent.trim(), source: 'sidebar' }};
+        // 候选元素收集：Tab 栏 + 侧栏，包含不可见元素
+        const candidates = [
+            ...document.querySelectorAll('div[role="tab"]'),
+            ...document.querySelectorAll('span.agent-sidebar-cell-text'),
+            ...document.querySelectorAll('[class*="agentTab"],[class*="agent-tab"],[class*="AgentTab"]'),
+        ];
+        for (const el of candidates) {{
+            if (match(el.textContent || '')) {{
+                const rect = el.getBoundingClientRect();
+                // 优先可见元素（有坐标）；不可见时也记录以便 JS click 兜底
+                if (rect.width > 0 && rect.height > 0) {{
+                    return {{ found: true, x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2), text: el.textContent.trim(), source: 'visible', js_click: false }};
+                }}
+                // 不可见：尝试 JS click（触发 React 合成事件）
+                try {{ el.click(); }} catch(e) {{}}
+                return {{ found: true, x: 0, y: 0, text: el.textContent.trim(), source: 'hidden_jsclick', js_click: true }};
             }}
         }}
 
@@ -847,7 +850,13 @@ def click_role(role: str) -> bool:
         return False
 
     x, y = pos["x"], pos["y"]
-    logger.info("CDP click_role(%s) 定位: (%d, %d) text=%s", role, x, y, pos.get("text", ""))
+    source = pos.get("source", "")
+    logger.info("CDP click_role(%s) 定位: (%d, %d) text=%s source=%s", role, x, y, pos.get("text", ""), source)
+
+    if pos.get("js_click"):
+        # 元素不可见（tab 折叠），已在 JS 里直接 click()，无需再发鼠标事件
+        logger.info("CDP click_role(%s) → JS click 已发送（元素不可见）", role)
+        return True
 
     for evt_type in ("mousePressed", "mouseReleased"):
         conn.send_command("Input.dispatchMouseEvent", {
