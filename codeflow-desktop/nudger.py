@@ -2789,7 +2789,23 @@ async def relay_client(config, nudger: Nudger, stop_event: asyncio.Event | None 
                                 _sw_clicked = False
 
                                 def _do_switch_sync():
-                                    """CDP click_role 切换（和消息轮询完全相同的调用，无需窗口焦点）"""
+                                    """先恢复 Cursor 窗口（确保顶部 tab 可见），再 CDP click_role"""
+                                    # 恢复窗口：CDP click_role 依赖顶部 agent tab 渲染，窗口最小化时 tab 不存在
+                                    try:
+                                        win = find_cursor_window(nudger.config if nudger else None)
+                                        if win:
+                                            import ctypes as _ct
+                                            u32 = _ct.windll.user32
+                                            hwnd = win[0]
+                                            if u32.IsIconic(hwnd):
+                                                u32.ShowWindow(hwnd, 9)   # SW_RESTORE
+                                                time.sleep(0.4)
+                                            else:
+                                                u32.ShowWindow(hwnd, 5)   # SW_SHOW（从后台带到前台）
+                                                time.sleep(0.2)
+                                    except Exception as _we:
+                                        logger.debug("switch: 窗口恢复失败 %s", _we)
+                                    # CDP click
                                     try:
                                         ok = cdp_click_role(full_label) or cdp_click_role(role_key)
                                         logger.info("switch_agent_focus CDP click=%s label=%s", ok, full_label)
