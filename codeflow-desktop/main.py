@@ -43,7 +43,7 @@ import webbrowser
 from pathlib import Path
 
 
-VERSION = "2.12.16"
+VERSION = "2.12.17"
 
 
 logger = logging.getLogger("codeflow")
@@ -380,13 +380,52 @@ def ensure_cursor_exe_path(config) -> None:
 
         logger.warning("选择 Cursor.exe 弹窗失败: %s", e)
 
+_SHARED_README_ZH = (
+    "# shared/ — 团队共享产物 / Team-wide Standing Docs\n\n"
+    "与 `tasks/ reports/ issues/` 不同，本目录里的文档是**全队共读、允许原地更新**"
+    "的知识沉淀，不在任务流程中流转。\n\n"
+    "Unlike flow files, documents here are read by the whole team and MAY be "
+    "updated in place — they are standing knowledge, not work items.\n\n"
+    "## 推荐命名前缀 / Recommended prefixes\n\n"
+    "| 前缀 Prefix | 用途 Purpose |\n"
+    "|---|---|\n"
+    "| `SPRINT-`    | 冲刺计划、节奏 / Sprint plans & cadence |\n"
+    "| `DASHBOARD-` | 全貌看板 / Overview boards |\n"
+    "| `STATUS-`    | 当前状态活页 / Living status pages |\n"
+    "| `INDEX-`     | 导航索引 / Navigation indexes |\n"
+    "| `MATRIX-`    | 人岗或资源矩阵 / Role / resource matrices |\n"
+    "| `GLOSSARY-`  | 术语表 / Terminology |\n"
+    "| `RULES-`     | 本项目局部约定 / Project-local conventions |\n"
+    "| `DECISION-`  | 决策记录（只追加）/ Decision records (append-only) |\n"
+    "| `RETRO-`     | 复盘（只追加）/ Retrospectives (append-only) |\n"
+    "| `SPEC-`      | 需求或规格说明 / Specifications |\n\n"
+    "如果现有前缀都不合适，自己创一个 UPPERCASE-HYPHEN 新前缀即可。\n"
+    "If none of these fits, coin a new UPPERCASE-HYPHEN prefix.\n"
+)
+
+
+def _ensure_shared_readme(agents_dir: Path):
+    """在 shared/ 首次出现时放一份使用说明（幂等，不会覆盖已有文件）。"""
+    shared = agents_dir / "shared"
+    try:
+        shared.mkdir(parents=True, exist_ok=True)
+        readme = shared / "README.md"
+        if not readme.exists():
+            readme.write_text(_SHARED_README_ZH, encoding="utf-8")
+    except Exception as e:
+        logger.debug("[fcop] 写入 shared/README.md 失败: %s", e)
+
+
 def init_project_dirs(project_dir: Path):
 
     agents_dir = project_dir / "docs" / "agents"
 
-    for sub in ["tasks", "reports", "issues", "log"]:
+    # shared/ 自 FCoP v2.12.17 起是标配：看板、冲刺、术语表、索引等共享产物的家
+    for sub in ["tasks", "reports", "issues", "shared", "log"]:
 
         (agents_dir / sub).mkdir(parents=True, exist_ok=True)
+
+    _ensure_shared_readme(agents_dir)
 
     logger.info("项目目录已就绪: %s", agents_dir)
 

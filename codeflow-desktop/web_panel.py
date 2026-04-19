@@ -276,13 +276,17 @@ def _scan_files(directory: Path) -> list[dict]:
 
     items = []
 
-    for f in sorted(directory.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
+    # 递归扫描：允许子目录分组（如 tasks/individual/）
+    for f in sorted(directory.rglob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
 
         st = f.stat()
 
         items.append({
 
             "filename": f.name,
+
+            # 相对路径让前端可以展示所在子目录（例如 individual/TASK-...）
+            "relpath": str(f.relative_to(directory)).replace("\\", "/"),
 
             "size": st.st_size,
 
@@ -294,7 +298,31 @@ def _scan_files(directory: Path) -> list[dict]:
 
     return items
 
-_TASK_RE = re.compile(r'TASK-(\d{8})-(\d{3})-([A-Za-z0-9]+)-to-([A-Za-z0-9]+)\.md', re.IGNORECASE)
+# FCoP v2.12.17: recipient 允许 TEAM、role.slot、assignee-D1 等形式
+# 字符集开放到字母数字加 . _ - 但对结尾 .md|.fcop 非贪婪回溯
+_TASK_RE = re.compile(
+    r'^TASK-(\d{8})-(\d{2,4})-([A-Za-z0-9_]+)-to-([A-Za-z0-9._-]+?)\.(md|fcop)$',
+    re.IGNORECASE,
+)
+
+
+def _task_file_matches_recipient(filename: str, recipient: str) -> bool:
+    """判断任务文件名是否发给指定角色。
+
+    识别：
+      - 直送：``-to-{ROLE}.md``
+      - 槽位：``-to-{ROLE}.{SLOT}.md`` 或 ``-to-{ROLE}-{SLOT}.md``
+      - 广播：``-to-TEAM.md`` 或 ``-to-TEAM.{SCOPE}.md``（对所有角色都算命中）
+    """
+
+    if not recipient:
+        return True
+    role = re.escape(recipient.strip().upper())
+    fn = filename.upper()
+    # Slot 分隔符固定为点号 `.`——角色名本身可能带连字符（AUTO-TESTER / LEAD-QA）
+    pat_role = rf"-TO-{role}(\.[A-Z0-9_-]+)?\.(MD|FCOP)$"
+    pat_team = r"-TO-TEAM(\.[A-Z0-9_-]+)?\.(MD|FCOP)$"
+    return bool(re.search(pat_role, fn) or re.search(pat_team, fn))
 
 
 def _parse_frontmatter(filepath: Path) -> dict:
@@ -351,13 +379,15 @@ def _build_pipeline() -> list[dict]:
 
     if reports_dir and reports_dir.exists():
 
-        for f in reports_dir.glob("*.md"):
+        # 递归：报告也允许跟随任务目录分组
+        for f in reports_dir.rglob("*.md"):
 
             report_map[f.name.upper()] = f.name
 
     pipeline = []
 
-    for f in sorted(tasks_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
+    # 递归：任务允许在子目录分组（分包、冲刺等）
+    for f in sorted(tasks_dir.rglob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
 
         m = _TASK_RE.match(f.name)
 
@@ -483,9 +513,9 @@ def _copy_templates(project_dir: Path, team_id: str = "dev-team"):
 
     agents_dst.mkdir(parents=True, exist_ok=True)
 
-    # 清除旧团队角色文件（只删 .md，保留 tasks/reports/issues/log 子目录和 codeflow.json）
+    # 清除旧团队角色文件（只删 .md，保留 tasks/reports/issues/shared/log 子目录和 codeflow.json）
 
-    _KEEP = {"tasks", "reports", "issues", "log", ".codeflow"}
+    _KEEP = {"tasks", "reports", "issues", "shared", "log", ".codeflow"}
 
     for f in list(agents_dst.glob("*.md")):
 
@@ -963,11 +993,11 @@ class PanelHandler(BaseHTTPRequestHandler):
 
         ad = _agents_dir()
 
-        dirs_ok = ad and all((ad / d).exists() for d in ["tasks", "reports", "issues", "log"])
+        dirs_ok = ad and all((ad / d).exists() for d in ["tasks", "reports", "issues", "shared", "log"])
 
         checks.append({"name": _T("pf_dir_structure"), "ok": bool(dirs_ok),
 
-                        "detail": "tasks/ reports/ issues/ log/ ✓" if dirs_ok else _T("pf_missing_subdirs")})
+                        "detail": "tasks/ reports/ issues/ shared/ log/ ✓" if dirs_ok else _T("pf_missing_subdirs")})
 
         cfg = _load_bf_config()
 
@@ -1627,9 +1657,16 @@ class PanelHandler(BaseHTTPRequestHandler):
 
             return self._json({"ok": False, "message": _T("project_dir_not_set")}, 400)
 
-        for sub in ["tasks", "reports", "issues", "log"]:
+        for sub in ["tasks", "reports", "issues", "shared", "log"]:
 
             (ad / sub).mkdir(parents=True, exist_ok=True)
+
+        # shared/ 首次创建时放一份使用说明（幂等，不覆盖已有）
+        try:
+            from main import _ensure_shared_readme
+            _ensure_shared_readme(ad)
+        except Exception:
+            pass
 
         tmpl = TEAM_TEMPLATES[team_id]
 

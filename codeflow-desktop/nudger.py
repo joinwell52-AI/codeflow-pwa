@@ -3073,7 +3073,8 @@ def _build_dashboard(config, nudger: Nudger) -> dict:
         p = config.agents_dir / d
         if not p.exists():
             continue
-        for f in sorted(p.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)[:20]:
+        # 递归扫描：支持子目录分组（tasks/individual/ 等）
+        for f in sorted(p.rglob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)[:20]:
             try:
                 text = f.read_text(encoding="utf-8")
             except Exception:
@@ -3183,12 +3184,24 @@ def _relay_stop_patrol(nudger: Nudger):
 
 
 def _build_task_detail(config, filename: str) -> dict:
-    """根据文件名查找任务文件，返回完整内容给 PWA。"""
+    """根据文件名查找任务文件，返回完整内容给 PWA。
+
+    注意：从 FCoP v2.12.17 起允许子目录分组（tasks/individual/ 等），
+    这里先按平铺查，查不到再递归查。
+    """
     if not filename:
         logger.warning("_build_task_detail: filename 为空")
         return {"error": "missing filename"}
     for d in ["tasks", "reports", "issues", "log"]:
-        p = config.agents_dir / d / filename
+        base = config.agents_dir / d
+        if not base.exists():
+            continue
+        p = base / filename
+        if not p.exists():
+            # 子目录兜底：递归找同名文件
+            matches = list(base.rglob(filename))
+            if matches:
+                p = matches[0]
         if p.exists():
             try:
                 text = p.read_text(encoding="utf-8")

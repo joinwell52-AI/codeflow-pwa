@@ -41,7 +41,28 @@ AGENTS_DIR = PROJECT_DIR / "docs" / "agents"
 TASKS_DIR = AGENTS_DIR / "tasks"
 REPORTS_DIR = AGENTS_DIR / "reports"
 ISSUES_DIR = AGENTS_DIR / "issues"
+SHARED_DIR = AGENTS_DIR / "shared"
 LOG_DIR = AGENTS_DIR / "log"
+
+
+def _task_file_matches_recipient(filename: str, recipient: str) -> bool:
+    """判断任务文件名是否发给指定角色。
+
+    识别 FCoP v2.12.17 的 4 种收件人形式：
+      - 直送：``-to-{ROLE}.md``
+      - 槽位：``-to-{ROLE}.{SLOT}.md`` （点号分隔）
+      - 广播：``-to-TEAM.md`` 或 ``-to-TEAM.{SCOPE}.md`` （对所有角色命中）
+      - 匿名槽位：``-to-assignee.{SLOT}.md``
+
+    角色名本身可以含连字符（AUTO-TESTER / LEAD-QA），slot 分隔符只用 `.`
+    """
+    if not recipient:
+        return True
+    role = re.escape(recipient.strip().upper())
+    fn = filename.upper()
+    pat_role = rf"-TO-{role}(\.[A-Z0-9_-]+)?\.(MD|FCOP)$"
+    pat_team = r"-TO-TEAM(\.[A-Z0-9_-]+)?\.(MD|FCOP)$"
+    return bool(re.search(pat_role, fn) or re.search(pat_team, fn))
 
 
 def _team_config_path_read() -> Path | None:
@@ -208,13 +229,38 @@ def _scan_dir(directory: Path) -> list[dict]:
     if not directory.exists():
         return []
     items = []
-    for f in sorted(directory.glob("*.md")):
+    # 递归扫描：允许子目录分组（如 tasks/individual/、tasks/sprint-3/）
+    for f in sorted(directory.rglob("*.md")):
+        try:
+            relpath = str(f.relative_to(directory)).replace("\\", "/")
+        except ValueError:
+            relpath = f.name
         items.append({
             "filename": f.name,
+            "relpath": relpath,
             "size": f.stat().st_size,
             "modified": datetime.fromtimestamp(f.stat().st_mtime).isoformat(),
         })
     return items
+
+
+def _parse_frontmatter(filepath: Path) -> dict:
+    """极简 YAML frontmatter 解析（只拆一级 key: value）。"""
+    try:
+        text = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return {}
+    if not text.startswith("---"):
+        return {}
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    out: dict = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            out[k.strip().lower()] = v.strip()
+    return out
 
 
 def _load_project_config() -> dict | None:
@@ -231,7 +277,7 @@ def _load_project_config() -> dict | None:
 def init_project(team: str = "dev-team", lang: str = "zh") -> str:
     """Initialize CodeFlow project structure with a team template.
 
-    Creates docs/agents/ directories (tasks, reports, issues, log) and a welcome task.
+    Creates docs/agents/ directories (tasks, reports, issues, shared, log) and a welcome task.
 
     Args:
         team: Team template ID. Options: dev-team, media-team, mvp-team
@@ -240,7 +286,8 @@ def init_project(team: str = "dev-team", lang: str = "zh") -> str:
     if team not in TEAM_TEMPLATES:
         return f"Unknown team: {team}. Options: {', '.join(TEAM_TEMPLATES.keys())}"
 
-    for d in [TASKS_DIR, REPORTS_DIR, ISSUES_DIR, LOG_DIR]:
+    # shared/ 从 v2.12.17 起是团队标配：看板、冲刺、术语表、索引等共享产物的家
+    for d in [TASKS_DIR, REPORTS_DIR, ISSUES_DIR, SHARED_DIR, LOG_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
     tmpl = TEAM_TEMPLATES[team]
@@ -257,7 +304,35 @@ def init_project(team: str = "dev-team", lang: str = "zh") -> str:
             f"- `tasks/` — Task files\n"
             f"- `reports/` — Completion reports\n"
             f"- `issues/` — Issue records\n"
+            f"- `shared/` — Team-wide standing docs (DASHBOARD / SPRINT / GLOSSARY / ...)\n"
             f"- `log/` — Archives\n",
+            encoding="utf-8",
+        )
+
+    # shared/ 首次创建时留一份使用说明，避免空目录，也引导 Agent 怎么用
+    shared_readme = SHARED_DIR / "README.md"
+    if not shared_readme.exists():
+        shared_readme.write_text(
+            "# shared/ — 团队共享产物 / Team-wide Standing Docs\n\n"
+            "与 `tasks/ reports/ issues/` 不同，本目录里的文档是**全队共读、允许原地更新**"
+            "的知识沉淀，不在任务流程中流转。\n\n"
+            "Unlike flow files, documents here are read by the whole team and MAY be "
+            "updated in place — they are standing knowledge, not work items.\n\n"
+            "## 推荐命名前缀 / Recommended prefixes\n\n"
+            "| 前缀 Prefix | 用途 Purpose |\n"
+            "|---|---|\n"
+            "| `SPRINT-`    | 冲刺计划、节奏 / Sprint plans & cadence |\n"
+            "| `DASHBOARD-` | 全貌看板 / Overview boards |\n"
+            "| `STATUS-`    | 当前状态活页 / Living status pages |\n"
+            "| `INDEX-`     | 导航索引 / Navigation indexes |\n"
+            "| `MATRIX-`    | 人岗或资源矩阵 / Role / resource matrices |\n"
+            "| `GLOSSARY-`  | 术语表 / Terminology |\n"
+            "| `RULES-`     | 本项目局部约定 / Project-local conventions |\n"
+            "| `DECISION-`  | 决策记录（只追加）/ Decision records (append-only) |\n"
+            "| `RETRO-`     | 复盘（只追加）/ Retrospectives (append-only) |\n"
+            "| `SPEC-`      | 需求或规格说明 / Specifications |\n\n"
+            "如果现有前缀都不合适，自己创一个 UPPERCASE-HYPHEN 新前缀即可。\n"
+            "If none of these fits, coin a new UPPERCASE-HYPHEN prefix.\n",
             encoding="utf-8",
         )
 
@@ -318,7 +393,7 @@ def create_custom_team(
     if leader.upper() not in role_list:
         return f"Leader '{leader}' must be one of the roles: {', '.join(role_list)}"
 
-    for d in [TASKS_DIR, REPORTS_DIR, ISSUES_DIR, LOG_DIR]:
+    for d in [TASKS_DIR, REPORTS_DIR, ISSUES_DIR, SHARED_DIR, LOG_DIR]:
         d.mkdir(parents=True, exist_ok=True)
 
     config = {
@@ -398,21 +473,47 @@ def get_team_status(lang: str = "") -> str:
 
 
 @mcp.tool
-def list_tasks(recipient: str = "", lang: str = "") -> str:
-    """List tasks, optionally filtered by recipient role code.
+def list_tasks(
+    recipient: str = "",
+    parent: str = "",
+    batch: str = "",
+    lang: str = "",
+) -> str:
+    """List tasks, optionally filtered.
+
+    Recipient matching is FCoP-aware (v2.12.17):
+      - ``recipient=BUILDER`` matches ``to-BUILDER``, ``to-BUILDER.D1``, and ``to-TEAM``
+      - ``recipient=assignee`` matches ``to-assignee.D1`` etc.
 
     Args:
-        recipient: Filter by recipient role code (e.g. DEV, CODER, ARTIST). Empty = all.
-        lang: Output language (zh/en). Empty = auto-detect.
+        recipient: Filter by recipient role. Also matches TEAM broadcast and ROLE.SLOT.
+        parent: Filter by parent task id in frontmatter (for 分包 / subtask batches).
+        batch:  Filter by batch tag in frontmatter (groups of sibling sub-tasks).
+        lang:   Output language (zh/en). Empty = auto-detect.
     """
     cfg = _load_project_config()
     if not lang:
         lang = cfg.get("lang", "zh") if cfg else "zh"
 
     tasks = _scan_dir(TASKS_DIR)
+
     if recipient:
-        pattern = f"TO-{recipient.upper()}"
-        tasks = [x for x in tasks if pattern in x["filename"].upper()]
+        tasks = [
+            x for x in tasks
+            if _task_file_matches_recipient(x["filename"], recipient)
+        ]
+
+    if parent or batch:
+        filtered = []
+        for x in tasks:
+            fp = TASKS_DIR / x.get("relpath", x["filename"])
+            front = _parse_frontmatter(fp) if fp.exists() else {}
+            if parent and front.get("parent", "").strip() != parent.strip():
+                continue
+            if batch and front.get("batch", "").strip() != batch.strip():
+                continue
+            filtered.append(x)
+        tasks = filtered
 
     if not tasks:
         msg = t("no_tasks", lang)
@@ -422,7 +523,8 @@ def list_tasks(recipient: str = "", lang: str = "") -> str:
 
     lines = [f"{t('total', lang)} {len(tasks)} {t('unit', lang)}:\n"]
     for x in tasks:
-        lines.append(f"  - {x['filename']}  ({x['modified']})")
+        rel = x.get("relpath") or x["filename"]
+        lines.append(f"  - {rel}  ({x['modified']})")
     return "\n".join(lines)
 
 

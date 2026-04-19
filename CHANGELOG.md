@@ -8,6 +8,99 @@
 
 ---
 
+## [2.12.17] - 2026-04-19
+
+### 协议（FCoP 语法收编）
+
+#### 正式定位：FCoP 是 Agent-to-Agent 通信协议
+
+`codeflow-core.mdc` 重写首段，把协议定位明确写死——CodeFlow 团队内部的
+Agent 通过**文件名即路由、正文即消息**协作，不依赖数据库、中间件或消息队列。
+人类是观察者，不是语法警察。
+
+#### 收编三种 AI 自发涌现的路由形式
+
+`codeflow-1` 实战中 AI 已经在用但规范里没写的，这次正式收编：
+
+- `to-TEAM` — **全体广播**，对除发件人外的所有角色命中
+- `to-{ROLE}.{SLOT}` — **角色内槽位**，例如 `to-BUILDER.D1`，点号分隔
+  （slot 分隔符固定为 `.`，不用连字符——因为角色名本身可能带连字符，
+  如 `AUTO-TESTER`、`LEAD-QA`）
+- `to-assignee.{SLOT}` — **匿名槽位**，角色待定，用于"先开位置后找人"场景
+
+#### 新增 `shared/` 共享产物目录
+
+与流转件（`tasks/ reports/ issues/`）并列的第四类目录，专门装**非流转**文档。
+首次创建时自动释放一份 `shared/README.md`，列出推荐前缀：
+
+`SPRINT-` / `DASHBOARD-` / `STATUS-` / `INDEX-` / `MATRIX-` / `GLOSSARY-`
+/ `RULES-` / `DECISION-` / `RETRO-` / `SPEC-`
+
+前缀清单是**种子词汇**，Agent 需要新类别时可自由创造 UPPERCASE-HYPHEN 新前缀。
+不同于流转件的 append-only，`shared/` 下的文档**允许原地更新**。
+
+#### 分包任务（Subtask Batches）正式纳入语法
+
+当一个大任务要拆成多个并行子任务（如一次发布拆给 6 个数据工 + 2 个剪辑 +
+1 个音乐 + 1 个脚本 + 1 个发布位），正式支持：
+
+- `tasks/{batch-name}/` 子目录分组，内放 `README.md` 自说明
+- 子任务 frontmatter 带 `parent:` 字段指回上游原单
+- 可选 `batch:` 字段标记同批次（通常就是子目录名）
+- 索引另放到 `shared/INDEX-{batch-name}.md`，不污染 tasks/
+
+#### `tasks/` / `reports/` / `issues/` 允许子目录分组
+
+任务不再强制平铺，可以按 sprint、按主题、按分包开子目录，
+只需在子目录里留 `README.md` 说明分组理由。
+
+### 桌面端
+
+#### `list_tasks` 支持 FCoP v2.12.17 全部收件人形式
+
+- 新增 `_task_file_matches_recipient()` 辅助函数，正则精确匹配 4 种形式
+- 查询 `recipient=BUILDER` 会同时返回 `to-BUILDER`、`to-BUILDER.*`、
+  以及 `to-TEAM`/`to-TEAM.*`（广播自动命中）
+- 修复历史子串误匹配：旧版 `TO-DEV` 会匹配到 `TO-DEVOPS`，新版按词界严格匹配
+
+#### 目录扫描全面递归化
+
+`web_panel.py` / `nudger.py` 里的任务/报告/归档扫描从 `glob("*.md")`
+改为 `rglob("*.md")`，支持子目录分组。PWA dashboard 和任务详情接口同步。
+
+#### `shared/` 目录在项目初始化时自动创建
+
+- `init_project_dirs()` 和团队引导的子目录列表加入 `shared`
+- 首次创建时写入 `shared/README.md`（前缀清单 + 使用说明）
+- 旧项目可通过 Project Folder 自检触发补齐
+
+#### 项目目录自检信息调整
+
+面板的"目录结构"检查项现在期望 `tasks/ reports/ issues/ shared/ log/`，
+缺少任一项即标红。
+
+### MCP 插件（codeflow-plugin）
+
+- `list_tasks` 新增 `parent=` 和 `batch=` 过滤参数，用 frontmatter 筛分包子任务
+- `init_project` / `create_custom_team` 自动创建 `shared/` 并落下种子 README
+- `_scan_dir` 递归化，输出增加 `relpath` 字段便于前端展示子目录
+- 新增 `_parse_frontmatter` 极简 YAML 解析（只拆一级 key）
+
+### 向后兼容
+
+- v2.12.16 及以前生成的任务文件（单一角色收件人、平铺目录）完全兼容
+- `codeflow-1` 里历史出现的 `to-assignee-D1`（连字符 slot）形式在规范外
+  但不会崩溃——只是查询 `recipient=assignee` 无法命中，需改用点号重写
+- `shared/` 缺失不会导致旧项目报错，只会在自检里显示"缺少子目录"
+
+### 其他
+
+- 根 `README.md` 徽章同步：Desktop `v2.12.0` → `v2.12.17`，
+  PWA `v2.4.16` → `v2.4.65`
+- 先前遗留的 `_msg.txt`（上一轮会话残留）清理
+
+---
+
 ## [2.12.16] - 2026-04-18
 
 ### 桌面端

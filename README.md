@@ -8,8 +8,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-Live-green)](https://joinwell52-ai.github.io/codeflow-pwa/)
-[![Desktop](https://img.shields.io/badge/Desktop-v2.12.0-orange)](https://github.com/joinwell52-AI/codeflow-pwa/releases)
-[![PWA Version](https://img.shields.io/badge/PWA-v2.4.16-blue)](https://joinwell52-ai.github.io/codeflow-pwa/)
+[![Desktop](https://img.shields.io/badge/Desktop-v2.12.17-orange)](https://github.com/joinwell52-AI/codeflow-pwa/releases)
+[![PWA Version](https://img.shields.io/badge/PWA-v2.4.65-blue)](https://joinwell52-ai.github.io/codeflow-pwa/)
 
 [📖 English](README.en.md) | [📖 中文版](README.zh.md)
 
