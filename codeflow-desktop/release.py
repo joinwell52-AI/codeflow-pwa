@@ -97,6 +97,22 @@ def github_create_release(tag: str, title: str, notes: str, token: str) -> int:
 
 
 def github_upload_asset(release_id: int, exe_path: str, token: str):
+    list_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/{release_id}/assets"
+    list_req = urllib.request.Request(list_url, headers={
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "CodeFlow-Releaser",
+    })
+    try:
+        with urllib.request.urlopen(list_req, timeout=30) as resp:
+            existing = json.loads(resp.read())
+        for asset in existing:
+            if asset.get("name") == ASSET_NAME:
+                print(f"  GitHub 资产已存在，跳过上传（size={asset.get('size')}）")
+                return asset.get("browser_download_url", "")
+    except Exception as e:
+        print(f"  [警告] 查询已有资产失败（继续尝试上传）：{e}")
+
     upload_url = f"https://uploads.github.com/repos/{GITHUB_REPO}/releases/{release_id}/assets?name={ASSET_NAME}"
     with open(exe_path, "rb") as f:
         data = f.read()
