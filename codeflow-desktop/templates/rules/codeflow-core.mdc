@@ -71,7 +71,7 @@ treat it as addressed to you (and also to every other role).
 
 ```markdown
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 task_id: TASK-20260418-201
@@ -95,6 +95,22 @@ batch: individual-delivery       # optional: grouping tag (usually = subdir name
 Required frontmatter: `protocol`, `version`, `kind`, `sender`, `recipient`.
 Everything else is optional but encouraged. Use `parent:` to trace derived work,
 `related:` to cross-reference, `batch:` to tag grouped sub-tasks.
+
+### About `protocol:` and `version:` / 关于 `protocol:` 和 `version:`
+
+- **`protocol: fcop`** — portable identifier that tells any reader (agent, tool,
+  human) "this Markdown file is an FCoP coordination document, not a random note."
+  Canonical value is lowercase `fcop` (machine-identifier convention, like `http` /
+  `grpc`). The brand name **FCoP** is used in prose / titles / docs. Historical
+  alias `agent_bridge` (pre-2026-04-20) is still accepted by parsers.
+  可移植标识符，告诉任何读者（Agent、工具、人）"这是 FCoP 协作文档"。
+  规范值为小写 `fcop`；品牌名 `FCoP` 用在文档标题和对外表达。历史别名
+  `agent_bridge` 仍被解析器接受。
+- **`version: 1`** — protocol version. Integer, no quotes, no decimal point.
+  Bumped only when the protocol itself makes a breaking change; do not use this
+  field for per-document revision tracking.
+  协议版本号。整数，不加引号、不加小数点。只在协议本身发生破坏性变更时才 +1，
+  不要用它来记录单份文档的修订。
 
 ## Subtask Batches / 分包任务
 

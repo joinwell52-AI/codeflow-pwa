@@ -56,7 +56,7 @@ TASK-YYYYMMDD-seq-LEADQA-to-PERFTESTER.md
 
 ```yaml
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 sender: LEADQA

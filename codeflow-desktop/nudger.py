@@ -3355,7 +3355,7 @@ def _handle_admin_command(config, text: str, target_role: str = "",
     filename = f"{task_id}-ADMIN-to-{leader}.md"
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     content = (
-        f"---\nprotocol: agent_bridge\nversion: 1\nkind: task\n"
+        f"---\nprotocol: fcop\nversion: 1\nkind: task\n"
         f"task_id: {task_id}\nsender: ADMIN\nrecipient: {leader}\n"
         f"created_at: {now_str}\npriority: {priority}\n"
         f"type: admin_command\nsource: ADMIN-mobile\n---\n\n"

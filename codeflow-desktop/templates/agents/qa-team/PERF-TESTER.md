@@ -53,7 +53,7 @@ docs/agents/issues/ISSUE-YYYYMMDD-序号-PERFTESTER.md
 
 ```yaml
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 sender: PERFTESTER

@@ -6,6 +6,37 @@
 
 ## [Unreleased]
 
+### 协议（字段正名）
+
+#### `protocol:` 字段正式从 `agent_bridge` 改名为 `fcop`
+
+FCoP 从"内部代号 `agent_bridge`"正式升格为"公开品牌"后，YAML frontmatter
+里的 `protocol:` 字段值也跟着统一：
+
+- **新规范值**：`protocol: fcop`（全小写，遵循 `http` / `grpc` 等
+  machine-identifier 惯例；品牌名 `FCoP` 保留给文档标题和对外表达）
+- **`version: 1`**：整数，不加引号、不加小数点。仅在协议本身发生破坏性
+  变更时才 +1，不用于记录单份文档的修订
+- **历史值兼容**：`agent_bridge` / `agent-bridge` / `file-coordination`
+  / `fcop`（不同大小写）由 `mcp_server.py:_parse_frontmatter` 在解析时
+  归一化为 `"fcop"`；`1` / `1.0` / `"1.0"` 归一化为 `"1"`。**存量文件
+  无需迁移**
+
+本轮代码与文档改动：
+
+- **写入端**：`codeflow-desktop/nudger.py:write_admin_task` 默认值改 `fcop`
+- **读取端**：`codeflow-plugin/scripts/mcp_server.py` 新增
+  `_FCOP_PROTOCOL_ALIASES` 白名单与归一化逻辑
+- **规则模板**：`codeflow-plugin/rules/codeflow-core.mdc` 与
+  `codeflow-desktop/templates/rules/codeflow-core.mdc` 的任务模板示例改
+  `fcop`，并新增"About `protocol:` and `version:`"章节解释字段语义与别名兼容
+- **角色定义模板**：`docs/agents/QA-01.{md,en.md}` 与
+  `codeflow-desktop/templates/agents/{dev-team,qa-team}/*.md` 共 12 份
+  内嵌任务模板批量改 `fcop`
+- **协议手册**：`docs/agents/README.{md,en.md}` 的元数据示例与说明段重写
+- **历史证据**：`docs/agents/tasks/TASK-20260420-001-*.md` 等存量文件
+  保持原样，依赖解析器归一化兼容（它们的价值在于原样保留）
+
 ### 协议（规则收编）
 
 #### 新增"核心原则"（FCoP 北极星条款）

@@ -244,6 +244,19 @@ def _scan_dir(directory: Path) -> list[dict]:
     return items
 
 
+# FCoP 协议字段的可接受别名——读取时全部归一化成规范值 fcop（小写）。
+# 规范值小写是因为 YAML 字段值遵循 machine-identifier 惯例（参考 http / ssh /
+# grpc 等），而品牌名 "FCoP" 用在文档、标题、外部发布物里，两者分工。
+# 历史值 agent_bridge（2026-04-20 之前的内部代号）作为别名永久接受。
+_FCOP_PROTOCOL_ALIASES = {
+    "fcop",             # 规范值本身
+    "agent_bridge",     # 2026-04-20 之前的历史内部代号
+    "agent-bridge",     # 英文连字符化变体
+    "file-coordination",
+    "file_coordination",
+}
+
+
 def _parse_frontmatter(filepath: Path) -> dict:
     """极简 YAML frontmatter 解析（只拆一级 key: value）。"""
     try:
@@ -260,6 +273,16 @@ def _parse_frontmatter(filepath: Path) -> dict:
         if ":" in line:
             k, v = line.split(":", 1)
             out[k.strip().lower()] = v.strip()
+    # protocol 字段归一化：把历史值和常见别名统一成规范值 fcop，
+    # 让下游消费者无需各自兼容多套写法。
+    proto = out.get("protocol", "").strip()
+    if proto and proto.lower() in _FCOP_PROTOCOL_ALIASES:
+        out["protocol"] = "fcop"
+    # version 字段归一化：允许 1 / 1.0 / "1.0" 三种写法等价，
+    # 在内存里统一成整数字符串 "1"。避免下游按字符串比较时漏匹配。
+    ver = out.get("version", "").strip().strip('"').strip("'")
+    if ver in ("1", "1.0"):
+        out["version"] = "1"
     return out
 
 

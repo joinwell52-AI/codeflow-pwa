@@ -151,7 +151,7 @@ CodeFlow write-reply --sender PM --text "已接单，开始拆解任务" --threa
 
 - `write-admin-task` 默认写入 `tasks/`
 - `write-reply` 默认写入 `reports/`
-- 两者都会自动带上 `agent_bridge` 元数据头
+- 两者都会自动带上 FCoP 协议的元数据头
 
 ### 协议元数据
 
@@ -159,7 +159,7 @@ CodeFlow write-reply --sender PM --text "已接单，开始拆解任务" --threa
 
 ```text
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 sender: ADMIN
@@ -177,6 +177,19 @@ attachments_count: 0
 - 让桌面桥接器稳定解析 `sender`、`recipient`、`thread_key`
 - 让手机端能基于 `thread_key` 聚合同一线程
 - 兼容后续接入更多角色适配器，而不依赖纯文本正则猜测
+
+#### `protocol:` 与 `version:` 字段说明
+
+- **`protocol: fcop`** ——可移植标识符，告诉任何读者（Agent、工具、人）
+  "这是 FCoP 协作文档，不是普通笔记"。规范值统一为小写 `fcop`
+  （遵循 `http` / `grpc` 等 machine-identifier 惯例）；品牌名 `FCoP`
+  用在文档标题、对外文章里。历史别名 `agent_bridge`（2026-04-20 之前的内部代号）
+  以及 `agent-bridge` / `file-coordination` 等变体，都会被 `_parse_frontmatter`
+  自动归一化为 `fcop`，存量文件无需迁移。
+- **`version: 1`** ——协议版本号。**整数**，不加引号、不加小数点。
+  只在协议本身发生破坏性变更（例如字段语义变更、必填字段增删）时才 +1，
+  **不要**用它来记录单份文档的修订。存量写成 `1.0` / `"1.0"` 的文件也会被
+  归一化成 `"1"`，无需强迫升级。
 
 ## 团队模板说明
 

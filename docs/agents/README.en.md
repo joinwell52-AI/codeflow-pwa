@@ -154,7 +154,7 @@ Where:
 
 - `write-admin-task` writes to `tasks/` by default
 - `write-reply` writes to `reports/` by default
-- Both automatically include the `agent_bridge` metadata header
+- Both automatically prepend the FCoP metadata header
 
 ### Protocol Metadata
 
@@ -162,7 +162,7 @@ Starting from the current version, `TASK` Markdown files carry a lightweight met
 
 ```text
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 sender: ADMIN
@@ -180,6 +180,22 @@ This metadata serves to:
 - Enable the desktop bridge to reliably parse `sender`, `recipient`, `thread_key`
 - Enable phone-side to aggregate threads by `thread_key`
 - Support future role adapter integrations without relying on plain-text regex guessing
+
+#### About `protocol:` and `version:`
+
+- **`protocol: fcop`** — portable identifier that tells any reader (agent, tool,
+  human) "this Markdown file is an FCoP coordination document, not a stray note."
+  The canonical value is lowercase `fcop`, following the machine-identifier
+  convention used by `http` / `grpc` / etc. The brand name **FCoP** is reserved
+  for prose, titles and external writing. Historical aliases (`agent_bridge` —
+  the pre-2026-04-20 internal codename — as well as `agent-bridge` /
+  `file-coordination`) are normalised to `fcop` by `_parse_frontmatter`, so
+  existing files do **not** need to be migrated.
+- **`version: 1`** — protocol version. Integer, no quotes, no decimal point.
+  Only bumped when the protocol itself introduces a breaking change (field
+  semantics flip, required fields added/removed); do **not** use this field to
+  track per-document revisions. Existing files written as `1.0` / `"1.0"` are
+  also normalised to `"1"`, no forced upgrade.
 
 ## Team Templates
 

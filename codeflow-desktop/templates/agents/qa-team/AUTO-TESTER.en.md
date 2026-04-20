@@ -52,7 +52,7 @@ docs/agents/issues/ISSUE-YYYYMMDD-seq-AUTOTESTER.md
 
 ```yaml
 ---
-protocol: agent_bridge
+protocol: fcop
 version: 1
 kind: task
 sender: AUTOTESTER
