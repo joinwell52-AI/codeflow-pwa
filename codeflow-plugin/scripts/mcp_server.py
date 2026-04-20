@@ -1,11 +1,38 @@
 ﻿"""
-CodeFlow MCP Server — core tools for multi-agent collaboration (产品中文名：码流).
+CodeFlow MCP Server — the FCoP toolbox (产品中文名：码流).
 
-Provides tools for:
+MCP is a **toolbox**, not the protocol. The protocol lives in
+`rules/codeflow-core.mdc` (filename-is-the-spec, YAML frontmatter, flat
+directories). This file is the standard-issue tool belt every agent puts
+on when arriving at the jobsite: same verbs on Windows / macOS / Linux,
+same verbs in Cursor / Claude Desktop / CLI, same verbs across every
+agent role in a multi-agent team.
+
+四个字:**工具箱**。不是协议,不是注册中心,不是数据库,不是审计员。
+MCP 服务的是"多 agent / 跨平台 / 统一着装 / 快速部署"这四件事——让不同
+宿主、不同操作系统下的 agent,用同一套动词(list_tasks / read_task /
+write_task / ...)说同一种话。协议本身在 codeflow-core.mdc 里。
+
+Tool-addition rule (minimization check) / 加工具的判据:
+  Before adding a new tool, ask:
+  "Is this a **wrench**, or an **opinion** about how agents should work?"
+
+  - Wrenches: grammar-aware listing, schema validation, atomic ID allocation,
+    cross-platform path handling. These help agents do FCoP work correctly
+    where raw file ops would be error-prone. → Add them.
+  - Opinions: meta-management, convention-evolution machinery, state
+    registries, shadow protocols. Agents can already do these with plain
+    file ops if they really want to. → Leave them out. Filename is the spec.
+
+  加新工具前问一句:**"这是一把扳手,还是一种关于 agent 该怎么干活的意见?"**
+  扳手放进来(语法感知的查询、schema 校验、原子 ID 分配、跨平台路径)。
+  意见留在外面——agent 想做,在 tasks/ 下开个子目录自己做就行,不需要协议插手。
+
+Current tools:
   - Project initialization (create docs/agents/ structure)
   - Team status overview (task/report/issue counts)
-  - Task listing and reading
-  - Task writing (from mobile commands or agent requests)
+  - Task listing and reading (grammar-aware: to-ROLE / to-ROLE.SLOT / to-TEAM)
+  - Task writing with frontmatter validation
   - Report listing and reading
   - Custom team creation with user-defined roles
   - Bilingual support (zh/en)

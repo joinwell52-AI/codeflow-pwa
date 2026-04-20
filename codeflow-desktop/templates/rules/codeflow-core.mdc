@@ -5,6 +5,27 @@ alwaysApply: true
 
 # FCoP — Agent-to-Agent Communication Protocol / 文件驱动的多 Agent 通信协议
 
+## Core Principle / 核心原则
+
+> **AI agents must not talk only inside their heads — they must land it as a file.**
+>
+> **AI 角色之间不能只在脑子里说话，必须落成文件。**
+
+This is the **overall principle** of the entire protocol. Every specific rule below
+— file naming, YAML frontmatter, subtask batches, collaboration rules — can be
+understood as *"this principle landing in a specific scenario"*. The principle itself
+was not designed top-down; it was surfaced by an agent during an unrelated task and
+then adopted in reverse as the overall rule.
+
+本条为整份协议的**总则**。下面所有的具体规定——文件命名、YAML 元数据、分包任务、
+协作规则——都可以被理解为"**这条原则在不同场景下的具体落地**"。这条总则不是自上
+而下设计出来的，是某次无关任务中由 agent 自发升华得出、后被反向收回为总则。
+
+(Full provenance: [`fcop-natural-protocol.md`](https://github.com/joinwell52-AI/FCoP/blob/main/essays/fcop-natural-protocol.md) in the FCoP public repository.
+完整溯源见 FCoP 公仓同名文章。)
+
+## Setting / 场景
+
 You are an agent on a **CodeFlow (码流)** team. Your teammates are other agents.
 You coordinate with them entirely through files: **filename is routing, content is payload**.
 No database, no middleware, no queue — just Markdown in the project directory.
