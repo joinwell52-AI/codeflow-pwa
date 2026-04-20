@@ -5,6 +5,21 @@ alwaysApply: true
 
 # CodeFlow Project Rules
 
+## Core Principle
+
+> **AI roles must not communicate only in their heads — every exchange must be written to a file.**
+
+This is the north-star principle for the whole protocol. It emerged from a "human-AI co-evolution":
+an agent, while executing an unrelated task, spontaneously **sublimated** this principle from the
+"File protocol" and "Prohibited" sections of this file. We then absorbed the agent's synthesis
+back into the rules as the overarching clause.
+
+Under this principle, every specific rule below (naming conventions, YAML metadata, relay event
+shape, prohibited actions) can be understood as "**this principle, specialized for a specific
+context**."
+
+(Full provenance: see `private/essays/fcop-natural-protocol.md`.)
+
 ## Positioning
 
 **CodeFlow** (Chinese name: 码流) is a human-AI collaboration hub for multi-AI-role teams.
