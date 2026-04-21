@@ -123,33 +123,64 @@ pip install -e codeflow-plugin
 
 1. 装好 `fcop` MCP 并重启 Cursor
 2. 打开项目目录，开一个 Agent 聊天
-3. 说："给这个项目初始化一个软件开发团队"（Agent 会调 `init_project(team="dev-team")`）
+3. 三选一告诉 Agent（按常用度排）：
+   - **Solo（一人，最常用）**："用 Solo 模式初始化项目，角色代码叫 `ME`"
+     → `init_solo(role_code="ME", lang="zh")`
+   - **预设四人班子**："用预设团队 `dev-team` 初始化项目"
+     → `init_project(team="dev-team", lang="zh")`
+   - **自建角色**："我要组一个 AI 团队：4 个 AI 角色——`MANAGER` 做 leader，加上 `CODER`、`TESTER`、`ARTIST`；团队名叫'我的设计工作室'，中文界面"
+     → `create_custom_team(team_name="我的设计工作室", roles="MANAGER,CODER,TESTER,ARTIST", leader="MANAGER", lang="zh")`
+     → 不确定合不合法可以先跑 `validate_team_config(roles, leader)` 干跑校验
 4. `fcop` 自动生成：
    - `docs/agents/{tasks,reports,issues,shared,log}/` 五个目录
-   - `docs/agents/fcop.json` —— 项目身份配置（团队模板、角色表、leader、语言）
+   - `docs/agents/fcop.json` —— 项目身份配置（`mode` + 团队模板 + 角色表 + leader + 语言）
+   - `docs/agents/LETTER-TO-ADMIN.md` —— 给 ADMIN 的**用户手册**（自建角色硬规则、命名建议、起手三选一）
    - `.cursor/rules/fcop-rules.mdc` —— **FCoP 协议规则**（9 条，Rule 0–8，`alwaysApply`，每次对话注入）
-   - `.cursor/rules/fcop-protocol.mdc` —— **FCoP 协议解释**（规则在具体场景怎么落：文件命名、YAML、目录、巡检触发，同 `alwaysApply`）
-   - 一条欢迎任务给 leader（比如 PM）
+   - `.cursor/rules/fcop-protocol.mdc` —— **FCoP 协议解释**（规则在具体场景怎么落：文件命名、YAML、目录、巡检触发、0.c 引用格式，同 `alwaysApply`）
+   - 一条欢迎任务给 leader（比如 PM / ME / MANAGER）
 5. 新开 Cursor Agent 窗口，第一句话告诉它：**"你是 {ROLE}，在 {team}"**（例如"你是 PM，在 dev-team"）—— Rule 1 禁止它自己认角色
 6. 对 leader 说"开始工作"，流程跑起来
 
-## MCP 工具清单
+> **身份澄清**：`ADMIN` 永远是你（真人，**不在 `fcop.json.roles` 里**）；
+> 团队里的角色（`PM` / `ME` / `MANAGER` …）都是 AI。即便 Solo 模式下那唯一
+> 一个角色也是 AI，不是你自己。
+
+## MCP 工具清单（16 个）
+
+**起手式**
 
 | 工具 | 功能 |
 |------|------|
 | `unbound_report` | **新会话必调的第一个工具**（FCoP Rule 1）—— 输出项目客观状态，等待 ADMIN 指派身份 |
-| `init_project` | 初始化项目协作空间（含协议规则与协议解释的部署） |
+
+**项目初始化（三条路）**
+
+| 工具 | 功能 |
+|------|------|
+| `init_solo` | Solo 模式（单 AI 角色，直接对 ADMIN） |
+| `init_project` | 预设团队（`dev-team` / `media-team` / `mvp-team`） |
 | `create_custom_team` | 自定义角色的团队 |
-| `get_available_teams` | 查看预设团队模板 |
+| `validate_team_config` | 落盘前干跑校验角色代码 / leader（不写文件） |
+| `get_available_teams` | 查看全部模板（含 Solo + 三套预设） |
+
+**日常协作**
+
+| 工具 | 功能 |
+|------|------|
 | `get_team_status` | 当前任务/报告/问题计数 + 最近活动 |
 | `list_tasks` / `read_task` / `write_task` | 任务流 |
 | `inspect_task` | 校验任务文件的 schema 与文件名↔frontmatter 一致性 |
 | `list_reports` / `read_report` | 报告流 |
 | `list_issues` | 问题流 |
 | `archive_task` | 归档已完成任务 |
+
+**泄压阀**
+
+| 工具 | 功能 |
+|------|------|
 | `drop_suggestion` | 对协议不满时的泄压阀 —— 落一份到 `.fcop/proposals/`，**不要自己改规则文件** |
 
-## MCP 资源（URI）
+## MCP 资源（URI，6 个）
 
 | URI | 内容 |
 |-----|------|
@@ -157,6 +188,8 @@ pip install -e codeflow-plugin
 | `fcop://config` | `docs/agents/fcop.json` 原文 |
 | `fcop://rules` | `.cursor/rules/fcop-rules.mdc` 原文（协议规则） |
 | `fcop://protocol` | `.cursor/rules/fcop-protocol.mdc` 原文（协议解释） |
+| `fcop://letter/zh` | 《FCoP 致 ADMIN 的一封信》中文说明书 |
+| `fcop://letter/en` | Letter to ADMIN — English user manual |
 
 ## 环境变量
 

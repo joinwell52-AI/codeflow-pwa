@@ -6,6 +6,63 @@
 
 ## [Unreleased]
 
+### fcop 0.4.0（MCP 包，已发布到 PyPI）- 2026-04-22
+
+#### 新增：Rule 0.c · 只落真话
+
+`fcop-rules.mdc` v1.1.0 在 Rule 0 根原则里增加第三条：
+
+- **0.a · 必须落文件**（已有）
+- **0.b · 多角色制衡**（已有）
+- **0.c · 只落真话**（新增）—— 不捏造事实、引用必带出处、
+  对其他 Agent 的信件做事实审查、伦理底线
+
+`fcop-protocol.mdc` v1.1.0 配套加"How Rule 0.c Applies"章节：引用格式
+（文件路径+行号 / 命令+输出 / URL / thread_key）、5 项入信审查清单、
+Solo 模式特例（更严的自审）。
+
+#### 新增：Solo 模式起手工具
+
+`init_solo(role_code, role_label, lang)` —— 单 AI 角色直接对 ADMIN，
+无多级派单。Rule 0.b 通过文件把同一 Agent 劈成"提案者 / 审查者"两个视角。
+`fcop.json` 显式写入 `"mode": "solo"`。
+
+`init_project` / `create_custom_team` / `init_solo` 三条起手路全部写入
+`"mode"` 字段，项目身份不再靠约定。
+
+#### 新增：角色代码硬校验
+
+- `_validate_role_code` + `_validate_team_config` 内部工具：拒绝中文、
+  `-`、`.`、空格、保留字（`ADMIN` / `SYSTEM`）、重复角色、leader 不在
+  列表等非法输入，一次返回双语人话错误。
+- `validate_team_config(roles, leader)` 新 MCP 工具，干跑校验不写盘，
+  给 Desktop 表单做预检。
+- `create_custom_team` / `init_solo` 入口调用校验，所有非法输入在落盘前
+  被拦住。
+
+#### 新增：《致 ADMIN 的一封信》用户手册
+
+两份源文件 `_data/letter-to-admin.{zh,en}.md`，部署时按 `lang` 挑一份
+落到 `docs/agents/LETTER-TO-ADMIN.md`。内容：
+
+- 身份澄清（ADMIN = 真人，角色 = AI；ADMIN 不在 `fcop.json.roles`）
+- 三种起手方式（Solo 第一 / 预设第二 / 自定义第三）
+- 自建角色硬规则对照表 + 命名建议（推荐职能词 `MANAGER` / `CODER`，
+  避开权威词 `BOSS` / `CEO`）
+- 4 条必读规则缩略版（0.a / 0.b / 0.c / Rule 1）
+
+两个新资源：`fcop://letter/zh`、`fcop://letter/en`。
+
+#### 工具总数：14 → 16
+
+新增：`init_solo`、`validate_team_config`
+
+#### 资源总数：4 → 6
+
+新增：`fcop://letter/zh`、`fcop://letter/en`
+
+---
+
 ### 协议（字段正名）
 
 #### `protocol:` 字段正式从 `agent_bridge` 改名为 `fcop`
