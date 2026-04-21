@@ -20,23 +20,100 @@
 | **media-team** | PUBLISHER + COLLECTOR + WRITER + EDITOR | 自媒体内容 |
 | **mvp-team** | MARKETER + RESEARCHER + DESIGNER + BUILDER | 创业 MVP |
 
-## 安装
+## 安装 MCP
 
-### 本地安装（开发测试）
+PyPI 包名：**`fcop`**（0.2.1+）。
 
-```bash
-# 克隆本仓库后，将插件目录链到 Cursor 插件目录（示例）
-# Windows
-mklink /D "%USERPROFILE%\.cursor\plugins\local\codeflow" "D:\\CodeFlow\\codeflow-plugin"
-# macOS/Linux
-ln -s /path/to/codeflow-plugin ~/.cursor/plugins/local/codeflow
+### 🤖 方式 0：告诉 Cursor Agent 自己装（最省事，推荐）
+
+新电脑已经装了 Cursor？打开任意项目 → 开个 Agent 聊天 → 把下面这段**整段**发给它：
+
+> 帮我装 `fcop` MCP。在 PowerShell（Windows）或 bash（macOS/Linux）里执行下面对应的一条命令，跑完告诉我结果，然后提醒我重启 Cursor：
+>
+> **Windows：**
+> ```powershell
+> irm https://raw.githubusercontent.com/joinwell52-AI/codeflow-pwa/main/codeflow-plugin/scripts/install-fcop.ps1 | iex
+> ```
+>
+> **macOS / Linux：**
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/joinwell52-AI/codeflow-pwa/main/codeflow-plugin/scripts/install-fcop.sh | bash
+> ```
+
+Agent 会用自带的 shell 工具跑完，脚本做的事：
+
+1. `uv` 没装就装上（Windows 走 winget，macOS/Linux 走官方脚本）
+2. 创建 / 合并 `~/.cursor/mcp.json` —— **保留你原有的其他 MCP 不动**，只追加 `fcop` 一项
+3. 打印"装完了，重启 Cursor"
+
+整个流程你只输入一次那段提示词，其余交给 Agent。
+
+### 方式 A：`uvx` 一键（手动，零配置）
+
+前置：装 [`uv`](https://docs.astral.sh/uv/)（Windows：`winget install --id=astral-sh.uv`）。
+
+在 Cursor 的 `mcp.json` 里加这一段（Windows 路径：`%USERPROFILE%\.cursor\mcp.json`）：
+
+```json
+{
+  "mcpServers": {
+    "fcop": {
+      "command": "uvx",
+      "args": ["fcop"]
+    }
+  }
+}
 ```
 
-重启 Cursor 即可。`mcp.json` 中 **`args`** 请指向本机 **`codeflow-plugin\scripts\mcp_server.py`** 的绝对路径。
+重启 Cursor，第一次调用时 `uvx` 会自动从 PyPI 下载 `fcop` 并跑起来，之后走缓存，不用手动升级。
 
-### Marketplace 安装
+### 方式 B：Cursor Deeplink 一键安装
 
-搜索 **CodeFlow** 或 **码流**（审核通过后可用）。
+点下面按钮，Cursor 弹窗确认即可把配置自动写进 `mcp.json`：
+
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-light.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=fcop&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJmY29wIl19)
+
+（等价于方式 A，只是省去手动编辑 `mcp.json`。）
+
+### 方式 C：`pip install`（不想装 uv）
+
+```bash
+pip install fcop
+```
+
+然后 `mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "fcop": {
+      "command": "fcop"
+    }
+  }
+}
+```
+
+若 `fcop` 不在 PATH，把 `command` 换成 `python`，`args` 换成 `["-m", "codeflow_mcp"]`。
+
+### 升级
+
+- `uvx`：`uv tool upgrade fcop`（或删除 `~/.cache/uv/tools/fcop` 让它自动重拉）
+- `pip`：`pip install -U fcop`
+
+### 本地开发（改源码）
+
+指向仓库内 shim，代码改了立即生效：
+
+```json
+{
+  "mcpServers": {
+    "fcop": {
+      "command": "python",
+      "args": ["D:\\Bridgeflow\\codeflow-plugin\\scripts\\mcp_server.py"]
+    }
+  }
+}
+```
 
 ## 快速开始
 
