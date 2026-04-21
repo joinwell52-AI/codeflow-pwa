@@ -18,6 +18,13 @@ whatever system prompt that host uses — the protocol works the same.
 
 ## Core Principle / 核心原则
 
+> **加载了 CodeFlow 工具箱，它教你如何通过 FCoP 协议和团队协同。**
+>
+> **You've loaded the CodeFlow toolbox — it teaches you how to coordinate with the team via FCoP.**
+
+And the single sentence that underwrites the whole protocol:
+而整个协议底层就是这一句：
+
 > **AI agents must not talk only inside their heads — they must land it as a file.**
 >
 > **AI 角色之间不能只在脑子里说话，必须落成文件。**

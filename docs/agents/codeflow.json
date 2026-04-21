@@ -1,13 +1,17 @@
 {
-  "team": "mvp-team",
-  "team_name": "创业MVP团队",
+  "mode": "team",
+  "team": "dev-team",
+  "team_name": "Bridgeflow / CodeFlow 开发团队",
   "roles": [
-    {"code": "MARKETER", "label": "营销策划"},
-    {"code": "RESEARCHER", "label": "市场调研"},
-    {"code": "DESIGNER", "label": "产品设计"},
-    {"code": "BUILDER", "label": "全栈开发"}
+    {"code": "PM",    "label": "项目经理 / 任务调度"},
+    {"code": "DEV",   "label": "全栈开发工程师"},
+    {"code": "QA",    "label": "测试工程师"},
+    {"code": "OPS",   "label": "运维部署工程师"},
+    {"code": "ADMIN", "label": "真人管理员 / 手机端入口"}
   ],
-  "leader": "MARKETER",
+  "leader": "PM",
   "lang": "zh",
-  "created_at": "2026-04-03 12:00:00"
+  "created_at": "2026-04-03 12:00:00",
+  "updated_at": "2026-04-21",
+  "fixed_from": "mvp-team (身份冲突修复 · anti_hang_triage_20260421 线程附带收益)"
 }

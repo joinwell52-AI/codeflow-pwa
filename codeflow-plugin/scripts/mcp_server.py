@@ -1,4 +1,4 @@
-﻿"""
+"""
 CodeFlow MCP Server — the FCoP toolbox (产品中文名：码流).
 
 MCP is a **toolbox**, not the protocol. The protocol lives in
@@ -45,6 +45,10 @@ Tool-addition rule (minimization check) / 加工具的判据:
         而不是"有它时能做什么好事"(drop_suggestion 这类)。
 
 Current tools:
+  - UNBOUND report (unbound_report) — MUST be the first call in a new session.
+    Safety-fuse wrench that enforces FCoP v1.1 Rule 0 (no role-claim from
+    context, no writes before ADMIN assignment) by producing a standardized
+    report format agents cannot easily "helpfully improve on".
   - Project initialization (create docs/agents/ structure)
   - Team status overview (task/report/issue counts)
   - Task listing and reading (grammar-aware: to-ROLE / to-ROLE.SLOT / to-TEAM)
@@ -57,6 +61,7 @@ Current tools:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -68,8 +73,22 @@ from fastmcp import FastMCP
 
 mcp = FastMCP(
     name="CodeFlow",
-    instructions="Multi-AI Agent collaboration hub (码流 / CodeFlow) — file-driven task management. "
-    "Supports bilingual (Chinese/English) output via lang parameter.",
+    instructions=(
+        "加载了 CodeFlow 工具箱，它教你如何通过 FCoP 协议和团队协同。\n"
+        "You've loaded the CodeFlow toolbox — it teaches you how to coordinate "
+        "with the team via FCoP.\n\n"
+        "多 AI Agent 协作枢纽（码流 / CodeFlow）—— 文件驱动任务管理。\n"
+        "Multi-AI Agent collaboration hub — file-driven task management. "
+        "Bilingual output via the `lang` parameter.\n\n"
+        "【启动必读 / First-action mandate】FCoP v1.1 Rule 0：新会话默认处于 "
+        "UNBOUND 态，第一个动作必须是调用 `unbound_report()` 输出项目客观状态并"
+        "等待 ADMIN 指派身份。不得基于任务内容推断自己是什么角色，不得在未获"
+        "指派前写任何文件。\n"
+        "New sessions start UNBOUND. FIRST action MUST be calling "
+        "`unbound_report()`; wait for ADMIN's explicit role assignment. Do not "
+        "infer your role from task contents; do not write any files before "
+        "assignment."
+    ),
 )
 
 
@@ -338,7 +357,220 @@ def _load_project_config() -> dict | None:
     return None
 
 
+# ─── UNBOUND helpers ──────────────────────────────────────
+#
+# These two helpers back the `unbound_report` tool (FCoP v1.1 Rule 0).
+# They intentionally only read **file names + minimal frontmatter** (sender /
+# recipient / thread_key) — never the task body — so an UNBOUND agent cannot
+# accidentally pick up content that would bias its self-identified role.
+
+def _collect_active_threads(limit: int = 10) -> list[dict]:
+    """Scan tasks/ + reports/ and group by `thread_key`.
+
+    Returns up to `limit` entries, each with `{thread_key, last_file, status,
+    sender, recipient}`. Reads only frontmatter keys listed above. Does NOT
+    read task bodies.
+
+    按 thread_key 去重，只读 frontmatter（不读正文），给 UNBOUND 汇报用。
+    """
+    groups: dict[str, list[dict]] = {}
+
+    for d, is_report in ((TASKS_DIR, False), (REPORTS_DIR, True)):
+        if not d.exists():
+            continue
+        for f in d.rglob("*.md"):
+            if f.name.lower() == "readme.md":
+                continue
+            fm = _parse_frontmatter(f)
+            if fm.get("protocol") != "fcop":
+                continue
+            tk = fm.get("thread_key") or fm.get("task_id") or f.stem
+            groups.setdefault(tk, []).append({
+                "filename": f.name,
+                "sender": fm.get("sender", "?"),
+                "recipient": fm.get("recipient", "?"),
+                "mtime": f.stat().st_mtime,
+                "is_report": is_report,
+            })
+
+    summary: list[dict] = []
+    for tk, items in groups.items():
+        items.sort(key=lambda x: x["mtime"], reverse=True)
+        latest = items[0]
+        if latest["is_report"] and latest["recipient"].upper() == "ADMIN":
+            status = "已结案 / closed (report → ADMIN)"
+        else:
+            status = f"等 {latest['recipient']} / waiting for {latest['recipient']}"
+        summary.append({
+            "thread_key": tk,
+            "last_file": latest["filename"],
+            "status": status,
+            "mtime": latest["mtime"],
+        })
+    summary.sort(key=lambda x: x["mtime"], reverse=True)
+    return summary[:limit]
+
+
+def _core_mdc_hash() -> str:
+    """Short hash of codeflow-core.mdc (or first candidate found).
+
+    Used in UNBOUND report so ADMIN can tell at a glance whether two agent
+    sessions are looking at the same protocol version.
+    """
+    candidates = [
+        PROJECT_DIR / ".cursor" / "rules" / "codeflow-core.mdc",
+        Path(__file__).resolve().parent.parent / "rules" / "codeflow-core.mdc",
+    ]
+    for c in candidates:
+        if c.exists():
+            try:
+                h = hashlib.sha256(c.read_bytes()).hexdigest()[:12]
+                try:
+                    rel = c.relative_to(PROJECT_DIR).as_posix()
+                except ValueError:
+                    rel = c.name
+                return f"{rel} (sha256:{h})"
+            except Exception:
+                pass
+    return "(codeflow-core.mdc 未找到 / not found)"
+
+
 # ─── MCP Tools ────────────────────────────────────────────
+
+
+@mcp.tool
+def unbound_report(lang: str = "zh") -> str:
+    """**FCoP v1.1 Rule 0 — MUST be the FIRST tool you call in a new session.**
+
+    Returns a standardized UNBOUND project-state report + a role-assignment
+    request template for ADMIN. Do NOT improvise, summarize, or decorate the
+    output; paste it back to ADMIN as-is and STOP.
+
+    While UNBOUND you MUST NOT:
+      - read task **bodies** (frontmatter metadata only)
+      - write any file (tasks / reports / rules / configs)
+      - claim a role from context clues ("the pending task is for PM, so I
+        must be PM" — forbidden)
+      - dispatch follow-up tasks
+
+    You transition to BOUND only after ADMIN says (literally):
+        "你是 {ROLE}，在 {team}，线程 {thread_key}（可选）"
+        "You are {ROLE} on {team}, thread {thread_key} (optional)"
+
+    ──────────────────────────────────────────────────────────
+    FCoP v1.1 第 0 条：新会话启动**必调**的第一个工具。
+
+    输出一份标准化的 UNBOUND 汇报（项目客观状态 + 身份指派请求模板），原样
+    回给 ADMIN 后停住——不要改写、不要润色、不要"顺便做点啥"。
+
+    UNBOUND 期间**严禁**：读任务正文、写任何文件、从上下文推断角色、派发
+    后续任务。只有当 ADMIN 明确说出"你是 {ROLE}，在 {team}"时才解绑。
+
+    Args:
+        lang: "zh" or "en" (default "zh")
+    """
+    is_en = lang.lower().startswith("en")
+
+    cfg_path = _team_config_path_read()
+    cfg_present = cfg_path is not None
+    cfg: dict = {}
+    if cfg_present and cfg_path is not None:
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        except Exception:
+            cfg = {}
+
+    mode = cfg.get("mode", "(未声明 / undeclared)")
+    team = cfg.get("team") or cfg.get("team_name") or "(未声明 / undeclared)"
+    roles = cfg.get("roles", [])
+    if roles and isinstance(roles, list):
+        role_codes = [str(r.get("code", "?")) if isinstance(r, dict) else str(r) for r in roles]
+    else:
+        role_codes = []
+
+    rules_dir = PROJECT_DIR / ".cursor" / "rules"
+    rule_files: list[str] = []
+    if rules_dir.exists():
+        rule_files = sorted(f.name for f in rules_dir.glob("*.mdc"))
+
+    active = _collect_active_threads(limit=10)
+    core_ver = _core_mdc_hash()
+
+    def _fmt_threads() -> list[str]:
+        if not active:
+            return ["  - (无活跃线程 / no active threads)"]
+        out = []
+        for t in active:
+            out.append(
+                f"  - thread_key: `{t['thread_key']}` · last: `{t['last_file']}` · {t['status']}"
+            )
+        return out
+
+    if is_en:
+        lines = [
+            "## UNBOUND report",
+            f"",
+            f"- project: `{PROJECT_DIR}`",
+            f"- codeflow.json present: {'yes' if cfg_present else 'no'}",
+        ]
+        if cfg_present:
+            lines += [
+                f"  - mode: {mode}",
+                f"  - team: {team}",
+                f"  - declared roles: [{', '.join(role_codes) if role_codes else '(empty)'}]",
+            ]
+        lines += [
+            f"- .cursor/rules/*.mdc: {rule_files if rule_files else '(none)'}",
+            f"- protocol version: {core_ver}",
+            f"- active threads (grouped by thread_key, frontmatter only):",
+            *_fmt_threads(),
+            "",
+            "## My identity status: **UNBOUND**",
+            "",
+            "## Awaiting ADMIN assignment",
+            "",
+            "Please reply in the form:",
+            "> You are {ROLE} on {team}, thread {thread_key} (optional)",
+            "",
+            "Example:",
+            "> You are PM on dev-team, thread anti_hang_triage_20260421",
+            "",
+            "Until then I will not read task bodies, will not write files, "
+            "and will not claim a role.",
+        ]
+    else:
+        lines = [
+            "## UNBOUND 汇报",
+            "",
+            f"- 项目路径：`{PROJECT_DIR}`",
+            f"- codeflow.json 是否存在：{'是' if cfg_present else '否'}",
+        ]
+        if cfg_present:
+            lines += [
+                f"  - mode: {mode}",
+                f"  - team: {team}",
+                f"  - 已声明角色：[{', '.join(role_codes) if role_codes else '(空)'}]",
+            ]
+        lines += [
+            f"- .cursor/rules/*.mdc：{rule_files if rule_files else '(无)'}",
+            f"- 协议版本：{core_ver}",
+            f"- 活跃线程（按 thread_key 去重，只读 frontmatter）：",
+            *_fmt_threads(),
+            "",
+            "## 我的身份状态：**UNBOUND（未指派）**",
+            "",
+            "## 等待 ADMIN 指派",
+            "",
+            "请用以下格式告诉我身份：",
+            "> 你是 {ROLE}，在 {team}，线程 {thread_key}（可选）",
+            "",
+            "例如：",
+            "> 你是 PM，在 dev-team，线程 anti_hang_triage_20260421",
+            "",
+            "在此之前，我不会读任务正文、不会写文件、不会自认角色。",
+        ]
+
+    return "\n".join(lines)
 
 
 @mcp.tool

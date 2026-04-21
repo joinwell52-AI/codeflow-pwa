@@ -48,7 +48,7 @@ python -m http.server 8080 -d web/pwa
 **MCP Plugin**
 ```bash
 cd codeflow-plugin
-pip install -r requirements-codeflow-mcp.txt
+pip install -r requirements.txt
 ```
 
 ### Project Structure

@@ -26,7 +26,7 @@
 ## 「放弃 Cursor 快捷键」时的替代
 
 1. **桌面端巡检**：继续用快捷键或点击链路，由 CodeFlow 控制节奏；用户可减少在 Cursor 里绑定全局键。
-2. **MCP**：例如仓库内 `codeflow-plugin/scripts/codeflow_mcp.py` 一类工具，用命令面板流程打开面板或扩展能力（需本机 Python + MCP 配置）。
+2. **Cursor 扩展**：例如仓库内 `codeflow-desktop/cursor-extension/`（`codeflow-panel-launcher`）通过 VS Code 扩展 API 打开面板，或自写 MCP 扩展其它能力。
 3. **纯手动**：侧栏点 Agent；预检验证「能切到」即可。
 
 ## 参考

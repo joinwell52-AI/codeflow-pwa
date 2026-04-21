@@ -1,4 +1,4 @@
-﻿# 码流（CodeFlow）— Multi-AI Agent Collaboration Plugin
+# 码流（CodeFlow）— Multi-AI Agent Collaboration Plugin
 
 让多个 Cursor Agent 像团队一样协作。
 
@@ -90,35 +90,11 @@ docs/agents/
 
 依赖：`pip install -r codeflow-plugin/requirements.txt`（含 `websockets`）。
 
-## 可选：轻量 MCP「只打开本机控制面板」（`http://127.0.0.1:18765/`）
+## 打开本机控制面板（`http://127.0.0.1:18765/`）
 
-与主服务 `scripts/mcp_server.py` **分开** 的独立脚本：`scripts/codeflow_mcp.py`。  
-**实现原理**：MCP 工具被调用后，用 **pyautogui** 激活标题含 `Cursor` 的窗口 → **Ctrl+Shift+P**（macOS 为 **⌘⇧P**）→ 输入 `Simple Browser` → 回车 → 输入面板 URL → 回车。与你在聊天里手动操作一致，**不依赖**未文档化的 ACP JSON-RPC 端口。
+想在 Cursor 内嵌一个面板视图，请使用仓库内 **`codeflow-desktop/cursor-extension/`** 下的 VSIX 扩展 `codeflow-panel-launcher`（命令：`CodeFlow: 打开控制面板` / `codeflow.openPanel`）。它走 VS Code 扩展 API，无需 Python、不模拟键盘、不抢焦点。
 
-**依赖**（单独安装即可）：
-
-```bash
-cd codeflow-plugin
-pip install -r requirements-codeflow-mcp.txt
-```
-
-**Cursor `mcp.json` 示例**（`args` 改为本机绝对路径）：
-
-```json
-{
-  "mcpServers": {
-    "codeflow-panel": {
-      "command": "python",
-      "args": ["D:/CodeFlow/codeflow-plugin/scripts/codeflow_mcp.py"],
-      "env": {}
-    }
-  }
-}
-```
-
-保存后重启 Cursor。Agent 中可描述「打开 CodeFlow 面板」「刷新 CodeFlow 面板」等，对应工具名：`open_codeflow_panel`、`refresh_codeflow_panel`。
-
-**注意**：须先运行 **CodeFlow-Desktop.exe**，保证 `127.0.0.1:18765` 已监听；命令面板语言为英文时，`Simple Browser` 命令名与 Cursor 内置一致。若焦点被其它窗口抢走，请先手动点一下 Cursor 再试。
+前置：已运行 **CodeFlow-Desktop.exe**，`127.0.0.1:18765` 可访问。
 
 ## License
 

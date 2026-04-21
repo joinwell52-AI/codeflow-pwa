@@ -1,3 +1,0 @@
-# 仅用于 scripts/codeflow_mcp.py（打开本机 18765 面板的轻量 MCP）
-fastmcp>=3.2.0
-pyautogui>=0.9.54

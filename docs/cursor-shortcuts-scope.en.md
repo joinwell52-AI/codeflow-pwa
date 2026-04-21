@@ -26,7 +26,7 @@
 ## Alternatives If You “Give Up on Cursor Shortcuts”
 
 1. **Desktop patrol**: keep using shortcuts or click paths; CodeFlow drives pacing; users can reduce global bindings in Cursor.
-2. **MCP**: e.g. repo tools like `codeflow-plugin/scripts/codeflow_mcp.py`, command-palette flows to open panels or extend behavior (requires local Python + MCP config).
+2. **Cursor extension**: e.g. `codeflow-desktop/cursor-extension/` (`codeflow-panel-launcher`) opens the panel via the VS Code extension API, or write your own MCP for other capabilities.
 3. **Fully manual**: click Agent in the sidebar; preflight only needs to verify you “can switch to” the right place.
 
 ## References
