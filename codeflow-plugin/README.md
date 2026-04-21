@@ -24,29 +24,66 @@
 
 PyPI 包名：**`fcop`**（0.2.1+）。
 
-### 🤖 方式 0：告诉 Cursor Agent 自己装（最省事，推荐）
+### 🤖 方式 0：让 Cursor Agent 自己装（最省事，推荐）
 
-新电脑已经装了 Cursor？打开任意项目 → 开个 Agent 聊天 → 把下面这段**整段**发给它：
+**总共 3 步，大概 3 分钟。**
 
-> 帮我装 `fcop` MCP。在 PowerShell（Windows）或 bash（macOS/Linux）里执行下面对应的一条命令，跑完告诉我结果，然后提醒我重启 Cursor：
+#### 第 1 步：先装 `uv`（先决条件，必须有）
+
+`uv` 是 Python 包管理器，`fcop` 依赖它来懒加载运行。**没装 `uv`，后面一切免谈。**
+
+在系统命令行跑对应那条（不是 Cursor 里，是 Windows 的 PowerShell 或 macOS 的 Terminal）：
+
+- **Windows**
+  ```powershell
+  winget install -e --id astral-sh.uv --accept-package-agreements --accept-source-agreements
+  ```
+  （`winget` 是 Win10 1809+ / Win11 自带。没有的话去微软商店搜"应用安装程序"装上。）
+
+- **macOS / Linux**
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+验证（**关掉当前终端窗口，再开一个新的**，让 PATH 生效）：
+
+```
+uvx --version
+```
+
+看到 `uvx 0.x.x` 说明成功。
+
+#### 第 2 步：把下面这段**整段**发给 Cursor Agent
+
+打开 Cursor → 任意项目 → 开一个 Agent 聊天 → 粘贴：
+
+> 帮我装 `fcop` MCP。在系统命令行执行下面对应的一条命令，跑完告诉我结果，然后提醒我重启 Cursor：
 >
-> **Windows：**
-> ```powershell
+> **Windows（PowerShell）：**
+> ```
 > irm https://raw.githubusercontent.com/joinwell52-AI/codeflow-pwa/main/codeflow-plugin/scripts/install-fcop.ps1 | iex
 > ```
 >
-> **macOS / Linux：**
-> ```bash
+> **macOS / Linux（bash）：**
+> ```
 > curl -fsSL https://raw.githubusercontent.com/joinwell52-AI/codeflow-pwa/main/codeflow-plugin/scripts/install-fcop.sh | bash
 > ```
 
-Agent 会用自带的 shell 工具跑完，脚本做的事：
+Agent 用自己的 shell 工具跑这条命令，脚本做三件事：
 
-1. `uv` 没装就装上（Windows 走 winget，macOS/Linux 走官方脚本）
-2. 创建 / 合并 `~/.cursor/mcp.json` —— **保留你原有的其他 MCP 不动**，只追加 `fcop` 一项
-3. 打印"装完了，重启 Cursor"
+1. 检查 `uv` 是否已装（第 1 步已装好 → 跳过；没装 → 再尝试一次）
+2. 把 `fcop` 条目**合并**进 `~/.cursor/mcp.json` —— **你原有的其他 MCP 一个不丢**
+3. 输出 "All done. Restart Cursor"
 
-整个流程你只输入一次那段提示词，其余交给 Agent。
+#### 第 3 步：彻底重启 Cursor
+
+**不是关窗口**，是：
+- Windows：右下角系统托盘找 Cursor 图标 → 右键 → **Quit / 退出**
+- macOS：菜单栏 Cursor → **Quit Cursor**（Cmd+Q）
+
+再重开 Cursor。完事。
+
+> 💡 为什么 Cursor Agent 能自己装？Cursor 内置了 shell 执行工具，没配任何 MCP 也能跑命令。所以哪怕是全新的 Cursor，你第一次聊天就可以让它帮你装各种 MCP。
 
 ### 方式 A：`uvx` 一键（手动，零配置）
 
