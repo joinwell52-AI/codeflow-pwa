@@ -6,6 +6,39 @@
 
 ## [Unreleased]
 
+### fcop 0.5.1（MCP 包）- 2026-04-22
+
+#### 文档补漏：角色 ≠ Agent 窗口
+
+**起因**：ADMIN 装完 `dev-team` 看到 4 个角色（`PM/DEV/QA/OPS`），
+第一反应是"我得开 4 个 Cursor 窗口"。信里没写清这个，ADMIN 要么
+懵，要么硬开 4 个空转吃 token，要么错把"只开 1 个"理解成"应该
+选 solo"再重新 init 一次。
+
+**改动**（纯文档，代码零风险）：
+
+1. **LETTER-TO-ADMIN 双语新增一节**：`角色 ≠ Agent 窗口：你实际
+   要开几个？` / `Roles ≠ Agent windows: how many Cursor tabs do
+   you actually open?` 插在"三种起手方式"之后、"自建角色硬规则"
+   之前。内容覆盖：
+
+   - 角色（在 `fcop.json`）vs Agent 窗口（Cursor tab）的概念分离
+   - 推荐开法表：1 个 PM / 2 个 PM+DEV / 3 个 +QA / 4 个 +OPS
+   - 大多数场景 **1 个 PM 起步就够**
+   - ⚠️ 对比表：`mode: "solo"` vs `mode: "team" + 1 PM 窗口`
+     的根本差别——避免 ADMIN 误切 solo
+   - 标准起手句：`"你是 PM，在 dev-team"` / `"You are PM on dev-team"`
+
+2. **`mcp.instructions` 补一段"主动引导"**：Agent 在 `init_project`
+   或 `create_custom_team` 返回后，**必须主动解释**角色数 ≠ 窗口数，
+   推荐先开 1 个 PM，并说清"只开 1 个 PM" ≠ "solo 模式"。指向
+   LETTER-TO-ADMIN 的新章节。
+
+**意义**：0.5.0 的样本库解决了"角色分别该干嘛"，0.5.1 解决了
+"我该开几个窗口跑这些角色"——两者合起来，ADMIN 第一次能在 init
+完成后自己走通"选团队 → 开窗 → 指派 → 派活"全链路，不再卡在
+"4 个角色是不是必须开 4 个窗口"这种最常见的误解上。
+
 ### fcop 0.5.0（MCP 包）- 2026-04-22
 
 #### 新增：样本库（Sample Library）—— 4 套团队双语角色说明书打进包

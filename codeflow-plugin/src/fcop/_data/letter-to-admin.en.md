@@ -102,6 +102,63 @@ drafting your own `shared/TEAM-ROLES.md` and
 
 ---
 
+## Roles ≠ Agent windows: how many Cursor tabs do you actually open?
+
+**This is the #1 ADMIN pitfall**: `dev-team` lists 4 roles
+(`PM / DEV / QA / OPS`), so ADMIN opens 4 Cursor windows up-front.
+
+You don't have to.
+
+| Concept | Lives in | Meaning |
+|---|---|---|
+| **Role** | `fcop.json` / task filenames | The protocol-level identity — who dispatches to whom, who reports back |
+| **Agent (window)** | Each Cursor chat session you open | One window = one role, assigned the moment you type `You are {ROLE} on {team}` |
+
+**FCoP does not require #roles = #windows**. It is a *file* protocol —
+if you only open a `PM` window, the `TASK-*-to-DEV.md` files PM writes
+will **sit silently in `tasks/`** until you open another window and
+assign it `DEV`. That's not a bug; that's the design.
+
+### The easiest way to start
+
+| Open | Assignment | Good for |
+|---|---|---|
+| **1** | Current session = PM | Default starter. PM accepts your orders, writes dispatch files, and the queue waits. Open the 2nd window only when PM actually dispatches to DEV |
+| **2** | PM + DEV | Pure coding, no test/deploy yet |
+| **3** | PM + DEV + QA | When you want self-testing before ship |
+| **4** | PM + DEV + QA + OPS | Only when you actually plan to deploy |
+
+**Most people are fine with just one PM window**. Don't pre-open 4 —
+idle windows just burn tokens.
+
+### ⚠️ "1 PM window" ≠ Solo mode
+
+Two different things — do not mix them up:
+
+| | `mode: "solo"` | `mode: "team"` + 1 PM window |
+|---|---|---|
+| Role count | 1 (`ME`) | 4 (`PM/DEV/QA/OPS`) |
+| Can dispatch? | No — no subordinate exists | Yes — PM writes `TASK-...-to-DEV.md`, queue waits |
+| Switching to team later | Re-run `init_project()` | Just open a new window and type the assignment line |
+
+In plain English: **Solo = "I'll do it all myself"; team-mode with 1 PM
+window = "I've hired the crew; I'll call them in as needed"**.
+
+### Standard opening lines
+
+Current window:
+
+> **"You are PM on dev-team"**
+
+Tomorrow you need DEV. Open a new Cursor window, say:
+
+> **"You are DEV on dev-team"** (optionally with `, thread feature_login`)
+
+The two windows **do not chat with each other** — they coordinate
+through files under `docs/agents/tasks/`.
+
+---
+
 ## Hard rules for custom roles
 
 Role codes go straight into filenames

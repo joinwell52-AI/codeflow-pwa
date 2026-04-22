@@ -1,6 +1,6 @@
 {
   "name": "fcop",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "FCoP — File-based Coordination Protocol for multi-AI-agent collaboration. Supports Solo mode, preset teams (dev / media / mvp), and custom teams with role-code validation.",
   "author": {
     "name": "FCoP Maintainers",
