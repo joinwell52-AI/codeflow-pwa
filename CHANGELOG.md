@@ -6,6 +6,67 @@
 
 ## [Unreleased]
 
+### fcop 0.4.3（MCP 包）- 2026-04-22
+
+#### 修复：启动流程三阶段混成一锅，ADMIN 看不懂第一步该干啥
+
+0.4.2 及之前，`unbound_report` 不管项目有没有初始化，一律返回
+"UNBOUND / 等待 ADMIN 指派角色"。结果 ADMIN 第一次开 Cursor、项目还
+没 `fcop.json` 时收到的是"请说'你是 PM 在 dev-team'"—— 团队都没建，
+指什么派？ADMIN 不是懵就是随便编一句，然后整个项目走歪。
+
+这不是文档问题，是**状态机设计把"未初始化"和"未指派角色"混成一锅**。
+
+0.4.3 把三阶段摆清楚：
+
+```
+阶段 1：安装            uv tool install fcop             （一次性）
+阶段 2：初始化          init_solo / init_project /       （项目第一次）
+                       create_custom_team
+阶段 3：分配角色        ADMIN：你是 {ROLE}，在 {team}    （每次新会话）
+```
+
+对应行为变化：
+
+1. **`unbound_report` 按状态返回两种报告**：
+   - `fcop.json` 不存在 → **Initialization report**（标题"初始化汇报
+     第一阶段—— 未初始化"），列出 `init_solo` / `init_project` /
+     `create_custom_team` 三选项，**不谈角色**
+   - `fcop.json` 存在 → **UNBOUND report**（标题"UNBOUND 汇报 第二阶段
+     —— 已初始化，未指派角色"），照旧给角色指派模板
+2. **三个 `init_*` 工具返回值加了"下一步"尾巴**：统一提示 ADMIN
+   "打开 `LETTER-TO-ADMIN.md` → 再调一次 `unbound_report` → 分配角色"
+3. **Rule 1 重写**（fcop-rules.mdc → `fcop_rules_version: 1.2.0`）：
+   正式把"Phase 1 未初始化"和"Phase 2 未指派"作为两个独立状态写进
+   协议规则，明确 ADMIN / SYSTEM 是保留身份，**永远不可被指派给 AI**
+
+#### 改进：致 ADMIN 的信补全功能清单
+
+`LETTER-TO-ADMIN.md`（zh + en 两版）多了一节"MCP 功能一览"，把 17 个
+工具 + 6 个资源按"必经 / 可选 / 资源"三档全列出来，每条标清"做什么、
+何时调、必须还是可选"。特别标注 Cursor 面板上"点灰禁用"的 UX：
+`unbound_report` 和 `set_project_dir` 千万别灰。
+
+#### 兼容性
+
+- `fcop.json` 格式、任务文件命名、所有工具签名均不变
+- 老会话（已经绑了角色的）完全不受影响，`unbound_report` 依旧给
+  Phase 2 报告
+- `fcop_rules_version` 1.1.0 → 1.2.0：Rule 1 表述改了，语义不变
+  （仍然是"新会话先调 unbound_report、ADMIN 不可被指派"），只是把
+  原来藏在工具 docstring 里的"三阶段"写进规则本身
+
+#### 升级
+
+```bash
+uv tool upgrade fcop     # 或
+pipx upgrade fcop
+```
+
+旧项目的 `.cursor/rules/fcop-rules.mdc` **不会被覆盖**（尊重本地可能
+的修改）。想用 1.2.0 的 Rule 1，删掉那个文件再调任一 `init_*` 工具，
+新版本会自动部署。
+
 ### fcop 0.4.2（MCP 包）- 2026-04-22
 
 #### 修复：0.4.1 auto-detect 在 Cursor 家目录下的假阳性

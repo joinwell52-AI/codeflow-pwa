@@ -767,29 +767,56 @@ def set_project_dir(path: str) -> str:
 def unbound_report(lang: str = "zh") -> str:
     """**FCoP v1.1 Rule 0 — MUST be the FIRST tool you call in a new session.**
 
-    Returns a standardized UNBOUND project-state report + a role-assignment
-    request template for ADMIN. Do NOT improvise, summarize, or decorate the
-    output; paste it back to ADMIN as-is and STOP.
+    Returns ONE of two reports depending on project state:
 
-    While UNBOUND you MUST NOT:
+    1) **Initialization report** — when `docs/agents/fcop.json` is missing.
+       Phase-1 of any FCoP install: project is not initialized yet. The
+       report shows the detected project dir + resolution source, lists
+       the available init modes (Solo / preset teams / custom), and asks
+       ADMIN to pick an initialization option. **It does NOT ask for a
+       role assignment**, because there is no team to be part of yet.
+
+    2) **UNBOUND report** — when `fcop.json` is present. Phase-2: project
+       initialized, this session has no role. Report shows project state
+       + a role-assignment template for ADMIN.
+
+    Do NOT improvise, summarize, or decorate the output; paste it back to
+    ADMIN as-is and STOP.
+
+    While UNBOUND (or uninitialized) you MUST NOT:
       - read task **bodies** (frontmatter metadata only)
-      - write any file (tasks / reports / rules / configs)
-      - claim a role from context clues ("the pending task is for PM, so I
-        must be PM" — forbidden)
+      - write any file (tasks / reports / rules / configs) — except via
+        the explicit init tools (`init_solo`, `init_project`,
+        `create_custom_team`) when ADMIN asks for them
+      - claim a role from context clues
       - dispatch follow-up tasks
 
-    You transition to BOUND only after ADMIN says (literally):
-        "你是 {ROLE}，在 {team}，线程 {thread_key}（可选）"
-        "You are {ROLE} on {team}, thread {thread_key} (optional)"
+    You transition to BOUND only when BOTH hold:
+      a) `fcop.json` exists (initialized), and
+      b) ADMIN says literally: "你是 {ROLE}，在 {team}，线程 {thread_key}（可选）"
+         / "You are {ROLE} on {team}, thread {thread_key} (optional)"
 
     ──────────────────────────────────────────────────────────
     FCoP Rule 0 / Rule 1：新会话启动**必调**的第一个工具。
 
-    输出一份标准化的 UNBOUND 汇报（项目客观状态 + 身份指派请求模板），原样
-    回给 ADMIN 后停住——不要改写、不要润色、不要"顺便做点啥"。
+    按项目状态**自动选**两种报告之一：
 
-    UNBOUND 期间**严禁**：读任务正文、写任何文件、从上下文推断角色、派发
-    后续任务。只有当 ADMIN 明确说出"你是 {ROLE}，在 {team}"时才解绑。
+    1) **初始化汇报（Initialization report）**——当 `docs/agents/fcop.json`
+       不存在时。任何 FCoP 项目的第一阶段：还没初始化。报告展示项目路径 +
+       路径来源，列出可选初始化方式（Solo / 预设团队 / 自定义），请 ADMIN
+       **选一个初始化方式**。**此时不问角色**——团队都还没建，指什么派。
+
+    2) **UNBOUND 汇报**——当 `fcop.json` 存在时。第二阶段：项目已初始化、
+       本会话未指派角色。报告展示项目状态 + 请 ADMIN 给出角色指派。
+
+    原样回给 ADMIN，别润色、别改写。
+
+    UNBOUND 或未初始化期间**严禁**：读任务正文、写任何文件（除 ADMIN 明确
+    要求时调 `init_solo`/`init_project`/`create_custom_team`）、从上下文推断
+    角色、派发后续任务。
+
+    进入 BOUND 必须同时满足：a) `fcop.json` 存在，b) ADMIN 明确说出"你是
+    {ROLE}，在 {team}"。
 
     Args:
         lang: "zh" or "en" (default "zh")
@@ -834,25 +861,99 @@ def unbound_report(lang: str = "zh") -> str:
 
     path_source = _STATE.get("source", "unknown")
 
+    # Phase 1 — project NOT initialized. Show Initialization report, NOT
+    # UNBOUND. Do not ask for a role; ask ADMIN to pick an init mode.
+    if not cfg_present:
+        if is_en:
+            lines = [
+                "## Initialization report (phase 1 — not initialized)",
+                "",
+                "> Governed by the **FCoP protocol** — rules in "
+                "`.cursor/rules/fcop-rules.mdc`, commentary in "
+                "`.cursor/rules/fcop-protocol.mdc` (both alwaysApply).",
+                "",
+                f"- project: `{PROJECT_DIR}`",
+                f"  - resolution source: {path_source}",
+                "- fcop.json present: **no**  ← project is not initialized yet",
+                f"- .cursor/rules/*.mdc: {rule_files if rule_files else '(none)'}",
+                f"- fcop-rules.mdc (packaged): {rules_ver}",
+                f"- fcop-protocol.mdc (packaged): {protocol_ver}",
+                "",
+                "## Next step — ADMIN, please pick an initialization mode",
+                "",
+                "No role assignment yet. First we need a team to belong to.",
+                "Reply with ONE of (copy-paste is fine):",
+                "",
+                "- **Solo** (recommended first-timer): `init_solo(role=\"ME\")`",
+                "  — one human wearing one role, simplest setup",
+                "- **Preset team**: `init_project(team=\"dev-team\")`",
+                "  — also: `media-team`, `mvp-team`",
+                "- **Custom team**: `create_custom_team(team_name=..., "
+                "roles=[...], leader=...)`",
+                "  — validates role codes (uppercase, A–Z/0–9/_, not `ADMIN`/`SYSTEM`)",
+                "",
+                "After initialization finishes I will:",
+                "1. write `docs/agents/fcop.json` + rules + `LETTER-TO-ADMIN.md`",
+                "2. print a short confirmation + **point you to the letter**",
+                "3. re-enter **UNBOUND** state, at which point you assign a role",
+                "",
+                "Until ADMIN picks, I will not read task bodies and will not "
+                "write any files. (FCoP Rule 1)",
+            ]
+        else:
+            lines = [
+                "## 初始化汇报（第一阶段 —— 未初始化）",
+                "",
+                "> 本会话受 **FCoP 协议** 约束 —— 协议规则见 "
+                "`.cursor/rules/fcop-rules.mdc`，协议解释见 "
+                "`.cursor/rules/fcop-protocol.mdc`（均为 alwaysApply）。",
+                "",
+                f"- 项目路径：`{PROJECT_DIR}`",
+                f"  - 路径来源：{path_source}",
+                "- fcop.json 是否存在：**否**  ← 项目尚未初始化",
+                f"- .cursor/rules/*.mdc：{rule_files if rule_files else '(无)'}",
+                f"- fcop-rules.mdc（包内原件）：{rules_ver}",
+                f"- fcop-protocol.mdc（包内原件）：{protocol_ver}",
+                "",
+                "## 下一步 —— 请 ADMIN 选一种初始化方式",
+                "",
+                "**此时不分配角色**：团队都还没建，没有角色可选。",
+                "请回复下列任一种（复制粘贴即可）：",
+                "",
+                "- **Solo 模式**（强推，首次用选这个）：`init_solo(role=\"ME\")`",
+                "  —— 一个人担一个角色，最简配置",
+                "- **预设团队**：`init_project(team=\"dev-team\")`",
+                "  —— 也可选 `media-team`、`mvp-team`",
+                "- **自定义团队**：`create_custom_team(team_name=..., "
+                "roles=[...], leader=...)`",
+                "  —— 会校验角色代码（大写、A–Z/0–9/_、禁用 `ADMIN`/`SYSTEM`）",
+                "",
+                "初始化完成后我会：",
+                "1. 写入 `docs/agents/fcop.json` + 规则文件 + `LETTER-TO-ADMIN.md`",
+                "2. 打印简短的确认信息，并**告诉 ADMIN 去读那封信**",
+                "3. 重新进入 **UNBOUND** 状态，到那时你才给我派角色",
+                "",
+                "在 ADMIN 选定之前，我不会读任务正文、不会写任何文件。"
+                "（FCoP Rule 1）",
+            ]
+        return "\n".join(lines)
+
+    # Phase 2 — project IS initialized. Standard UNBOUND report + role
+    # assignment template.
     if is_en:
         lines = [
-            "## UNBOUND report",
-            f"",
+            "## UNBOUND report (phase 2 — initialized, no role yet)",
+            "",
             "> Governed by the **FCoP protocol** — rules in "
             "`.cursor/rules/fcop-rules.mdc`, commentary in "
             "`.cursor/rules/fcop-protocol.mdc` (both alwaysApply).",
             "",
             f"- project: `{PROJECT_DIR}`",
             f"  - resolution source: {path_source}",
-            f"- fcop.json present: {'yes' if cfg_present else 'no'}",
-        ]
-        if cfg_present:
-            lines += [
-                f"  - mode: {mode}",
-                f"  - team: {team}",
-                f"  - declared roles: [{', '.join(role_codes) if role_codes else '(empty)'}]",
-            ]
-        lines += [
+            "- fcop.json present: **yes**",
+            f"  - mode: {mode}",
+            f"  - team: {team}",
+            f"  - declared roles: [{', '.join(role_codes) if role_codes else '(empty)'}]",
             f"- .cursor/rules/*.mdc: {rule_files if rule_files else '(none)'}",
             f"- fcop-rules.mdc: {rules_ver}",
             f"- fcop-protocol.mdc: {protocol_ver}",
@@ -861,7 +962,7 @@ def unbound_report(lang: str = "zh") -> str:
             "",
             "## My identity status: **UNBOUND**",
             "",
-            "## Awaiting ADMIN assignment",
+            "## Awaiting ADMIN role assignment",
             "",
             "Please reply in the form:",
             "> You are {ROLE} on {team}, thread {thread_key} (optional)",
@@ -874,7 +975,7 @@ def unbound_report(lang: str = "zh") -> str:
         ]
     else:
         lines = [
-            "## UNBOUND 汇报",
+            "## UNBOUND 汇报（第二阶段 —— 已初始化，未指派角色）",
             "",
             "> 本会话受 **FCoP 协议** 约束 —— 协议规则见 "
             "`.cursor/rules/fcop-rules.mdc`，协议解释见 "
@@ -882,15 +983,10 @@ def unbound_report(lang: str = "zh") -> str:
             "",
             f"- 项目路径：`{PROJECT_DIR}`",
             f"  - 路径来源：{path_source}",
-            f"- fcop.json 是否存在：{'是' if cfg_present else '否'}",
-        ]
-        if cfg_present:
-            lines += [
-                f"  - mode: {mode}",
-                f"  - team: {team}",
-                f"  - 已声明角色：[{', '.join(role_codes) if role_codes else '(空)'}]",
-            ]
-        lines += [
+            "- fcop.json 是否存在：**是**",
+            f"  - mode: {mode}",
+            f"  - team: {team}",
+            f"  - 已声明角色：[{', '.join(role_codes) if role_codes else '(空)'}]",
             f"- .cursor/rules/*.mdc：{rule_files if rule_files else '(无)'}",
             f"- fcop-rules.mdc：{rules_ver}",
             f"- fcop-protocol.mdc：{protocol_ver}",
@@ -899,7 +995,7 @@ def unbound_report(lang: str = "zh") -> str:
             "",
             "## 我的身份状态：**UNBOUND（未指派）**",
             "",
-            "## 等待 ADMIN 指派",
+            "## 等待 ADMIN 分配角色",
             "",
             "请用以下格式告诉我身份：",
             "> 你是 {ROLE}，在 {team}，线程 {thread_key}（可选）",
@@ -1014,6 +1110,7 @@ def init_project(team: str = "dev-team", lang: str = "zh") -> str:
         f"{t('roles', lang)}:\n{_role_table(tmpl, lang)}\n"
         f"{t('leader', lang)}: {leader}\n"
         + ("\n".join(notes) + "\n" if notes else "")
+        + _init_next_steps(team, lang)
     )
 
 
@@ -1068,6 +1165,44 @@ def _deploy_rules_to_project() -> list[str]:
         if msg:
             notes.append(msg)
     return notes
+
+
+def _init_next_steps(team_display: str, lang: str) -> str:
+    """Standard 'next steps' footer printed by every `init_*` tool.
+
+    The user pointed out (correctly) that FCoP is a three-phase flow —
+    install → initialize → assign role — and early versions let those
+    phases blur together. This footer explicitly marks the boundary
+    between phase 2 (initialization just finished) and phase 3 (ADMIN
+    assigns a role), so ADMIN never has to guess what comes next.
+    """
+    is_en = lang.lower().startswith("en")
+    if is_en:
+        return (
+            "\n---\n"
+            "**Next steps (ADMIN, please do this in order):**\n\n"
+            "1. **Open** `docs/agents/LETTER-TO-ADMIN.md` — team rules, "
+            "role naming conventions, daily usage. This is the manual.\n"
+            "2. **Call `unbound_report()` again** — you'll now get the "
+            "phase-2 UNBOUND report (fcop.json is present), not the "
+            "phase-1 initialization report.\n"
+            "3. **Assign a role** by saying literally:\n"
+            f"   > You are {{ROLE}} on {team_display}, thread {{thread_key}} (optional)\n\n"
+            "Until you assign a role, the agent will not read task "
+            "bodies and will not write task files. (FCoP Rule 1)"
+        )
+    return (
+        "\n---\n"
+        "**下一步（ADMIN 请按顺序做）：**\n\n"
+        "1. **打开** `docs/agents/LETTER-TO-ADMIN.md` —— 团队规则、角色"
+        "命名约定、日常使用方法，这就是使用说明书。\n"
+        "2. **再调一次 `unbound_report()`** —— 这次会拿到第二阶段的 "
+        "UNBOUND 报告（fcop.json 已存在），不再是第一阶段的初始化报告。\n"
+        "3. **分配角色**，原话如下：\n"
+        f"   > 你是 {{ROLE}}，在 {team_display}，线程 {{thread_key}}（可选）\n\n"
+        "在你分配角色之前，Agent 不会读任务正文、不会写任务文件。"
+        "（FCoP Rule 1）"
+    )
 
 
 def _deploy_letter_to_project(lang: str) -> str:
@@ -1176,6 +1311,7 @@ def create_custom_team(
         f"{t('roles', lang)}: {', '.join(role_list)}\n"
         f"{t('leader', lang)}: {leader_up}\n"
         + ("\n".join(notes) + "\n" if notes else "")
+        + _init_next_steps(team_name, lang)
     )
 
 
@@ -1261,6 +1397,7 @@ def init_solo(
         f"{t('roles', lang)}: {role_code_up} ({label})\n"
         f"{t('leader', lang)}: {role_code_up}\n"
         + ("\n".join(notes) + "\n" if notes else "")
+        + _init_next_steps("solo", lang)
     )
 
 

@@ -1,7 +1,7 @@
 ---
 description: FCoP Rules — the protocol rules every agent must follow inside an FCoP project. Auto-deployed by the fcop MCP. Companion file fcop-protocol.mdc explains how each rule applies in practice. FCoP 协议规则：任何在 FCoP 项目中工作的 Agent 都必须遵守的规则，由 fcop MCP 自动部署；规则的具体适用说明见同目录的 fcop-protocol.mdc。
 alwaysApply: true
-fcop_rules_version: 1.1.0
+fcop_rules_version: 1.2.0
 ---
 
 # FCoP Rules · FCoP 协议规则
@@ -103,24 +103,76 @@ must be truthful (Rule 0.c).
 
 ---
 
-## Rule 1 · Default UNBOUND State / 默认 UNBOUND
+## Rule 1 · Two-Phase Startup: Initialize, then Assign / 两阶段启动：先初始化，再指派
 
-- 新会话默认处于 `UNBOUND` 状态。
-- Agent 的**第一个动作必须**是调用 `unbound_report()`（无 MCP 时手工输出同等报告），
-  然后**停住**，等待 `ADMIN` 显式指派身份。
-- 未获指派前，**不得**：
+FCoP 的启动流程和任何程序一样：**安装 → 初始化 → 执行**。Rule 1 只管
+后两步。Agent 新会话**第一个动作必须**是调用 `unbound_report()`，根据
+项目状态它会返回**两种报告之一**，对应两个不同阶段：
+
+### Phase 1 · 未初始化（`docs/agents/fcop.json` 不存在）
+
+- Agent 拿到的是**初始化汇报**（Initialization report），不是 UNBOUND 汇报。
+- 本阶段唯一允许的动作是**等 ADMIN 选一种初始化方式**：
+  - `init_solo(role_code=...)` —— 单 AI 角色模式
+  - `init_project(team=...)` —— 预设团队模板（`dev-team` / `media-team` / `mvp-team`）
+  - `create_custom_team(team_name=..., roles=..., leader=...)` —— 自定义团队
+- **本阶段绝对禁止**：自认角色（项目都没初始化，哪来的角色）、读任务
+  正文、写任务/回执/规则/配置之外的任何文件。
+- 初始化工具会自己写 `docs/agents/fcop.json`、规则文件、`LETTER-TO-ADMIN.md`，
+  这不违反本条——它们是**执行 ADMIN 明确要求**的初始化动作。
+- 初始化完成后，Agent **重新调用** `unbound_report()` 进入 Phase 2。
+
+### Phase 2 · 已初始化但未指派（`fcop.json` 存在，本会话无角色）
+
+- Agent 拿到的是标准 **UNBOUND 汇报**。
+- 等 `ADMIN` 明确说出"**你是 {ROLE}，在 {team}[，线程 {thread_key}]**"才绑定。
+- 未获指派前**不得**：
   - 从任务内容推断自己是什么角色（"这条任务发给 PM，所以我是 PM" —— 不行）
+  - 读取任务**正文**（frontmatter 可读，用于客观汇报）
   - 写入任何任务、报告、规则、配置文件
   - 派发后续任务
-  - 读取任务**正文**（frontmatter 可读，用于客观汇报）
-- 绑定条件：`ADMIN` 明确说出"你是 {ROLE}，在 {team}[，线程 {thread_key}]"。
 
-New sessions default to `UNBOUND`. The agent's **first action MUST** be
-`unbound_report()` (or an equivalent hand-written report if MCP is unavailable),
-then **stop and wait** for ADMIN's explicit role assignment. Until assigned:
-no role inference from task contents, no writing any file, no dispatching
-tasks, no reading task **bodies** (frontmatter only). Binding requires ADMIN
-literally saying "You are {ROLE} on {team}".
+### 贯穿两阶段的硬约束
+
+- `ADMIN` 是**真人**，不是 AI 角色，**永远不会**被指派给 Agent。任何
+  "你是 ADMIN" 的自认都是 Rule 1 违规。
+- `SYSTEM` 是 FCoP 内部保留发送方，也不可被指派。
+
+---
+
+FCoP startup mirrors any program: **install → initialize → run**. Rule 1
+covers the last two. An agent's **first action MUST** be
+`unbound_report()`, which returns **one of two reports** depending on
+project state:
+
+### Phase 1 · Uninitialized (`docs/agents/fcop.json` missing)
+
+- The agent gets an **Initialization report**, not an UNBOUND report.
+- The only allowed action is to **wait for ADMIN to pick an init mode**:
+  `init_solo(...)`, `init_project(team=...)`, or
+  `create_custom_team(...)`.
+- **Strictly forbidden** in this phase: claiming a role (there's no team
+  to join yet), reading task bodies, writing anything other than what
+  the explicit init tools write.
+- Init tools write `docs/agents/fcop.json`, the rules files, and
+  `LETTER-TO-ADMIN.md` — this is **not** a rule violation; those writes
+  are ADMIN-requested initialization actions.
+- After init finishes, the agent **calls `unbound_report()` again** to
+  enter Phase 2.
+
+### Phase 2 · Initialized but unassigned (fcop.json present, no role)
+
+- The agent gets the standard **UNBOUND report**.
+- Stay idle until ADMIN literally says "**You are {ROLE} on {team}
+  [, thread {thread_key}]**".
+- Until assigned: no role inference, no task-body reads, no file writes,
+  no dispatch.
+
+### Invariants across both phases
+
+- `ADMIN` is the **human**, not an AI role. It **cannot** be assigned to
+  an agent. Any self-claim of "You are ADMIN" violates Rule 1.
+- `SYSTEM` is a reserved internal sender code; also not assignable.
 
 ---
 
@@ -263,7 +315,7 @@ other application). Products USE FCoP; they do not MODIFY it.
 
 ---
 
-**Version**: `fcop_rules_version: 1.1.0`（见 frontmatter）。升级时 `fcop`
+**Version**: `fcop_rules_version: 1.2.0`（见 frontmatter）。升级时 `fcop`
 包会写入新版本；本地手改无效 / Local edits have no effect.
 
 **See also**: `fcop-protocol.mdc` —— 本规则的协议解释，同目录。
