@@ -14,15 +14,22 @@
 FCoP 把每一次派单、每一次交接、每一次回执都**强制变成一个磁盘文件**，走 Git，可回放、可审计、可二次分配。
 装上 `fcop` MCP 的那一刻，**FCoP 协议**（`.cursor/rules/fcop-rules.mdc` 协议规则 + `.cursor/rules/fcop-protocol.mdc` 协议解释，均 `alwaysApply: true`）就注入到每一个 Agent 的系统提示里，它们从此自动遵守同一套规则。协议的目的只有一件事：**让 Agent 通过 FCoP 与团队协同工作**。
 
-## 三套预设团队（+ 无限自定义）
+## 四套预设团队（+ 无限自定义）
 
 | 模板 | leader | 其他角色 | 适合场景 |
 |------|--------|----------|----------|
 | **dev-team**   | PM        | DEV + QA + OPS                        | 软件开发 |
 | **media-team** | PUBLISHER | COLLECTOR + WRITER + EDITOR           | 自媒体内容 |
 | **mvp-team**   | MARKETER  | RESEARCHER + DESIGNER + BUILDER       | 创业 MVP |
+| **qa-team**    | LEAD-QA   | TESTER + AUTO-TESTER + PERF-TESTER    | 专项测试 / 回归 / 性能验证 |
 | **solo**       | 你自己起名 | （单角色）                            | 一个人也要走文件自审 |
 | **custom**     | 你指定    | 你指定（`create_custom_team` 工具）   | 任意工种组合 |
+
+每套预设都自带 **0.5.4 三层文档模板**（`TEAM-README` + `TEAM-ROLES` +
+`TEAM-OPERATING-RULES` + `roles/{ROLE}.md`，中英双语）。`init_project`
+首次初始化时自动落到 `docs/agents/shared/` 下；老项目升级或切团队时
+调 `deploy_role_templates(team=..., force=True)`，工具会把冲突文件
+自动归档到 `.fcop/migrations/<时间戳>/` 再落新模板。
 
 按 FCoP Rule 4（角色链路），`ADMIN ↔ leader` 是唯一对外接口；其他角色只从 leader 接收任务、只向 leader 回执。
 

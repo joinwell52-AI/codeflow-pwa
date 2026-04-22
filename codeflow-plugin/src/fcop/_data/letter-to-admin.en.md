@@ -67,11 +67,15 @@ proposal as a reviewer, using files to split "proposer" from "reviewer".
 
 Tool call: `init_project(team="dev-team", lang="en")`
 
-**Presets come with role responsibility docs** (new in 0.5.0): each
-preset ships a bilingual `.md` file per role. Init drops them into
-`docs/agents/shared/roles/` so an agent who's just been assigned a
-role can read its own job description inside the repo instead of
-waiting for you to spell it out.
+**Presets come with a three-layer doc set** (new in 0.5.4): every
+preset ships a full template — `TEAM-README.md` (team positioning) +
+`TEAM-ROLES.md` (role boundaries) + `TEAM-OPERATING-RULES.md`
+(operating rules) + `roles/{ROLE}.md` (single-role depth), bilingual.
+`init_project` drops everything under `docs/agents/shared/` so an
+agent just assigned a role reads its own `roles/{ROLE}.md` for
+responsibilities and the two top-level files for shared rules — no
+need for you to spell anything out. The three-layer structure is a
+protocol rule (`fcop-rules.mdc` Rule 4.5), not a soft recommendation.
 
 ### C. Build your own team
 
@@ -93,12 +97,12 @@ create_custom_team(
 
 **Custom teams don't ship role docs — but samples are one click away**:
 after creating a custom team, FCoP tells your agent
-*"See `fcop://teams/<team>` for reference samples"*
-(dev-team / media-team / mvp-team / qa-team each bundles a full
-bilingual role split). The agent naturally studies those before
-drafting your own `shared/TEAM-ROLES.md` and
-`shared/TEAM-OPERATING-RULES.md`. You can seed it with one sentence:
-**"Mirror media-team's chain of command."**
+*"See `fcop://teams/<team>` for reference samples"* (dev-team /
+media-team / mvp-team / qa-team each bundles the full **three-layer
+template**: `TEAM-README` / `TEAM-ROLES` / `TEAM-OPERATING-RULES` /
+`roles/{ROLE}`, bilingual). The agent naturally studies those before
+drafting your own team's three-layer set. You can seed it with one
+sentence: **"Mirror media-team's chain of command."**
 
 ---
 
@@ -243,20 +247,51 @@ concrete reason.
 
 ```
 project root/
-├── docs/agents/             ← Coordination metadata (who does what)
-│   ├── fcop.json            ← Project identity (mode / roles / leader)
-│   ├── tasks/               ← Tasks in flight
-│   ├── reports/             ← Completion reports
-│   ├── issues/              ← Issue records
-│   ├── shared/              ← Standing docs (dashboards, glossaries …)
-│   ├── log/                 ← Archives
-│   └── LETTER-TO-ADMIN.md   ← This letter, kept for reference
-├── workspace/               ← ★ Artifact home (code, scripts, data) ★
-│   └── README.md            ← Convention reference
+├── docs/agents/                      ← Coordination metadata (who does what)
+│   ├── fcop.json                     ← Project identity (mode / roles / leader)
+│   ├── tasks/                        ← Tasks in flight
+│   ├── reports/                      ← Completion reports
+│   ├── issues/                       ← Issue records
+│   ├── shared/                       ← Standing docs
+│   │   ├── README.md                 ← Shared-directory conventions
+│   │   ├── TEAM-README.md            ← [0.5.4] Team positioning + ADMIN duties
+│   │   ├── TEAM-ROLES.md             ← [0.5.4] Layer 1 · role boundaries
+│   │   ├── TEAM-OPERATING-RULES.md   ← [0.5.4] Layer 2 · operating rules
+│   │   └── roles/                    ← [0.5.4] Layer 3 · single-role depth
+│   │       ├── PM.md
+│   │       ├── DEV.md
+│   │       └── ...                   ← one per role (bilingual)
+│   ├── log/                          ← Archives
+│   └── LETTER-TO-ADMIN.md            ← This letter, kept for reference
+├── workspace/                        ← ★ Artifact home (code, scripts, data) ★
+│   └── README.md                     ← Convention reference
 └── .cursor/rules/
-    ├── fcop-rules.mdc       ← Protocol rules (auto-injected per agent)
-    └── fcop-protocol.mdc    ← Protocol commentary
+    ├── fcop-rules.mdc                ← Protocol rules (auto-injected per agent)
+    └── fcop-protocol.mdc             ← Protocol commentary
 ```
+
+### Three-layer team docs (since 0.5.4)
+
+Team docs under `shared/` **must** split into three layers — this is
+a protocol rule (`fcop-rules.mdc` Rule 4.5):
+
+| Layer | File | Answers |
+|---|---|---|
+| Layer 0 · entry | `TEAM-README.md` | What is this team? How does ADMIN engage? What's the typical flow? |
+| Layer 1 · role boundaries | `TEAM-ROLES.md` | Who owns what? Who reports to whom? Which lines are off-limits? |
+| Layer 2 · operating rules | `TEAM-OPERATING-RULES.md` | How are tasks dispatched, replied to, escalated, retrospected? |
+| Layer 3 · single-role depth | `roles/{ROLE}.md` | One role's responsibilities, deliverables, acceptance criteria, interfaces |
+
+`ADMIN` (you) is human — does **not** go under `roles/`, and is **not**
+written into `fcop.json.roles`. Your duties live in the "ADMIN
+Responsibilities" section of `TEAM-README.md`, not a separate file.
+
+Want to upgrade an old project to the three-layer set, or switch team
+templates? Have the agent call
+`deploy_role_templates(team="dev-team")` — it auto-archives any
+existing files to `.fcop/migrations/<timestamp>/` before dropping the
+new templates. Diff-able and recoverable; hand-edits aren't silently
+lost.
 
 Every message you send from now on becomes a file:
 
@@ -353,7 +388,7 @@ Output shows each slug's title and creation time.
 
 ## How you actually use FCoP: just talk
 
-**First, the important part**: FCoP ships 19 tools — **all of them are
+**First, the important part**: FCoP ships 22 tools — **all of them are
 for the agent, not for you**. You talk in plain language from start to
 finish; the agent translates your intent into the right tool call.
 
@@ -398,7 +433,8 @@ agent forgets what to do, you can spot it and nudge it back.
 |---|---|---|
 | "I don't like this FCoP rule" | `drop_suggestion("...", "...")` | Feedback lands under `.fcop/proposals/` (you can't edit the rules files yourself) |
 | "validate this team config before creating it" | `validate_team_config("MANAGER,CODER", "MANAGER")` | Dry-run check, returns suggestions on error |
-| "what team presets exist?" | `get_available_teams()` | Lists Solo / dev-team / media-team / mvp-team |
+| "what team presets exist?" | `get_available_teams()` | Lists Solo / dev-team / media-team / mvp-team / qa-team |
+| "upgrade the team docs to the three-layer set" / "switch to qa-team templates" | `deploy_role_templates(team="qa-team")` | Legacy files archived to `.fcop/migrations/<timestamp>/`; fresh three-layer set lands under `shared/` |
 | "let me re-read the manual" | Reads `fcop://letter/en` or opens `docs/agents/LETTER-TO-ADMIN.md` | Re-renders this letter |
 
 ### The only 2 tool names you might actually type
@@ -409,7 +445,7 @@ agent forgets what to do, you can spot it and nudge it back.
   directory (e.g. `unbound_report` shows a `C:\Users\xxx` path), say
   "bind to `E:\your-project`" or literally "call `set_project_dir("...")`".
 
-**The other 17 are never yours to memorize**. The agent picks.
+**The other 20 are never yours to memorize**. The agent picks.
 
 ### Why the agent knows what to call
 
@@ -427,7 +463,9 @@ obvious (e.g. doesn't open a workspace when it should, or skips
 `unbound_report`), point it at the relevant row of this letter — the
 correction takes one line.
 
-### 6 resources (agent-only; you never touch these)
+### 14 resources (agent-only; you never touch these)
+
+**Core resources** (readable any time):
 
 | URI | Who reads it | What it is |
 |---|---|---|
@@ -437,9 +475,33 @@ correction takes one line.
 | `fcop://status` | Agent | Same as `get_team_status` |
 | `fcop://config` | Agent | `fcop.json` raw |
 
+**Sample library** (0.5.4+, three-layer team templates — browse without initializing):
+
+| URI | What it is |
+|---|---|
+| `fcop://teams` | Index of all 4 preset teams (dev / media / mvp / qa) |
+| `fcop://teams/{team}` | Team's `TEAM-README.md` (positioning + ADMIN duties + flow) |
+| `fcop://teams/{team}/TEAM-ROLES` | Layer 1 · role boundaries (Chinese) |
+| `fcop://teams/{team}/TEAM-OPERATING-RULES` | Layer 2 · operating rules (Chinese) |
+| `fcop://teams/{team}/{role}` | Layer 3 · single-role depth (Chinese; e.g. `.../dev-team/PM`) |
+| `fcop://teams/{team}/{role}/en` | Layer 3 · single-role depth (English) |
+
+> Append `/en` to any `.../{role}` or `.../TEAM-*` URI for the English
+> version. The pre-0.5.4 `fcop://teams/{team}/PM-01` style still
+> resolves (fallback to `roles/PM.md`), but new projects should use
+> the clean form without the `-01` suffix.
+
+**You use these samples by just asking — no need to memorize URIs**:
+
+- "Show me dev-team's PM role template" → Agent reads `fcop://teams/dev-team/PM`
+- "What are dev-team's role boundaries?" → Agent reads `fcop://teams/dev-team/TEAM-ROLES`
+- "How does media-team dispatch tasks?" → Agent reads `fcop://teams/media-team/TEAM-OPERATING-RULES`
+- "I want to create LEAD-DEV — which sample is closest?" → Agent picks one for you
+- "What presets are available?" → Agent reads `fcop://teams` or calls `get_available_teams()`
+
 ### ⚠️ Cursor's "click-to-grey-out" switches: 2 you must never grey
 
-Cursor's MCP panel shows these 19 tools as buttons. Click → greyed =
+Cursor's MCP panel shows these 22 tools as buttons. Click → greyed =
 disabled. **Greying these two will hurt you**:
 
 - `unbound_report` — greyed out, Rule 0 breaks; agents can't take
@@ -447,7 +509,7 @@ disabled. **Greying these two will hurt you**:
 - `set_project_dir` — greyed out, your only rescue for a
   wrong-directory binding is editing `mcp.json` + restarting Cursor
 
-The other 17 can technically be greyed out, but the agent just gets
+The other 20 can technically be greyed out, but the agent just gets
 confused when a tool suddenly disappears — **keep them all enabled**.
 
 ---
@@ -478,7 +540,7 @@ tail whether a new version is available.**
 It looks like this:
 
 ```
-📦 fcop update available: 0.5.3 → 0.5.4
+📦 fcop update available: 0.5.4 → 0.5.5
 
 - Agent: call upgrade_fcop() — one-line upgrade + restart reminder
 - Shell: pip install --upgrade fcop (then fully close & reopen Cursor)

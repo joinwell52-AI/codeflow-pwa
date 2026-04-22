@@ -1,7 +1,7 @@
 ---
 description: FCoP Rules — the protocol rules every agent must follow inside an FCoP project. Auto-deployed by the fcop MCP. Companion file fcop-protocol.mdc explains how each rule applies in practice. FCoP 协议规则：任何在 FCoP 项目中工作的 Agent 都必须遵守的规则，由 fcop MCP 自动部署；规则的具体适用说明见同目录的 fcop-protocol.mdc。
 alwaysApply: true
-fcop_rules_version: 1.3.0
+fcop_rules_version: 1.4.0
 ---
 
 # FCoP Rules · FCoP 协议规则
@@ -242,6 +242,49 @@ still applies.
 
 ---
 
+## Rule 4.5 · Team Docs Have Three Layers / 团队文档三层结构
+
+> **团队文档有三层：角色边界 → 运作规则 → 单岗职责。**
+>
+> **Team docs come in three layers: role boundaries → operating rules → single-role depth.**
+
+- 每个团队模板在 `docs/agents/shared/` 下**必须**分三层：
+  - **Layer 1 · `TEAM-ROLES.md`** —— 角色边界：谁在做什么、谁向谁汇报、
+    哪条边界不能越。团队级名册。
+  - **Layer 2 · `TEAM-OPERATING-RULES.md`** —— 运作规则：任务文件怎么
+    派、怎么回、怎么升级、怎么复盘。团队级工作流程。
+  - **Layer 3 · `roles/{ROLE}.md`** —— 单岗深度：一个角色的职责清单、
+    输出物、验收标准、与其它岗的接口。每个岗位一份。
+- 另有一份 `TEAM-README.md`（"第 0 层"入口），写团队定位 + `ADMIN`
+  职责 + 典型流程；它不是规则的一部分，只是导航。
+- `ADMIN` 是真人，不进 `roles/`，也不写进 `fcop.json.roles`；ADMIN
+  的说明**放在 `TEAM-README.md` 里**，不单独建 `roles/ADMIN.md`。
+- 这一层结构由 `fcop` 包的样板库（`fcop://teams/*` 资源）提供，通过
+  `init_project` 首次部署、`deploy_role_templates` 升级/切换团队部署。
+- 本规则**不钦定**具体岗位名——`PM / DEV / QA / OPS` 只是
+  `dev-team` 的选择，`PUBLISHER / COLLECTOR / …` 是 `media-team` 的选择，
+  自定义团队可以用任意岗位代号；但**三层的结构不变**。
+
+Every team template MUST split its `docs/agents/shared/` docs into three
+layers: **Layer 1 · `TEAM-ROLES.md`** (role boundaries — who does what,
+who reports to whom, which lines do not get crossed); **Layer 2 ·
+`TEAM-OPERATING-RULES.md`** (operating rules — how tasks are dispatched,
+reported, escalated, retrospected); **Layer 3 · `roles/{ROLE}.md`**
+(single-role depth — one file per role, covering responsibilities,
+deliverables, acceptance criteria, and interfaces to other roles). A
+separate `TEAM-README.md` serves as layer-zero entry and covers team
+positioning + `ADMIN`'s responsibilities + the typical flow; it is
+navigation, not a rule. `ADMIN` is human, does NOT go under `roles/`
+and is NOT listed in `fcop.json.roles` — ADMIN documentation lives in
+`TEAM-README.md` only. This layering is provided by the packaged sample
+library (`fcop://teams/*` resources), deployed on first init via
+`init_project` and re-deployable (with migration) via
+`deploy_role_templates`. This rule does NOT hardcode role names —
+`PM / DEV / QA / OPS` is just `dev-team`'s choice; custom teams can use
+any codes; only the **three-layer structure** is fixed.
+
+---
+
 ## Rule 5 · Append-Only History / 历史只增不改
 
 - 已落盘的 `TASK-*` 与 `REPORT-*` 文件**不得原地修改**。
@@ -364,7 +407,7 @@ other application). Products USE FCoP; they do not MODIFY it.
 
 ---
 
-**Version**: `fcop_rules_version: 1.3.0`（见 frontmatter）。升级时 `fcop`
+**Version**: `fcop_rules_version: 1.4.0`（见 frontmatter）。升级时 `fcop`
 包会写入新版本；本地手改无效 / Local edits have no effect.
 
 **See also**: `fcop-protocol.mdc` —— 本规则的协议解释，同目录。

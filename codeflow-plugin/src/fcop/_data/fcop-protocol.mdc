@@ -1,7 +1,7 @@
 ---
 description: FCoP Protocol — the protocol commentary on the rules defined in fcop-rules.mdc. Covers file naming, YAML frontmatter, directory layout, patrol triggers, and other practical conventions. Auto-deployed by the fcop MCP. FCoP 协议解释：fcop-rules.mdc 中协议规则的具体适用说明——文件命名、YAML 元数据、目录结构、巡检触发等落地细节，由 fcop MCP 自动部署。
 alwaysApply: true
-fcop_protocol_version: 1.2.0
+fcop_protocol_version: 1.3.0
 ---
 
 <!--
@@ -455,30 +455,53 @@ The agent responsible for the handoff (typically the leader / main
 role) should **proactively** create two files under
 `docs/agents/shared/`:
 
-| 文件名 / File | 回答的问题 / Answers |
-|---|---|
-| `TEAM-ROLES.md` | 每个角色的边界：`AGENT1` 和 `BGENT2` 各自负责什么？ / What is each role responsible for? |
-| `TEAM-OPERATING-RULES.md` | 团队的运行规则：什么时候 leader 直接做，什么时候派给副手，副手怎么回执，什么时候升级给 ADMIN？ / When does the leader act directly, when does it delegate, how do sub-roles reply, when to escalate to ADMIN? |
+| 层 / Layer | 文件名 / File | 回答的问题 / Answers |
+|---|---|---|
+| Layer 0 · 入口 / entry | `TEAM-README.md` | 团队定位、`ADMIN` 怎么介入、典型流程 / Team positioning, how `ADMIN` engages, typical flow |
+| Layer 1 · 角色边界 / role boundaries | `TEAM-ROLES.md` | 每个角色各自负责什么、向谁汇报、哪些事不越界 / What each role owns, who reports to whom, which lines are off-limits |
+| Layer 2 · 运作规则 / operating rules | `TEAM-OPERATING-RULES.md` | 任务怎么派、怎么回、什么时候升级、怎么复盘 / How tasks are dispatched, replied to, escalated, retrospected |
+| Layer 3 · 单岗深度 / single-role depth | `roles/{ROLE}.md` | 单一岗位的职责清单、输出物、验收标准、跨岗接口 / One role's responsibilities, deliverables, acceptance criteria, interfaces |
 
-两份分工：`TEAM-ROLES.md` 规定"谁负责什么"，`TEAM-OPERATING-RULES.md`
-规定"什么时候派、怎么回、什么时候升级"。文件必须符合 FCoP frontmatter
-（`protocol / version / sender / recipient`）要求，`sender` 是 leader
-角色、`recipient` 是 `ADMIN`。
+四层分工：Layer 1（`TEAM-ROLES.md`）规定"谁负责什么"，Layer 2
+（`TEAM-OPERATING-RULES.md`）规定"什么时候派、怎么回、什么时候
+升级"，Layer 3（`roles/{ROLE}.md`）把每个岗位展开成独立的岗位说明
+书；Layer 0（`TEAM-README.md`）只是导航入口。这一层结构在
+`fcop-rules.mdc` Rule 4.5 里作为**协议规则**写死，不能省略。
 
-The two files are complementary: `TEAM-ROLES.md` defines **who owns
-what**, `TEAM-OPERATING-RULES.md` defines **when to dispatch, how to
-reply, when to escalate**. Both files must follow the FCoP frontmatter
-(`protocol / version / sender / recipient`), with `sender` being the
-leader role and `recipient` being `ADMIN`.
+Four-layer split: Layer 1 (`TEAM-ROLES.md`) sets **who owns what**;
+Layer 2 (`TEAM-OPERATING-RULES.md`) sets **when to dispatch, how to
+reply, when to escalate**; Layer 3 (`roles/{ROLE}.md`) is a per-role
+charter; Layer 0 (`TEAM-README.md`) is navigation only. This structure
+is enforced as a **protocol rule** in `fcop-rules.mdc` Rule 4.5 — it
+is not optional.
 
-**为什么不做成工具？** 不同项目的职责细节不同，模板会限制 Agent 的
-判断力。LLM 在 Solo→Team 切换这个节点上已经能自发产出合格的分工
-文档——协议把"推荐结构"说清楚就够了，内容交给 Agent 针对具体项目写。
+**`ADMIN` 放在哪？** `ADMIN` 是真人，不进 `roles/`，也不出现在
+`fcop.json.roles`；ADMIN 的职责描述只写在 `TEAM-README.md` 的
+"ADMIN 职责"一节。
 
-**Why not a tool?** Job-split details vary by project, and a template
-would constrain agent judgment. LLMs can already produce reasonable
-job-split docs at the Solo→Team transition — the protocol only needs
-to specify **structure**, not **content**.
+**Where does `ADMIN` live?** `ADMIN` is human, does NOT belong under
+`roles/`, and does NOT appear in `fcop.json.roles`; ADMIN's
+responsibilities live in the "ADMIN Responsibilities" section of
+`TEAM-README.md` only.
+
+**有包内样板吗？** 有。`fcop://teams/` 资源下每个预设团队（`dev-team`
+/ `media-team` / `mvp-team` / `qa-team`）都带一份 0.5.4+ 的完整三层
+模板，双语（`.md` / `.en.md`）。`init_project` 会在首次初始化时落到
+`docs/agents/shared/`；老项目或切换团队时用
+`deploy_role_templates(team=..., force=True)`，工具会把冲突文件自动
+归档到 `.fcop/migrations/<timestamp>/` 再落新模板。自定义团队
+（`create_custom_team`）没有包内模板，但可以读上述四个样本团队作为
+参考。
+
+**Is there a packaged blueprint?** Yes. Each preset team (`dev-team` /
+`media-team` / `mvp-team` / `qa-team`) ships a complete 0.5.4+
+three-layer template under `fcop://teams/`, bilingual (`.md` /
+`.en.md`). `init_project` drops them under `docs/agents/shared/` on
+first init; for upgrades or team switches call
+`deploy_role_templates(team=..., force=True)` — conflicting files are
+archived to `.fcop/migrations/<timestamp>/` before the new templates
+land. Custom teams (`create_custom_team`) have no packaged template but
+can read the four preset teams as reference material.
 
 #### 2. 归档旧 Solo 历史 / Archive the old Solo history
 
@@ -928,6 +951,30 @@ Three things the protocol explicitly grants you:
   （`shared/TEAM-ROLES.md` + `shared/TEAM-OPERATING-RULES.md`）写进协议
   解释，并明确用现有 `archive_task()` 逐份把 Solo 历史归档到
   `log/solo-archive/`。不加新工具。
+
+- **v1.3** (2026-04-17) — **Three-layer team docs** promoted from
+  recommendation to **protocol rule** (Rule 4.5 in `fcop-rules.mdc`).
+  Packaged sample library rewritten to match: every preset team
+  (`dev-team` / `media-team` / `mvp-team` / `qa-team`) now ships a
+  full four-file set (`TEAM-README.md` / `TEAM-ROLES.md` /
+  `TEAM-OPERATING-RULES.md` / `roles/{ROLE}.md`) in both zh and en.
+  New tool `deploy_role_templates(team, force=True)` releases the set
+  into `docs/agents/shared/` with auto-archival of legacy files to
+  `.fcop/migrations/<timestamp>/`. New resources
+  `fcop://teams/{team}/TEAM-ROLES` and
+  `fcop://teams/{team}/TEAM-OPERATING-RULES` expose layers 1 and 2
+  directly; `fcop://teams/{team}/{role}` now resolves against
+  `roles/{role}.md` with fallback to the legacy flat layout. `ADMIN`
+  is documented in `TEAM-README.md`, never under `roles/`.
+  三层团队文档从推荐做法升格为**协议规则**（`fcop-rules.mdc` Rule 4.5）。
+  包内样板库全部改写为四件套（`TEAM-README.md` / `TEAM-ROLES.md` /
+  `TEAM-OPERATING-RULES.md` / `roles/{ROLE}.md`），四个预设团队全部
+  双语。新增 `deploy_role_templates` 工具（默认 `force=True`，冲突文件
+  自动归档到 `.fcop/migrations/<时间戳>/`）。新增
+  `fcop://teams/{team}/TEAM-ROLES` / `.../TEAM-OPERATING-RULES` 两条
+  资源；`fcop://teams/{team}/{role}` 改走 `roles/{role}.md`，并保留
+  旧 `*-01` 扁平路径的回退。`ADMIN` 职责统一写在 `TEAM-README.md` 里，
+  不进 `roles/`。
 
 ---
 

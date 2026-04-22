@@ -110,15 +110,22 @@ def _packaged_data_bytes(filename: str) -> bytes | None:
 
 
 def _packaged_team_file_bytes(team: str, filename: str) -> bytes | None:
-    """Byte-level read of a bundled team role file (zipsafe fallback).
+    """Byte-level read of a bundled team file (zipsafe fallback).
 
     Reads ``_data/teams/<team>/<filename>`` from the installed package.
-    Used by the 0.5.0 sample library to release role-description MDs
-    into the caller's project. Returns ``None`` on any failure (missing
-    team, missing file, zipimport edge case, etc.).
+    ``filename`` MAY contain forward-slash-separated subpaths
+    (e.g. ``"roles/PM.md"``) — the parts are joined against the
+    Traversable so it works under both filesystem and zipimport layouts.
+    Used by the sample library (0.5.0+) to release template docs into
+    the caller's project. Returns ``None`` on any failure (missing team,
+    missing file, zipimport edge case, etc.).
     """
     try:
-        base = resources.files("fcop") / "_data" / "teams" / team / filename
+        base = resources.files("fcop") / "_data" / "teams" / team
+        for part in filename.split("/"):
+            if not part:
+                continue
+            base = base / part
         with ExitStack() as stack:
             path = stack.enter_context(resources.as_file(base))
             return Path(path).read_bytes()
@@ -1978,95 +1985,134 @@ def _deploy_one_rule(filename: str, source_subdir: str = "rules") -> str:
         return f"({filename} 未释放：{exc.__class__.__name__})"
 
 
+def _packaged_team_file_bytes_with_fallback(team: str, rel: str) -> bytes | None:
+    """Read a packaged team file, with dev-checkout fallback.
+
+    When ``fcop`` is running from a source checkout (``pip install -e``
+    or raw repo), ``importlib.resources`` may fail on some edge cases —
+    we fall back to reading the file directly from ``src/fcop/_data/``.
+    """
+    data = _packaged_team_file_bytes(team, rel)
+    if data is not None:
+        return data
+    src = Path(__file__).resolve().parent / "_data" / "teams" / team
+    for part in rel.split("/"):
+        if part:
+            src = src / part
+    if src.exists():
+        try:
+            return src.read_bytes()
+        except Exception:
+            return None
+    return None
+
+
+# Mapping table for 0.5.4 three-layer deployment. Source paths are
+# relative to the packaged ``_data/teams/<team>/`` directory; target
+# paths are relative to ``docs/agents/shared/``. Team-level docs
+# (README / TEAM-ROLES / TEAM-OPERATING-RULES) land at the top of
+# ``shared/``; per-role docs go under ``shared/roles/``. The team
+# README is renamed to ``TEAM-README.md`` in the project to avoid
+# colliding with the existing ``shared/README.md`` (which is the
+# shared-directory prefix guide).
+def _team_level_deploy_map() -> list[tuple[str, str]]:
+    return [
+        ("README.md", "TEAM-README.md"),
+        ("README.en.md", "TEAM-README.en.md"),
+        ("TEAM-ROLES.md", "TEAM-ROLES.md"),
+        ("TEAM-ROLES.en.md", "TEAM-ROLES.en.md"),
+        ("TEAM-OPERATING-RULES.md", "TEAM-OPERATING-RULES.md"),
+        ("TEAM-OPERATING-RULES.en.md", "TEAM-OPERATING-RULES.en.md"),
+    ]
+
+
+def _role_deploy_map(codes: list[str]) -> list[tuple[str, str]]:
+    """Per-role docs: source ``roles/{code}.md`` → target ``roles/{code}.md``.
+
+    Returned list also includes English variants. Callers consume this
+    for both 0.5.4 init (never-overwrite) and for the migration-aware
+    ``deploy_role_templates`` tool.
+    """
+    pairs: list[tuple[str, str]] = []
+    for code in codes:
+        pairs.append((f"roles/{code}.md", f"roles/{code}.md"))
+        pairs.append((f"roles/{code}.en.md", f"roles/{code}.en.md"))
+    return pairs
+
+
 def _deploy_role_docs(team: str, lang: str) -> list[str]:
-    """Drop packaged role-description MDs into ``docs/agents/shared/roles/``.
+    """Release the three-layer team docs into ``docs/agents/shared/``.
 
-    Motivation (0.5.0 sample library): every bundled team template ships
-    with per-role responsibility documents and a team-level README — these
-    are the ones we wrote by hand in ``codeflow-desktop/templates/agents/``
-    and now moved into the ``fcop`` package at
-    ``src/fcop/_data/teams/<team>/``. On init, we release them into
-    ``docs/agents/shared/roles/`` so agents assigned a role can read
-    their own job description without leaving the repo, and so
-    ``create_custom_team`` callers have ready references to imitate.
+    Motivation (0.5.4): every bundled team template ships as a
+    three-layer doc set — team README (layer 0), TEAM-ROLES (layer 1),
+    TEAM-OPERATING-RULES (layer 2), and per-role deep-dives under
+    ``roles/`` (layer 3). On init we release all of these so agents
+    assigned a role can read their own charter and the team-level rules
+    without leaving the repo.
 
-    Naming rules:
+    Layout in the user's project:
 
-    - Source Chinese file: ``<ROLE>.md`` → target: same name.
-    - Source English file: ``<ROLE>.en.md`` → target: same name.
-    - We ALWAYS drop both languages (bilingual projects are common);
-      ``lang`` only controls which one is referenced in the welcome
-      task, not which files are released.
-    - Team-level ``README.md`` → target: ``README.md`` inside
-      ``shared/roles/``, to give agents a 30-second team overview.
+    ```
+    docs/agents/shared/
+    ├── TEAM-README.md            # team positioning / ADMIN / flow
+    ├── TEAM-ROLES.md             # layer 1 — role boundaries
+    ├── TEAM-OPERATING-RULES.md   # layer 2 — operating rules
+    └── roles/
+        ├── {ROLE}.md             # layer 3 — single-role charter
+        └── ...
+    ```
 
-    Never overwrites existing files — if ADMIN edited a role description
-    locally, we respect that on re-run. Returns human-readable status
-    lines suitable for appending to the ``init_project`` response.
+    Both languages are always released (bilingual projects are common);
+    ``lang`` only affects which one is referenced in the welcome task.
+    Never overwrites existing files — if ADMIN edited a doc locally we
+    respect that on re-run. For the migration-aware path (archive old
+    files before overwriting), see the ``deploy_role_templates`` tool.
     """
     notes: list[str] = []
     if team not in TEAM_TEMPLATES:
         return notes
-    target_dir = SHARED_DIR / "roles"
     try:
-        target_dir.mkdir(parents=True, exist_ok=True)
+        SHARED_DIR.mkdir(parents=True, exist_ok=True)
+        (SHARED_DIR / "roles").mkdir(parents=True, exist_ok=True)
     except Exception as exc:  # pragma: no cover - filesystem surprises
-        return [f"(shared/roles/ 未创建：{exc.__class__.__name__})"]
+        return [f"(shared/ 未创建：{exc.__class__.__name__})"]
 
     tmpl = TEAM_TEMPLATES[team]
+    codes = [r["code"] for r in tmpl["roles"]]
+    deploy_map = _team_level_deploy_map() + _role_deploy_map(codes)
+
     released: list[str] = []
     skipped: list[str] = []
     missing: list[str] = []
 
-    # Release one source file to shared/roles/ with never-overwrite.
-    def _release(filename: str) -> None:
-        data = _packaged_team_file_bytes(team, filename)
+    for src_rel, dst_rel in deploy_map:
+        data = _packaged_team_file_bytes_with_fallback(team, src_rel)
         if data is None:
-            # Dev fallback: read from repo source tree when running from
-            # a checkout without an installed wheel.
-            src = (
-                Path(__file__).resolve().parent / "_data" / "teams"
-                / team / filename
-            )
-            if src.exists():
-                try:
-                    data = src.read_bytes()
-                except Exception:
-                    data = None
-        if data is None:
-            missing.append(filename)
-            return
-        target = target_dir / filename
+            missing.append(src_rel)
+            continue
+        target = SHARED_DIR / dst_rel
         if target.exists():
-            skipped.append(filename)
-            return
+            skipped.append(dst_rel)
+            continue
         try:
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
-            released.append(filename)
+            released.append(dst_rel)
         except Exception as exc:  # pragma: no cover
-            missing.append(f"{filename} ({exc.__class__.__name__})")
-
-    for r in tmpl["roles"]:
-        code = r["code"]
-        _release(f"{code}.md")
-        _release(f"{code}.en.md")
-
-    _release("README.md")
+            missing.append(f"{dst_rel} ({exc.__class__.__name__})")
 
     if released:
         notes.append(
-            "Deployed role docs to shared/roles/: "
-            + ", ".join(released)
-            + f" (lang-preferred: {lang})"
+            f"Deployed team docs to shared/ ({len(released)} files, "
+            f"lang-preferred: {lang})"
         )
     if skipped:
         notes.append(
-            "shared/roles/ 已存在，未覆盖：" + ", ".join(skipped)
+            "shared/ 已存在，未覆盖："
+            + ", ".join(sorted(skipped))
         )
     if missing:
-        notes.append(
-            "(shared/roles/ 缺少模板：" + ", ".join(missing) + ")"
-        )
+        notes.append("(shared/ 缺少模板：" + ", ".join(sorted(missing)) + ")")
     return notes
 
 
@@ -2426,6 +2472,218 @@ def validate_team_config(roles: str, leader: str) -> str:
         f"  roles: {', '.join(role_list)}\n"
         f"  leader: {leader_up}"
     )
+
+
+@mcp.tool
+def deploy_role_templates(
+    team: str = "",
+    lang: str = "zh",
+    force: bool = True,
+) -> str:
+    """Deploy the three-layer team doc templates into the current project.
+
+    Released in 0.5.4 alongside the new three-layer sample library
+    (team README → TEAM-ROLES → TEAM-OPERATING-RULES → roles/{ROLE}.md).
+    Use this when:
+
+    - You initialized the project on 0.5.3 or earlier and want to upgrade
+      to the new three-layer docs without re-running ``init_project``.
+    - You switched the team template (e.g. dev-team → qa-team) and need
+      the new role charters released.
+    - The deployed docs drifted and you want to overwrite them with the
+      pristine packaged version.
+
+    Migration strategy (E-2, aggressive):
+    - When ``force=True`` (default), ANY existing file under
+      ``docs/agents/shared/`` that conflicts with a new template is
+      **archived** to ``.fcop/migrations/<timestamp>/`` before the new
+      file is written. The archive preserves relative paths so you can
+      diff / restore manually. This includes legacy ``shared/roles/*-01.md``
+      flat files.
+    - When ``force=False``, acts like ``init_project`` — never overwrites.
+      Use this if you've edited docs locally and want to see what's new
+      before accepting the upgrade.
+
+    Args:
+        team: Team ID to deploy (``dev-team`` / ``media-team`` /
+            ``mvp-team`` / ``qa-team``). Defaults to the team recorded
+            in ``docs/agents/fcop.json``; errors out if both are empty.
+        lang: Output language for the status report (``zh`` or ``en``).
+        force: Archive-and-overwrite on conflict (default ``True``).
+    """
+    team_norm = (team or "").strip()
+    if not team_norm:
+        cfg_path = _team_config_path_read()
+        if cfg_path is not None:
+            try:
+                cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+                if isinstance(cfg, dict):
+                    cand = cfg.get("team")
+                    if isinstance(cand, str):
+                        team_norm = cand.strip()
+            except Exception:
+                team_norm = ""
+    if not team_norm:
+        return (
+            "未指定 team，且 docs/agents/fcop.json 也没记录团队。\n"
+            "请传入 team=dev-team / media-team / mvp-team / qa-team。"
+            if lang == "zh"
+            else
+            "No team specified, and docs/agents/fcop.json has none recorded.\n"
+            "Pass team=dev-team / media-team / mvp-team / qa-team."
+        )
+    if team_norm not in TEAM_TEMPLATES:
+        available = ", ".join(sorted(TEAM_TEMPLATES))
+        return (
+            f"未知团队 '{team_norm}'. 可选: {available}"
+            if lang == "zh"
+            else f"Unknown team '{team_norm}'. Available: {available}"
+        )
+
+    try:
+        SHARED_DIR.mkdir(parents=True, exist_ok=True)
+        (SHARED_DIR / "roles").mkdir(parents=True, exist_ok=True)
+    except Exception as exc:  # pragma: no cover
+        return f"(shared/ 未创建：{exc.__class__.__name__})"
+
+    tmpl = TEAM_TEMPLATES[team_norm]
+    codes = [r["code"] for r in tmpl["roles"]]
+    deploy_map = _team_level_deploy_map() + _role_deploy_map(codes)
+
+    # Pre-resolve every source blob — abort cleanly if the packaged
+    # files are missing rather than half-deploying.
+    prepared: list[tuple[str, bytes]] = []
+    missing_src: list[str] = []
+    for src_rel, dst_rel in deploy_map:
+        data = _packaged_team_file_bytes_with_fallback(team_norm, src_rel)
+        if data is None:
+            missing_src.append(src_rel)
+            continue
+        prepared.append((dst_rel, data))
+    if missing_src:
+        return (
+            f"包内缺少模板文件，取消部署：{', '.join(missing_src)}"
+            if lang == "zh"
+            else f"Packaged templates missing, aborting: {', '.join(missing_src)}"
+        )
+
+    # E-2 archive set: legacy flat-layout files (``shared/roles/PM-01.md``
+    # and so on) that no 0.5.4 template will overwrite on its own but
+    # that we still want out of the way to avoid confusion. Added
+    # conditionally when ``force=True``.
+    archive_dir: Path | None = None
+    archived: list[str] = []
+
+    def _archive(rel: str) -> None:
+        nonlocal archive_dir
+        src = SHARED_DIR / rel
+        if not src.exists():
+            return
+        if archive_dir is None:
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            archive_dir = PROJECT_DIR / ".fcop" / "migrations" / stamp
+            archive_dir.mkdir(parents=True, exist_ok=True)
+        dst = archive_dir / "shared" / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            dst.write_bytes(src.read_bytes())
+            archived.append(rel)
+        except Exception:
+            pass
+
+    if force:
+        # Archive conflicting new-template targets first.
+        for dst_rel, _ in prepared:
+            _archive(dst_rel)
+        # Then sweep legacy pre-0.5.4 role files out of shared/roles/.
+        # Pattern: uppercase role code with a ``-0N`` suffix, in either
+        # language form. Only descend one level — we don't touch
+        # TASK-*, DASHBOARD-*, SPRINT-* or user-owned files.
+        roles_dir = SHARED_DIR / "roles"
+        if roles_dir.is_dir():
+            for p in sorted(roles_dir.iterdir()):
+                if not p.is_file():
+                    continue
+                stem = p.name
+                # Strip ``.en.md`` / ``.md`` for the suffix check.
+                if stem.endswith(".en.md"):
+                    base = stem[:-len(".en.md")]
+                elif stem.endswith(".md"):
+                    base = stem[:-len(".md")]
+                else:
+                    continue
+                if _LEGACY_ROLE_SUFFIX_RE.match(base):
+                    _archive(f"roles/{stem}")
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
+
+    written: list[str] = []
+    skipped: list[str] = []
+    errors: list[str] = []
+    for dst_rel, data in prepared:
+        target = SHARED_DIR / dst_rel
+        if target.exists() and not force:
+            skipped.append(dst_rel)
+            continue
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            written.append(dst_rel)
+        except Exception as exc:  # pragma: no cover
+            errors.append(f"{dst_rel} ({exc.__class__.__name__})")
+
+    zh = lang == "zh"
+    lines: list[str] = []
+    if zh:
+        lines.append(
+            f"已部署 {team_norm} 团队模板到 docs/agents/shared/"
+            f"（{len(written)} 个文件）。"
+        )
+        if archive_dir is not None:
+            try:
+                rel_archive = archive_dir.relative_to(PROJECT_DIR).as_posix()
+            except ValueError:
+                rel_archive = str(archive_dir)
+            lines.append(
+                f"已归档 {len(archived)} 个旧文件到 `{rel_archive}/`，"
+                f"如需回滚请手工比对。"
+            )
+        if skipped:
+            lines.append("已跳过（force=false）：" + ", ".join(sorted(skipped)))
+        if errors:
+            lines.append("写入失败：" + ", ".join(sorted(errors)))
+    else:
+        lines.append(
+            f"Deployed {team_norm} team templates to docs/agents/shared/ "
+            f"({len(written)} files)."
+        )
+        if archive_dir is not None:
+            try:
+                rel_archive = archive_dir.relative_to(PROJECT_DIR).as_posix()
+            except ValueError:
+                rel_archive = str(archive_dir)
+            lines.append(
+                f"Archived {len(archived)} legacy files to `{rel_archive}/` "
+                f"— diff by hand if you need to recover edits."
+            )
+        if skipped:
+            lines.append("Skipped (force=false): " + ", ".join(sorted(skipped)))
+        if errors:
+            lines.append("Write errors: " + ", ".join(sorted(errors)))
+
+    if written and zh:
+        lines.append(
+            "三层结构：TEAM-README → TEAM-ROLES → TEAM-OPERATING-RULES → "
+            "roles/{ROLE}.md；ADMIN 说明在 TEAM-README.md 里。"
+        )
+    elif written:
+        lines.append(
+            "Three layers: TEAM-README → TEAM-ROLES → TEAM-OPERATING-RULES → "
+            "roles/{ROLE}.md. ADMIN docs live in TEAM-README.md."
+        )
+    return "\n".join(lines) + "\n"
 
 
 @mcp.tool
@@ -3280,7 +3538,15 @@ def resource_teams_index() -> str:
     roles, and which role is the leader. Lets Agents discover what
     samples exist before fetching any single role description.
     """
-    lines = ["# FCoP bundled team templates\n"]
+    lines = [
+        "# FCoP bundled team templates\n",
+        "Every team ships a three-layer doc set (0.5.4+):\n",
+        "- `README.md` — entry (positioning, ADMIN, flow)",
+        "- `TEAM-ROLES.md` — layer 1 (role boundaries)",
+        "- `TEAM-OPERATING-RULES.md` — layer 2 (operating rules)",
+        "- `roles/{ROLE}.md` — layer 3 (single-role depth)\n",
+        "Legacy `*-01` role URIs still resolve for backward compat.\n",
+    ]
     for team in _list_packaged_teams():
         tmpl = TEAM_TEMPLATES.get(team)
         if tmpl is None:
@@ -3297,11 +3563,14 @@ def resource_teams_index() -> str:
             zh = r.get("label_zh", "")
             en = r.get("label_en", "")
             lines.append(f"  - `{code}` — {zh} / {en}")
-        lines.append(f"- resource: `fcop://teams/{team}` (README)")
+        lines.append("- resources:")
+        lines.append(f"  - `fcop://teams/{team}` (README, zh)")
+        lines.append(f"  - `fcop://teams/{team}/TEAM-ROLES` (layer 1, zh)")
+        lines.append(f"  - `fcop://teams/{team}/TEAM-OPERATING-RULES` (layer 2, zh)")
         for r in tmpl.get("roles", []):
             code = r.get("code", "?")
-            lines.append(f"  - `fcop://teams/{team}/{code}` (role description, zh)")
-            lines.append(f"  - `fcop://teams/{team}/{code}/en` (role description, en)")
+            lines.append(f"  - `fcop://teams/{team}/{code}` (role doc, zh)")
+        lines.append(f"  - append `/en` to any of the above for English")
     return "\n".join(lines) + "\n"
 
 
@@ -3321,39 +3590,99 @@ def resource_team_readme(team: str) -> str:
         return f"(README for `{team}` is not valid UTF-8)"
 
 
+# Legacy "-01" suffix alias map (pre-0.5.4 role codes). URIs like
+# `fcop://teams/dev-team/PM-01` keep resolving by stripping the trailing
+# ``-0N`` and looking under ``roles/{base}.md``. Non-matching codes fall
+# through and get a normal "not found" response.
+_LEGACY_ROLE_SUFFIX_RE = re.compile(r"^([A-Z][A-Z0-9_]*(?:-[A-Z0-9_]+)*)-0\d$")
+
+
+def _role_candidate_paths(role: str, *, en: bool) -> list[str]:
+    """Ordered list of packaged relative paths to try for a role doc.
+
+    Order:
+      1. ``roles/{role}.md`` (0.5.4 preferred three-layer structure)
+      2. ``{role}.md`` (pre-0.5.4 flat layout — no longer shipped, but
+         kept for forward-compat if a future team ships a flat file)
+      3. ``roles/{base}.md`` where ``role`` matches the legacy ``*-01``
+         suffix (so old URIs like ``PM-01`` still resolve to ``PM.md``)
+    """
+    suffix = ".en.md" if en else ".md"
+    paths = [f"roles/{role}{suffix}", f"{role}{suffix}"]
+    m = _LEGACY_ROLE_SUFFIX_RE.match(role)
+    if m:
+        base = m.group(1)
+        paths.extend([f"roles/{base}{suffix}", f"{base}{suffix}"])
+    return paths
+
+
+def _resolve_team_doc(team: str, rel_paths: list[str]) -> str | None:
+    """Try each packaged path in order; return decoded text or None."""
+    for rel in rel_paths:
+        data = _packaged_team_file_bytes(team, rel)
+        if data is None:
+            continue
+        try:
+            return data.decode("utf-8")
+        except Exception:
+            continue
+    return None
+
+
 @mcp.resource("fcop://teams/{team}/{role}")
 def resource_team_role_zh(team: str, role: str) -> str:
-    """Chinese role-description doc for `<role>` in `<team>`.
+    """Chinese doc for a bundled team entry (role or team-level spec).
 
-    `role` is the uppercase code (e.g. `LEAD-QA`, `PM`, `PUBLISHER`).
+    ``role`` may be:
+
+    - A role code (e.g. ``PM``, ``LEAD-QA``, ``PUBLISHER``) → resolves
+      to the role's own deep-dive doc under ``roles/{role}.md``.
+    - ``TEAM-ROLES`` → resolves to ``TEAM-ROLES.md`` (Layer 1 spec).
+    - ``TEAM-OPERATING-RULES`` → resolves to ``TEAM-OPERATING-RULES.md``
+      (Layer 2 rules).
+    - A legacy ``*-01`` role code (e.g. ``PM-01``) → resolves to
+      ``roles/PM.md`` for backward compatibility.
     """
-    filename = f"{role}.md"
-    data = _packaged_team_file_bytes(team, filename)
-    if data is None:
+    if role in ("TEAM-ROLES", "TEAM-OPERATING-RULES"):
+        text = _resolve_team_doc(team, [f"{role}.md"])
+        if text is not None:
+            return text
         return (
-            f"(No role doc found at `fcop://teams/{team}/{role}`. "
-            f"Check `fcop://teams` for the list of available roles.)"
+            f"(No {role} doc found at `fcop://teams/{team}/{role}`. "
+            f"Check `fcop://teams` for the list of available teams.)"
         )
-    try:
-        return data.decode("utf-8")
-    except Exception:
-        return f"(Role doc {filename} is not valid UTF-8)"
+    text = _resolve_team_doc(team, _role_candidate_paths(role, en=False))
+    if text is not None:
+        return text
+    return (
+        f"(No role doc found at `fcop://teams/{team}/{role}`. "
+        f"Check `fcop://teams` for the list of available roles.)"
+    )
 
 
 @mcp.resource("fcop://teams/{team}/{role}/en")
 def resource_team_role_en(team: str, role: str) -> str:
-    """English role-description doc for `<role>` in `<team>`."""
-    filename = f"{role}.en.md"
-    data = _packaged_team_file_bytes(team, filename)
-    if data is None:
+    """English doc for a bundled team entry (role or team-level spec).
+
+    Same URI semantics as ``resource_team_role_zh`` — ``role`` accepts
+    role codes, ``TEAM-ROLES``, ``TEAM-OPERATING-RULES``, or legacy
+    ``*-01`` codes; the fallback chain ends at ``roles/<base>.en.md``.
+    """
+    if role in ("TEAM-ROLES", "TEAM-OPERATING-RULES"):
+        text = _resolve_team_doc(team, [f"{role}.en.md"])
+        if text is not None:
+            return text
         return (
-            f"(No English role doc found at `fcop://teams/{team}/{role}/en`. "
-            f"Check `fcop://teams` for the list of available roles.)"
+            f"(No English {role} doc found at `fcop://teams/{team}/{role}/en`. "
+            f"Check `fcop://teams` for the list of available teams.)"
         )
-    try:
-        return data.decode("utf-8")
-    except Exception:
-        return f"(Role doc {filename} is not valid UTF-8)"
+    text = _resolve_team_doc(team, _role_candidate_paths(role, en=True))
+    if text is not None:
+        return text
+    return (
+        f"(No English role doc found at `fcop://teams/{team}/{role}/en`. "
+        f"Check `fcop://teams` for the list of available roles.)"
+    )
 
 
 # ─── Entry Point ──────────────────────────────────────────
