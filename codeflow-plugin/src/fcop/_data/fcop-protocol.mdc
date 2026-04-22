@@ -67,6 +67,85 @@ multi-role review is a hallucination in a single voice.
 (Full provenance: [`fcop-natural-protocol.md`](https://github.com/joinwell52-AI/FCoP/blob/main/essays/fcop-natural-protocol.md) in the FCoP public repository.
 完整溯源见 FCoP 公仓同名文章。)
 
+## Architectural Principle: Tools are a Convenience Layer / 架构原则：工具是便利层，不是真相层
+
+> **The protocol lives on the filesystem. MCP tools (the `fcop` package)
+> are an ergonomic layer that expands into file operations. They must
+> never become the source of truth.**
+>
+> **协议长在文件系统上。MCP 工具（`fcop` 包）是展开成文件操作的便利层。
+> 它们永远不得成为真相层。**
+
+FCoP 的协议表面 ~90% 分布在**文件系统**上：文件名（路由键）、YAML
+frontmatter（线程归属/优先级/类型）、目录语义（进行中/已回/已归档）。
+剩余 ~10% 是 Agent 行为约定（UNBOUND、主动落文件、不伪造）。**这是
+FCoP 和 Agent 运行时框架（LangGraph / Temporal / CrewAI）的根本差别**
+——前者协议先于运行时存在，后者运行时先于协议存在。
+
+~90% of FCoP's protocol surface lives on the **filesystem**: filenames
+(routing keys), YAML frontmatter (threads / priority / type), directory
+semantics (in-flight / replied / archived). The remaining ~10% is
+agent behavioral contract (UNBOUND, file-everything, no fabrication).
+This is the categorical difference between FCoP and agent runtime
+frameworks (LangGraph / Temporal / CrewAI) — **the protocol exists
+before the runtime; the runtime only consumes it**.
+
+### Consequence 1 · Every tool decomposes into file operations / 每个工具都必须能拆解成文件操作
+
+每个 MCP 工具的 docstring 必须写清它对应的**几条基础文件操作**。
+Examples / 例：
+
+| 工具 / Tool | 本质文件操作 / Essential file ops |
+|---|---|
+| `write_task(recipient, body)` | 在 `tasks/` 下写一个符合 `_TASK_FILENAME_RE` 的 `.md` 文件 |
+| `archive_task(task_id)` | `mv tasks/TASK-XXX* log/` |
+| `list_tasks(recipient)` | `ls tasks/` + 按 recipient 过滤 |
+| `read_task(task_id)` | `cat tasks/TASK-XXX*.md` |
+| `new_workspace(slug)` | `mkdir workspace/<slug>/` + 创建 `README.md` |
+
+**规则 / Rule**：如果一个工具无法被完整还原成几条文件/目录操作——
+**这个工具就在把协议藏进 Python**，违背 FCoP 定位，不得加入。
+
+### Consequence 2 · No-MCP participation must remain possible / 没装 MCP 的人必须也能参与
+
+设计检查点 / Design checkpoint：
+
+> 一个没装 `fcop` MCP 的团队成员（人或 Agent），用 `ls / cat / mv / git` 能不能
+> 完整参与协作？
+>
+> Can a team member (human or agent) without the `fcop` MCP still fully
+> participate using `ls / cat / mv / git`?
+
+答案必须永远是"能"。任何让答案变成"不能"的改动——即使看起来是
+效率提升——都是在把协议往运行时里挪。
+
+### Consequence 3 · Protocol changes affect filename / directory / frontmatter; tool changes affect ergonomics / 协议改动影响命名/目录/frontmatter；工具改动只影响人机工效
+
+这条划清了版本号的语义：
+
+| 变更类型 | 是否改 `fcop_protocol_version` / `fcop_rules_version` |
+|---|---|
+| 改了文件名语法、frontmatter 字段、目录语义、行为约定 | **必须改**（可能影响既有仓库） |
+| 只改了 MCP 工具签名、新增工具、优化错误文案 | **不改**（仓库文件完全兼容） |
+
+便利层演进可以很快，真相层演进必须慎重——这才是一个"协议"应有的气场。
+
+### 自校验清单 / Self-check
+
+给维护者：任何一次 FCoP 演进后，这六条必须全是"是"——
+
+- [ ] 没装 `fcop` MCP 的人，用 `ls / cat / mv / git` 还能参与协作吗？
+- [ ] 任何新增的 MCP 工具，docstring 里写清了它对应的几条文件操作吗？
+- [ ] 核心语义（路由、角色链、回执、归档）还在文件名 + frontmatter + 目录里吗？
+- [ ] Solo 模式（1 人 + 1 AI）下，FCoP 仍有独立价值吗？
+- [ ] 换一个 IDE / 换一个模型，协议还原样工作吗？
+- [ ] 小版本真的没破坏老仓库的既有文件吗？
+
+任何一条变成"否"，就是**协议在往运行时里掉**，应该停下来重审。
+
+完整定位论述见 [`docs/essays/fcop-position.md`](../../docs/essays/fcop-position.md)。
+Full positioning essay at `docs/essays/fcop-position.md`.
+
 ## How Rule 0.c Applies: Truthfulness on Disk / Rule 0.c 的展开：落盘的必须是真话
 
 `fcop-rules.mdc` 的 **Rule 0.c** 定了底线："落到文件里的必须是真的"。
