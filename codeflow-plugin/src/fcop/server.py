@@ -230,7 +230,30 @@ mcp = FastMCP(
         "Opening 1 PM window is NOT solo mode — `solo` has only `ME` and "
         "cannot dispatch; team-mode with 1 PM just means dispatched tasks "
         "queue in `tasks/` until the next window is assigned. Full guide: "
-        "see the 'Roles ≠ Agent windows' section of `LETTER-TO-ADMIN.md`."
+        "see the 'Roles ≠ Agent windows' section of `LETTER-TO-ADMIN.md`.\n\n"
+        "【升级 fcop / Upgrading fcop】\n"
+        "`unbound_report()` 会自动在末尾显示是否有新版（24h 缓存，无网络时"
+        "静默跳过）。当 ADMIN 说『升级 fcop / fcop 有新版吗 / 最新版是多少』"
+        "你应当：\n"
+        "  • 想立即查：调 `check_update()`——强制刷新缓存去问一次 PyPI\n"
+        "  • 要真升级：调 `upgrade_fcop()`——会用当前 MCP 的 Python 跑 "
+        "`pip install --upgrade fcop`，并**务必提醒 ADMIN 完全关闭 Cursor "
+        "再重开**（不是只关窗口，要 kill `Cursor.exe` 进程），"
+        "否则跑在内存里的 MCP 还是旧版。\n"
+        "不要自己去编辑 `.cursor/rules/*.mdc` 或手动改 `fcop.json` 的版本号"
+        "——那不是升级，是破坏协议真相层。\n"
+        "`unbound_report()` auto-appends an update-availability banner at "
+        "its tail (24h-cached, silent when offline). When ADMIN says "
+        "'upgrade fcop' / 'is there a new version?' / 'what's the latest?':\n"
+        "  • Check now: call `check_update()` — force-refresh PyPI query\n"
+        "  • Actually upgrade: call `upgrade_fcop()` — runs `pip install "
+        "--upgrade fcop` with THIS MCP's Python interpreter, AND you MUST "
+        "remind ADMIN to fully restart Cursor (kill every `Cursor.exe` "
+        "process, not just close windows); the in-memory MCP remains on "
+        "the old version until restart.\n"
+        "Never hand-edit `.cursor/rules/*.mdc` or fudge version numbers in "
+        "`fcop.json` — that isn't upgrading, it's corrupting the protocol "
+        "truth layer."
     ),
 )
 
@@ -1250,6 +1273,243 @@ def _list_workspace_slugs() -> list[dict]:
     return out
 
 
+# ─── PyPI update check (0.5.3+) ───────────────────────────
+#
+# 设计边界 / Design boundary:
+#   This is a **convenience layer**, not the protocol. Three hard rules:
+#
+#   1) **Never block.** PyPI query uses a 2-second timeout. Any network
+#      error, DNS failure, proxy issue, or cache write failure → silently
+#      return None. The banner is additive; its absence must never break
+#      unbound_report.
+#   2) **Never spam.** Result cached for 24h in `~/.fcop/update-cache.json`.
+#      Force-refresh only when `check_update` is explicitly invoked.
+#   3) **Never auto-upgrade.** Upgrade is a human decision. We show the
+#      banner; ADMIN (or an agent with ADMIN's approval) calls
+#      `upgrade_fcop`. Consistent with FCoP Rule 0 — no unilateral writes.
+
+_UPDATE_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+
+def _fcop_installed_version() -> str:
+    """Read the installed `fcop` package version.
+
+    Single source of truth: `importlib.metadata`. Falls back to the string
+    ``"unknown"`` when the package is running uninstalled (dev checkout)
+    or the metadata is unavailable for any reason.
+    """
+    try:
+        from importlib.metadata import version as _pkg_version  # Python 3.10+
+        return _pkg_version("fcop")
+    except Exception:
+        return "unknown"
+
+
+def _update_cache_path() -> Path:
+    """Per-user cache for PyPI check results. Global — not per-project.
+
+    Rationale: whether `fcop` has a new version is a fact about the
+    installed Python package, not the project. Sharing cache across all
+    projects avoids hitting PyPI N times on a machine with N open
+    Cursor workspaces.
+    """
+    return Path.home() / ".fcop" / "update-cache.json"
+
+
+def _read_update_cache() -> dict | None:
+    """Read cached PyPI check result. Returns None on any failure."""
+    try:
+        path = _update_cache_path()
+        if not path.exists():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def _write_update_cache(latest: str) -> None:
+    """Best-effort write of the cache. Silent on failure."""
+    try:
+        path = _update_cache_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "checked_at": datetime.now().isoformat(timespec="seconds"),
+            "latest_version": latest,
+        }
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
+def _cache_is_fresh(cache: dict) -> bool:
+    """Is the cached PyPI version still within the 24h TTL?"""
+    try:
+        ts = cache.get("checked_at", "")
+        if not ts:
+            return False
+        checked = datetime.fromisoformat(ts)
+        age = (datetime.now() - checked).total_seconds()
+        return 0 <= age < _UPDATE_CACHE_TTL_SECONDS
+    except Exception:
+        return False
+
+
+def _query_pypi_latest() -> str | None:
+    """Ask PyPI for the latest `fcop` version. Returns None on any failure.
+
+    Hard 2s timeout — unbound_report must never stall waiting for PyPI.
+    Uses stdlib `urllib` only; no extra dependency.
+    """
+    import urllib.request  # local import: only pay cost when checking
+    import urllib.error
+    url = "https://pypi.org/pypi/fcop/json"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "fcop-update-check"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            if resp.status != 200:
+                return None
+            data = json.loads(resp.read().decode("utf-8"))
+        info = data.get("info") if isinstance(data, dict) else None
+        if not isinstance(info, dict):
+            return None
+        ver = info.get("version")
+        if not isinstance(ver, str) or not ver.strip():
+            return None
+        return ver.strip()
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+        return None
+    except Exception:
+        # Belt-and-suspenders: absolutely must not raise into unbound_report
+        return None
+
+
+def _parse_version(v: str) -> tuple[int, ...]:
+    """Cheap tuple parse for comparing versions like 0.5.2 / 0.5.10.
+
+    We deliberately don't depend on `packaging.version` — unbound_report
+    runs on every session, keeping imports minimal matters. Non-integer
+    segments (e.g. ``0.5.3rc1``) collapse to 0, which is the safe
+    under-estimate (treats pre-releases as not-newer than stable).
+    """
+    parts = []
+    for seg in str(v).split("."):
+        num = ""
+        for ch in seg:
+            if ch.isdigit():
+                num += ch
+            else:
+                break
+        parts.append(int(num) if num else 0)
+    return tuple(parts)
+
+
+def _check_pypi_update(force: bool = False) -> dict | None:
+    """Core update-check pipeline.
+
+    Returns dict with keys:
+      - current:          str, installed version
+      - latest:           str, PyPI latest version
+      - newer_available:  bool
+      - checked_at:       str, ISO timestamp (may be from cache)
+      - source:           "cache" | "live" | "offline"
+
+    Returns None when the installed version is unknown (dev mode with no
+    metadata) — in that case a banner makes no sense.
+
+    Args:
+        force: skip the 24h cache, hit PyPI now.
+    """
+    current = _fcop_installed_version()
+    if current == "unknown":
+        return None
+
+    cache = _read_update_cache() if not force else None
+    if cache and _cache_is_fresh(cache):
+        latest = str(cache.get("latest_version") or "")
+        if latest:
+            return {
+                "current": current,
+                "latest": latest,
+                "newer_available": _parse_version(latest) > _parse_version(current),
+                "checked_at": str(cache.get("checked_at", "")),
+                "source": "cache",
+            }
+
+    latest = _query_pypi_latest()
+    if latest is None:
+        # Offline / blocked / timeout — fall back to stale cache if we have
+        # one, otherwise admit we don't know.
+        if cache:
+            stale = str(cache.get("latest_version") or "")
+            if stale:
+                return {
+                    "current": current,
+                    "latest": stale,
+                    "newer_available": _parse_version(stale) > _parse_version(current),
+                    "checked_at": str(cache.get("checked_at", "")),
+                    "source": "offline",
+                }
+        return {
+            "current": current,
+            "latest": current,
+            "newer_available": False,
+            "checked_at": "",
+            "source": "offline",
+        }
+
+    _write_update_cache(latest)
+    return {
+        "current": current,
+        "latest": latest,
+        "newer_available": _parse_version(latest) > _parse_version(current),
+        "checked_at": datetime.now().isoformat(timespec="seconds"),
+        "source": "live",
+    }
+
+
+def _format_update_banner(info: dict | None, is_en: bool) -> list[str]:
+    """Render the "new version available" banner lines (or empty list).
+
+    Pure formatter — no I/O. Called from unbound_report just before the
+    final return. Empty list when: info is None, OR no newer version
+    exists. This means the banner is invisible on up-to-date systems —
+    **zero friction for the healthy case**, which is most sessions.
+    """
+    if not info or not info.get("newer_available"):
+        return []
+    current = info.get("current", "?")
+    latest = info.get("latest", "?")
+    if is_en:
+        return [
+            "",
+            "---",
+            f"📦 **fcop update available**: {current} → **{latest}**",
+            "",
+            "- Agent: call `upgrade_fcop()` — one-line upgrade + restart reminder",
+            "- Shell: `pip install --upgrade fcop` (then fully close & reopen Cursor)",
+            "- Changelog: https://pypi.org/project/fcop/",
+            "",
+            "Upgrading is a human decision — this is a notice, not an action.",
+        ]
+    return [
+        "",
+        "---",
+        f"📦 **fcop 有新版可用**：{current} → **{latest}**",
+        "",
+        "- Agent 可用：调 `upgrade_fcop()` 工具（一键升级 + 提示重启 Cursor）",
+        "- 终端可用：`pip install --upgrade fcop`（升完请完全关掉 Cursor 再打开）",
+        "- 更新内容：https://pypi.org/project/fcop/",
+        "",
+        "升级决定权在人——这是通知，不是动作。",
+    ]
+
+
 # ─── MCP Tools ────────────────────────────────────────────
 
 
@@ -1402,6 +1662,9 @@ def unbound_report(lang: str = "zh") -> str:
     active = _collect_active_threads(limit=10)
     rules_ver = _rule_file_hash("fcop-rules.mdc")
     protocol_ver = _rule_file_hash("fcop-protocol.mdc")
+    # 24h-cached PyPI check — silent on any failure (see _check_pypi_update)
+    update_info = _check_pypi_update()
+    update_banner = _format_update_banner(update_info, is_en)
 
     def _fmt_threads() -> list[str]:
         if not active:
@@ -1491,6 +1754,7 @@ def unbound_report(lang: str = "zh") -> str:
                 "在 ADMIN 选定之前，我不会读任务正文、不会写任何文件。"
                 "（FCoP Rule 1）",
             ]
+        lines.extend(update_banner)
         return "\n".join(lines)
 
     # Phase 2 — project IS initialized. Standard UNBOUND report + role
@@ -1562,6 +1826,7 @@ def unbound_report(lang: str = "zh") -> str:
             "（FCoP Rule 1）",
         ]
 
+    lines.extend(update_banner)
     return "\n".join(lines)
 
 
@@ -2671,6 +2936,196 @@ def archive_task(task_id: str, lang: str = "") -> str:
     if not moved:
         return f"{t('no_match', lang)}: {task_id}"
     return f"{t('archived', lang)} {len(moved)} {t('files', lang)}: " + ", ".join(moved)
+
+
+@mcp.tool
+def check_update(lang: str = "zh") -> str:
+    """Check whether a newer `fcop` MCP release is available on PyPI.
+
+    Force-refreshes the cache — use this when you want an answer **right
+    now**, not the (up to 24h old) cached result that `unbound_report`
+    surfaces as its footer banner. Safe to call while UNBOUND: reads
+    network + one file under `~/.fcop/`, does nothing to the project.
+
+    Args:
+        lang: "zh" (default) or "en".
+
+    FCoP v1.1 Rule 0 中立：本工具不修改项目状态，只做只读探测。
+    Equivalent file ops: GET https://pypi.org/pypi/fcop/json with 2s
+    timeout; compare against `importlib.metadata.version('fcop')`;
+    write `~/.fcop/update-cache.json` (per Consequence 1 of the Core
+    Architectural Principle — every tool decomposes into file/network
+    operations).
+    """
+    is_en = lang.lower().startswith("en")
+    info = _check_pypi_update(force=True)
+
+    if info is None:
+        return (
+            "fcop version metadata unavailable (likely running a dev checkout "
+            "without installed metadata)."
+            if is_en else
+            "fcop 版本信息读不到（多半是本地 dev checkout、未经 pip 安装）。"
+        )
+
+    current = info["current"]
+    latest = info["latest"]
+    source = info["source"]
+    if source == "offline":
+        return (
+            f"Could not reach PyPI (offline / blocked / timeout). "
+            f"Installed: **{current}**. Last known latest (cached): **{latest}**."
+            if is_en else
+            f"无法访问 PyPI（离线 / 被拦 / 超时）。当前已装：**{current}**；"
+            f"缓存里最近一次看到的最新版：**{latest}**。"
+        )
+
+    if info["newer_available"]:
+        lines = _format_update_banner(info, is_en)
+        # Strip the leading blank + "---" separator — unnecessary when it's
+        # the sole output rather than a footer.
+        while lines and lines[0] in ("", "---"):
+            lines.pop(0)
+        return "\n".join(lines)
+
+    return (
+        f"✅ fcop is up to date (**{current}**)."
+        if is_en else
+        f"✅ fcop 已是最新版（**{current}**）。"
+    )
+
+
+@mcp.tool
+def upgrade_fcop(lang: str = "zh") -> str:
+    """Run `pip install --upgrade fcop` using THIS MCP's Python interpreter.
+
+    The tool uses ``sys.executable`` so the upgrade lands in the exact
+    Python environment that is hosting this MCP — not whichever `pip`
+    happens to be first on PATH. This is the ONLY thing this tool buys
+    you over running the shell command by hand. Everything else (pip's
+    output, its network, its dependency resolution) is unchanged.
+
+    **Two important guarantees:**
+
+    1) **Not magic.** Equivalent shell command:
+       ``<sys.executable> -m pip install --upgrade fcop``
+       If this tool ever refuses to run or fails, the shell fallback
+       always works. (Per Consequence 1 of the Core Architectural
+       Principle — every convenience tool has a documented decomposition.)
+
+    2) **You still have to restart Cursor.** A running MCP process is
+       pinned to the Python module that was already loaded; the new
+       version only takes effect after a **full** Cursor restart (kill
+       all `Cursor.exe`, not just close the window). The tool's output
+       says this explicitly; do not skip it.
+
+    Args:
+        lang: "zh" (default) or "en".
+
+    Returns:
+        A human-readable report including: the resolved Python
+        interpreter, before/after versions, and the restart reminder.
+        On failure: pip's stderr and the shell command to run manually.
+    """
+    import subprocess
+    is_en = lang.lower().startswith("en")
+
+    before = _fcop_installed_version()
+    py = sys.executable
+    cmd = [py, "-m", "pip", "install", "--upgrade", "fcop"]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,  # 5 minutes — pip can be slow on first run
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        return (
+            f"Could not find Python interpreter at `{py}`. "
+            f"Run manually: `pip install --upgrade fcop`"
+            if is_en else
+            f"找不到 Python 解释器 `{py}`。请手动跑：`pip install --upgrade fcop`"
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            "pip install timed out after 5 minutes. Run manually:\n"
+            f"`{' '.join(cmd)}`"
+            if is_en else
+            "pip install 超时（>5 分钟）。请手动跑：\n"
+            f"`{' '.join(cmd)}`"
+        )
+
+    # Re-read installed version in a fresh subprocess (the current MCP
+    # process still has the OLD module cached in memory — that's the whole
+    # reason we need a Cursor restart).
+    after = before
+    try:
+        ver_proc = subprocess.run(
+            [py, "-c",
+             "from importlib.metadata import version; print(version('fcop'))"],
+            capture_output=True, text=True, timeout=10,
+            encoding="utf-8", errors="replace",
+        )
+        if ver_proc.returncode == 0:
+            stdout_ver = (ver_proc.stdout or "").strip()
+            if stdout_ver:
+                after = stdout_ver
+    except Exception:
+        pass
+
+    # Refresh PyPI cache so the next unbound_report doesn't immediately
+    # re-surface the "update available" banner for a version that's
+    # already installed on disk.
+    _write_update_cache(after)
+
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "")[-1200:]
+        if is_en:
+            return (
+                f"❌ Upgrade failed. Installed version unchanged: **{before}**.\n\n"
+                f"Command: `{' '.join(cmd)}`\n\n"
+                f"pip output (tail):\n```\n{tail}\n```\n\n"
+                f"Try running the command in a regular terminal — some "
+                f"failures are permission-related and clearer in a shell."
+            )
+        return (
+            f"❌ 升级失败。当前版本未变：**{before}**。\n\n"
+            f"命令：`{' '.join(cmd)}`\n\n"
+            f"pip 输出尾部：\n```\n{tail}\n```\n\n"
+            f"建议在普通终端里重跑同一条命令——有些权限问题在 shell 里报得更清楚。"
+        )
+
+    if before == after:
+        # pip succeeded but version didn't change — already latest.
+        return (
+            f"✅ fcop already at the latest version (**{after}**). "
+            f"No restart needed."
+            if is_en else
+            f"✅ fcop 已经是最新版（**{after}**）。无需重启。"
+        )
+
+    if is_en:
+        return (
+            f"✅ Upgraded fcop: **{before}** → **{after}**.\n\n"
+            f"Python: `{py}`\n\n"
+            f"⚠️ **Now fully restart Cursor.** Close every `Cursor.exe` "
+            f"process (Task Manager on Windows), not just the window. "
+            f"The running MCP is still on {before} until restart — the "
+            f"new version only loads on next launch.\n\n"
+            f"After restart, any new session will pick up {after}."
+        )
+    return (
+        f"✅ fcop 已升级：**{before}** → **{after}**。\n\n"
+        f"Python 解释器：`{py}`\n\n"
+        f"⚠️ **现在请完全关闭 Cursor 再重开**。任务管理器里把所有 "
+        f"`Cursor.exe` 进程 kill 掉（不是只关窗口）。当前这个 MCP 进程"
+        f"还在跑 {before}，必须重启 Cursor 才会加载 {after}。\n\n"
+        f"重启后新会话就是 {after} 了。"
+    )
 
 
 @mcp.tool

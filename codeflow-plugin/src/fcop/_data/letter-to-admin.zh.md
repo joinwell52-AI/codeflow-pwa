@@ -435,6 +435,55 @@ list_workspaces()
 
 ---
 
+## 升级 fcop（0.5.3 起已自动化）
+
+FCoP 工具箱（`fcop` Python 包）会有版本更新。从 0.5.3 开始你什么都不用记：
+
+**每次新会话开始时，Agent 跑的 `unbound_report()` 会自动在末尾告诉你有没有新版。**
+
+长这样：
+
+```
+📦 fcop 有新版可用：0.5.3 → 0.5.4
+
+- Agent 可用：调 upgrade_fcop() 工具（一键升级 + 提示重启 Cursor）
+- 终端可用：pip install --upgrade fcop（升完请完全关掉 Cursor 再打开）
+```
+
+看到横幅，你有两种升级方式：
+
+### 方式 1：让 Agent 自己升（省事）
+
+一句话：
+
+> 升级 fcop
+
+Agent 会调 `upgrade_fcop()`，用它自己那个 Python 跑 `pip install --upgrade fcop`，告诉你升完的版本号，提醒你重启 Cursor。
+
+### 方式 2：自己在终端跑（也行）
+
+```powershell
+pip install --upgrade fcop
+```
+
+然后完全关掉 Cursor 再开。**Windows 任务管理器里 kill 所有 `Cursor.exe` 进程**——光关窗口后台还有进程，MCP 不会重新加载。
+
+### 要查"现在有没有新版"
+
+一句话：
+
+> fcop 有新版吗？
+
+Agent 会调 `check_update()`——绕过 24h 缓存，直接问一次 PyPI。
+
+### ⚠️ 重要提醒
+
+- 升完**必须重启 Cursor**——不重启当前 MCP 还是旧版
+- 不要让 Agent 手改 `.cursor/rules/*.mdc` 或 `fcop.json` 里的版本字段——那不是升级，是破坏协议
+- 横幅 24 小时刷新一次（避免每次开会话都查 PyPI）；离线时静默跳过
+
+---
+
 ## 不满意怎么办
 
 - 想看完整规则 → 让 Agent 读 `fcop://rules` 或 `fcop://protocol`

@@ -6,6 +6,72 @@
 
 ## [Unreleased]
 
+### fcop 0.5.3（MCP 包）- 2026-04-22
+
+#### 新增：自动升级提示 + 一键升级工具
+
+**背景**：ADMIN 反馈过去最要命的一件事——**装完 fcop 之后根本不知道有
+新版本**。必须自己去 https://pypi.org/project/fcop/ 查才能发现。这等于
+没有升级机制，老客户会永远卡在初装的那个版本。
+
+**改动**：
+
+1. **`unbound_report()` 自动追加版本提示横幅**——每个新会话的第一个动作
+   天然是 `unbound_report`，就让它顺手查一次 PyPI。如果有新版，在报告
+   末尾追加一段醒目横幅：
+
+   ```
+   📦 fcop 有新版可用：0.5.2 → 0.5.3
+
+   - Agent 可用：调 upgrade_fcop() 工具（一键升级 + 提示重启 Cursor）
+   - 终端可用：pip install --upgrade fcop（升完请完全关掉 Cursor 再打开）
+   - 更新内容：https://pypi.org/project/fcop/
+
+   升级决定权在人——这是通知，不是动作。
+   ```
+
+   - **2 秒网络超时**：PyPI 卡了不会拖死 `unbound_report`
+   - **24 小时缓存**：结果存 `~/.fcop/update-cache.json`，不会每次都查
+   - **离线静默**：网络问题/防火墙/DNS 坏都**零报错**，横幅不出现但
+     主体报告正常
+   - **已是最新版时横幅完全不出现**：对健康系统零干扰
+
+2. **新工具 `check_update(lang)`**——强制刷新缓存、立即向 PyPI 查一次。
+   用于 ADMIN 说『fcop 有新版吗 / 最新版是多少』这类即时问题。
+   输出三种状态：有更新、已是最新、无法访问 PyPI（显示缓存中的最近一次）。
+
+3. **新工具 `upgrade_fcop(lang)`**——用当前 MCP 进程的 Python 解释器
+   （`sys.executable`）跑 `pip install --upgrade fcop`。这个工具相比
+   手敲命令只解决一件事：**永远不会挑错 Python**——装进的就是 MCP 正在
+   跑的那个环境。其余（pip 输出、依赖解析、权限）都和命令行一模一样。
+
+   **输出设计**：升级成功时明确告诉 ADMIN 升级前/后版本号、Python 解释器
+   路径、以及一段醒目的『现在请完全关闭 Cursor 再重开』提示（任务管理
+   器 kill `Cursor.exe`，不是只关窗口）。失败时贴出 pip 的 stderr 尾部 +
+   手动 fallback 命令。
+
+4. **`mcp.instructions` 加入升级路由**——ADMIN 说『升级 fcop』『fcop
+   有新版吗』时 Agent 应调哪个工具、升级后必须做什么。同时明确禁止
+   Agent 去手改 `.cursor/rules/*.mdc` 或 `fcop.json` 版本字段——那不是
+   升级，是破坏协议真相层。
+
+**符合 0.5.2 立的「便利层不是真相层」原则**：
+
+两个新工具都严格符合 Consequence 1——docstring 里写清对应的基础操作：
+
+| 工具 | 本质 |
+|---|---|
+| `check_update` | GET `https://pypi.org/pypi/fcop/json`（2s 超时）→ 对比 `importlib.metadata.version('fcop')` → 写 `~/.fcop/update-cache.json` |
+| `upgrade_fcop` | `<sys.executable> -m pip install --upgrade fcop`，再问 Python 本次装了什么版本 |
+
+两者都不是"把协议藏进 Python"——它们操作的是**包安装状态**，不是协议
+文件。协议文件仍然是文件系统上的 `.mdc`，工具改不到，也不该改。
+
+**升级路径对老用户（< 0.5.3）**：这一版的痛点是——**0.5.3 之前的版本
+里没有这两个工具**。第一次升级到 0.5.3 必须手动：`pip install --upgrade
+fcop` + 重启 Cursor。**从 0.5.3 之后**每次升级都自动提示 + 一句话搞定。
+这是"最后一次手动"。
+
 ### fcop 0.5.2（MCP 包）- 2026-04-22
 
 #### 新增：架构原则"工具是便利层，不是真相层"

@@ -467,6 +467,66 @@ formats for 0.c, …): `.cursor/rules/fcop-protocol.mdc`.
 
 ---
 
+## Upgrading fcop (automated from 0.5.3 onward)
+
+The FCoP toolbox (the `fcop` Python package) gets updates. From 0.5.3 on,
+you don't have to remember anything:
+
+**Every new session's `unbound_report()` automatically tells you at the
+tail whether a new version is available.**
+
+It looks like this:
+
+```
+📦 fcop update available: 0.5.3 → 0.5.4
+
+- Agent: call upgrade_fcop() — one-line upgrade + restart reminder
+- Shell: pip install --upgrade fcop (then fully close & reopen Cursor)
+```
+
+When you see the banner, two upgrade paths:
+
+### Path 1: let the agent upgrade (easiest)
+
+One line:
+
+> upgrade fcop
+
+The agent calls `upgrade_fcop()`, uses its own Python to run
+`pip install --upgrade fcop`, reports the version delta, and reminds
+you to restart Cursor.
+
+### Path 2: run it yourself (also fine)
+
+```powershell
+pip install --upgrade fcop
+```
+
+Then fully close Cursor and reopen it. On Windows: **use Task Manager
+to kill every `Cursor.exe` process** — closing windows alone leaves
+background processes that keep the old MCP alive.
+
+### To check "is there a new version right now"
+
+One line:
+
+> is there a new fcop version?
+
+The agent calls `check_update()` — skips the 24h cache, asks PyPI
+directly.
+
+### ⚠️ Important reminders
+
+- After upgrade you **must restart Cursor** — without restart, the
+  running MCP is still on the old version
+- Do NOT let the agent hand-edit `.cursor/rules/*.mdc` or the version
+  fields in `fcop.json` — that's not upgrading, it's corrupting the
+  protocol
+- The banner refreshes every 24h (so PyPI isn't queried on every
+  session); silently skipped when offline
+
+---
+
 ## When you disagree
 
 - Want the full rules → have the agent read `fcop://rules` or
