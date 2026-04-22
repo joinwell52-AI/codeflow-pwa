@@ -894,7 +894,8 @@ def unbound_report(lang: str = "zh") -> str:
                 "",
                 "After initialization finishes I will:",
                 "1. write `docs/agents/fcop.json` + rules + `LETTER-TO-ADMIN.md`",
-                "2. print a short confirmation + **point you to the letter**",
+                "2. **print the full letter inline** (the manual) so you can "
+                "read it without opening any file",
                 "3. re-enter **UNBOUND** state, at which point you assign a role",
                 "",
                 "Until ADMIN picks, I will not read task bodies and will not "
@@ -930,7 +931,7 @@ def unbound_report(lang: str = "zh") -> str:
                 "",
                 "初始化完成后我会：",
                 "1. 写入 `docs/agents/fcop.json` + 规则文件 + `LETTER-TO-ADMIN.md`",
-                "2. 打印简短的确认信息，并**告诉 ADMIN 去读那封信**",
+                "2. **把整封信内联打印出来**（说明书），你不用打开任何文件就能读",
                 "3. 重新进入 **UNBOUND** 状态，到那时你才给我派角色",
                 "",
                 "在 ADMIN 选定之前，我不会读任务正文、不会写任何文件。"
@@ -1167,42 +1168,92 @@ def _deploy_rules_to_project() -> list[str]:
     return notes
 
 
+def _read_bundled_letter(lang: str) -> str:
+    """Read the packaged LETTER-TO-ADMIN text in the requested language.
+
+    Returns an empty string on failure so callers can fall back to just
+    pointing at `docs/agents/LETTER-TO-ADMIN.md` without blowing up the
+    init response.
+    """
+    lang_key = lang.lower() if lang else "zh"
+    if not lang_key.startswith(("zh", "en")):
+        lang_key = "zh"
+    lang_key = "en" if lang_key.startswith("en") else "zh"
+    filename = f"letter-to-admin.{lang_key}.md"
+    data = _packaged_data_bytes(filename)
+    if data is None:
+        src = Path(__file__).resolve().parent / "_data" / filename
+        if src.exists():
+            try:
+                data = src.read_bytes()
+            except Exception:
+                data = None
+    if data is None:
+        return ""
+    try:
+        return data.decode("utf-8")
+    except Exception:
+        return ""
+
+
 def _init_next_steps(team_display: str, lang: str) -> str:
     """Standard 'next steps' footer printed by every `init_*` tool.
 
-    The user pointed out (correctly) that FCoP is a three-phase flow —
-    install → initialize → assign role — and early versions let those
-    phases blur together. This footer explicitly marks the boundary
-    between phase 2 (initialization just finished) and phase 3 (ADMIN
-    assigns a role), so ADMIN never has to guess what comes next.
+    FCoP is a three-phase flow — install → initialize → assign role —
+    and early versions let those phases blur together. This footer
+    explicitly marks the boundary between phase 2 (initialization just
+    finished) and phase 3 (ADMIN assigns a role) so ADMIN never has to
+    guess what comes next.
+
+    Since MCP cannot pop open an editor tab in Cursor, we inline the
+    full LETTER-TO-ADMIN manual right here — the agent naturally renders
+    it to ADMIN in the same turn, zero extra clicks. Init runs once per
+    project; the extra ~4 KB is worth it.
     """
     is_en = lang.lower().startswith("en")
+    letter = _read_bundled_letter("en" if is_en else "zh")
     if is_en:
-        return (
+        header = (
             "\n---\n"
             "**Next steps (ADMIN, please do this in order):**\n\n"
-            "1. **Open** `docs/agents/LETTER-TO-ADMIN.md` — team rules, "
-            "role naming conventions, daily usage. This is the manual.\n"
+            "1. **Read the manual below** (auto-inlined; also saved at "
+            "`docs/agents/LETTER-TO-ADMIN.md` for later).\n"
             "2. **Call `unbound_report()` again** — you'll now get the "
             "phase-2 UNBOUND report (fcop.json is present), not the "
             "phase-1 initialization report.\n"
             "3. **Assign a role** by saying literally:\n"
             f"   > You are {{ROLE}} on {team_display}, thread {{thread_key}} (optional)\n\n"
             "Until you assign a role, the agent will not read task "
-            "bodies and will not write task files. (FCoP Rule 1)"
+            "bodies and will not write task files. (FCoP Rule 1)\n"
         )
-    return (
-        "\n---\n"
-        "**下一步（ADMIN 请按顺序做）：**\n\n"
-        "1. **打开** `docs/agents/LETTER-TO-ADMIN.md` —— 团队规则、角色"
-        "命名约定、日常使用方法，这就是使用说明书。\n"
-        "2. **再调一次 `unbound_report()`** —— 这次会拿到第二阶段的 "
-        "UNBOUND 报告（fcop.json 已存在），不再是第一阶段的初始化报告。\n"
-        "3. **分配角色**，原话如下：\n"
-        f"   > 你是 {{ROLE}}，在 {team_display}，线程 {{thread_key}}（可选）\n\n"
-        "在你分配角色之前，Agent 不会读任务正文、不会写任务文件。"
-        "（FCoP Rule 1）"
+    else:
+        header = (
+            "\n---\n"
+            "**下一步（ADMIN 请按顺序做）：**\n\n"
+            "1. **读下面自动附带的说明书**（同一份也保存在 "
+            "`docs/agents/LETTER-TO-ADMIN.md`，方便以后回查）。\n"
+            "2. **再调一次 `unbound_report()`** —— 这次会拿到第二阶段的 "
+            "UNBOUND 报告（fcop.json 已存在），不再是第一阶段的初始化报告。\n"
+            "3. **分配角色**，原话如下：\n"
+            f"   > 你是 {{ROLE}}，在 {team_display}，线程 {{thread_key}}（可选）\n\n"
+            "在你分配角色之前，Agent 不会读任务正文、不会写任务文件。"
+            "（FCoP Rule 1）\n"
+        )
+    if not letter:
+        # Letter missing — degrade gracefully to the plain footer so init
+        # still succeeds rather than failing on a packaging glitch.
+        return header
+    divider = (
+        "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📬 **LETTER-TO-ADMIN.md  —  the manual**\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        if is_en
+        else
+        "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📬 **LETTER-TO-ADMIN.md  —  使用说明书**\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     )
+    return header + divider + letter
 
 
 def _deploy_letter_to_project(lang: str) -> str:

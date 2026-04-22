@@ -6,6 +6,55 @@
 
 ## [Unreleased]
 
+### fcop 0.4.4（MCP 包）- 2026-04-22
+
+#### 改进：初始化后把说明书直接内联到响应里，零跳转
+
+ADMIN 问："这封 LETTER-TO-ADMIN.md 能自动打开吗？"
+
+技术边界：**MCP 不能让 Cursor 替你弹一个编辑器标签页** —— MCP 协议
+层没这个 API，编辑器面板是 Cursor 自己的地盘，任何 MCP 服务器都碰
+不到。
+
+但更干净的办法有：**让初始化工具的响应里直接带上整封信的正文**。
+Agent 的聊天窗口本身就是个 markdown 渲染器，`init_solo` /
+`init_project` / `create_custom_team` 返回的时候把信原文内联进去，
+ADMIN 在同一个回合就能看到信，零跳转、零"你去打开某个文件"的废话。
+
+行为变化：
+
+- 三个 `init_*` 工具的 "下一步" 尾巴后，追加一条分隔线 + 整封
+  `LETTER-TO-ADMIN.md`（按初始化时的 `lang` 选中 zh / en）。
+- 文件照旧落在 `docs/agents/LETTER-TO-ADMIN.md`（方便以后回查），
+  资源 `fcop://letter/zh` / `fcop://letter/en` 也继续可用。
+- 初始化是一次性动作，响应大 ~4KB 完全可以接受，换来"ADMIN 看完信
+  就能分配角色"的闭环。
+
+#### 改进：Phase 1 初始化汇报文案同步更新
+
+`unbound_report` 在 Phase 1 返回的"初始化汇报"里，把第 2 条从"告诉
+ADMIN 去读那封信"改成"**把整封信内联打印出来**（说明书），你不用
+打开任何文件就能读"，一致性。
+
+#### 兼容性
+
+- 完全兼容 0.4.3：工具签名、`fcop.json`、规则文件、资源 URI 全部不变
+- 规则版本 `fcop_rules_version` 仍是 1.2.0（规则没改）
+- 老项目升级后第一次调 `init_*` 会看到带内联信的新响应；老会话（已
+  经绑角色的）完全不受影响
+
+#### 包装失效保护
+
+如果打包时信件丢失（不应该发生，但留个保护），init 工具会退化成只
+打印"下一步"指引 + 指向磁盘上的 `docs/agents/LETTER-TO-ADMIN.md`，
+不会因为 packaging glitch 失败。
+
+#### 升级
+
+```bash
+uv tool upgrade fcop
+```
+
 ### fcop 0.4.3（MCP 包）- 2026-04-22
 
 #### 修复：启动流程三阶段混成一锅，ADMIN 看不懂第一步该干啥
