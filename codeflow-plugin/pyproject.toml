@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "fastmcp>=3.2.0",
+    "fastmcp>=3.2.4",
     "websockets>=12.0",
 ]
 
