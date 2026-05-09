@@ -18,6 +18,8 @@ layer: governance
 
 # 里程碑通报：Sprint S5 完工 — v0.1 完整 8 子系统就绪 + S6 即最后一步 + v0.1-alpha 发布前置约束已闭环
 
+> ⚠️ **5/9 23:01 后续紧急事件**：本报告 §六/§七/§九 的「v0.1-alpha 发布」相关内容**被 [`REPORT-20260509-023-PM-to-ADMIN.md`](./REPORT-20260509-023-PM-to-ADMIN.md) supersede**——FCoP v1.0 RC.1 已于 5/9 14:59 land，CodeFlow 当前 protocol 与 upstream 4 处不兼容，发布策略需 ADMIN 重新拍 5 议题（A/B/C/D/E）。本报告 §一/§二/§三 的「S5 完工事实」+「7 决策接受」+「14 子系统就绪」**仍然成立**，不受 supersede 影响。
+
 ## 一句话结论
 
 **S5 Phase E 47 分钟内全交付 + 94/94 测试全过**（PM 独立复核一致）。**v0.1 Backend Kernel 完整 8 子系统就绪**：registry + persistent-store + bootstrap + session + transcript + scheduler + review + status-reconciler + **skill (新)**。**§0.0 第 1 句宪法「应用 fcop-mcp」最后一块拼图落地** — fcop 强依赖闸通过 register + bootstrap 双路径不可绕过。**已派 OPS-026 + QA-027 两单**（按第 5 句宪法 PM 自决）。**距 v0.1-alpha 还差 S6**（codeflow-shell EXE 包装 + Hello World demo + release notes）。**v0.1-alpha 发布动作本身是「仍请示」项**，S6 完工时 PM 必请示 ADMIN。
