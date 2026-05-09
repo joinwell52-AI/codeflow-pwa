@@ -1,6 +1,12 @@
-# CodeFlow Shell — v0.1.0-rc.1 (internal preview)
+# CodeFlow Shell — v0.2.0-alpha (sprint 0 P1)
 
 > ⚠️ **Internal preview release.** Not published to npm/PyPI/GitHub Releases. For ADMIN test only.
+>
+> **What's new since v0.1.0-rc.1**:
+> - 🆕 Real `CursorSdkAdapter` wiring (no longer hard-stubbed to `InMemorySdkAdapter`).
+> - 🆕 `ConfigLoader` — 6-tier merge (`defaults` → `~/.codeflow/v2/config.json` → `./codeflow.config.json` → `~/.codeflow/v2/.env` → `./.env` → `process.env` → CLI args).
+> - 🆕 `.env.example` whitelisted env vars.
+> - Fallback to `InMemorySdkAdapter` is **still** the default when `CURSOR_API_KEY` is absent — first launch with no setup remains a smoke-test friendly experience.
 >
 > **v1.0 alignment pending**: This release implements CodeFlow protocol v0.1
 > (5 schemas: agent / task / review / session / skill) with `Review.decision`
@@ -95,11 +101,63 @@ If you want to experiment with EXE locally: `pack.cmd` is the recipe. If it succ
 
 ## Configuration
 
-| Env var | Default | Notes |
-|---|---|---|
-| `CODEFLOW_DATA_DIR` | `~/.codeflow/v2/` | Override the data directory (skills/, inbox/, reviews/, transcripts/, sessions/, agents.json). v1 codeflow-desktop uses `~/.codeflow/` directly; we keep `v2` separate to avoid clashing. |
+The shell merges configuration from **six** layers (later layers override earlier):
 
-There are intentionally no other knobs at this stage — the shell is a packaging layer, not a config surface. Runtime-level tuning (e.g., `reviewPolicy`) goes through `Runtime.create` and is not yet exposed.
+1. **Built-in defaults** — `dataDir=~/.codeflow/v2/`, `listScope=local`, `defaultAgentKit=["DEV-01","REVIEW-01"]`.
+2. `~/.codeflow/v2/config.json` — per-user persistent (recommended for personal Cursor key).
+3. `./codeflow.config.json` (project root) — per-project pinned.
+4. `~/.codeflow/v2/.env` + `./.env` — limited to a whitelist of `CURSOR_*` and `CODEFLOW_*` keys.
+5. `process.env` — same whitelist.
+6. CLI args — `--api-key`, `--relay-url`, `--room-key`, `--data-dir`.
+
+### Whitelisted env vars
+
+| Var | Purpose | Default |
+|---|---|---|
+| `CURSOR_API_KEY` | Activates real `CursorSdkAdapter`. **Without this, the shell uses `InMemorySdkAdapter` (smoke-test fallback)**. | unset |
+| `CURSOR_DEFAULT_MODEL` | Default model hint (recorded for forward compat — not yet wired through SDK calls). | unset |
+| `CURSOR_LIST_SCOPE` | `local` (per-cwd) or `cloud` (cross-machine). | `local` |
+| `CODEFLOW_DATA_DIR` | Override `dataDir` (skills/, inbox/, reviews/, transcripts/, sessions/, agents.json). | `~/.codeflow/v2/` |
+| `CODEFLOW_RELAY_URL` | WebSocket URL for Mobile PWA bridge (P3, not yet active). | unset |
+| `CODEFLOW_ROOM_KEY` | Relay room key. | unset |
+| `CODEFLOW_RELAY_AUTOCONNECT` | `true`/`1` to auto-connect; auto-set when both URL + room key present. | unset |
+
+### `config.json` schema
+
+```jsonc
+{
+  "cursor": {
+    "apiKey": "ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "defaultModel": "claude-sonnet-4",
+    "listScope": "local"
+  },
+  "relay": {
+    "url": "wss://ai.chedian.cc/codeflow/ws/",
+    "roomKey": "codeflow-replace-with-your-id",
+    "autoConnect": true
+  },
+  "dataDir": "~/.codeflow/v2",
+  "defaultAgentKit": ["DEV-01", "REVIEW-01"]
+}
+```
+
+Every key is optional. The `~` prefix expands to `homedir()` for `dataDir`. Place the file at `~/.codeflow/v2/config.json` for a per-user pin, or at `./codeflow.config.json` for a project pin (commit-proof — `.env` and `codeflow.config.json` are both `.gitignore`d).
+
+### Quick start: getting a Cursor API key
+
+1. Open [https://cursor.com/settings](https://cursor.com/settings) → **Account** → **API keys**.
+2. Click **Create new key**. Copy the value (starts with `ck_`).
+3. Pick **one** of the following options:
+   - Easiest: `cp codeflow-shell/.env.example ~/.codeflow/v2/.env` then edit the file and set `CURSOR_API_KEY`.
+   - Per-project: same but copy to `codeflow-shell/.env`.
+   - Per-shell: `set CURSOR_API_KEY=ck_xxx` then `npm start` in the same window (PowerShell: `$env:CURSOR_API_KEY="ck_xxx"`).
+4. Re-launch the shell. Banner should show:
+   ```text
+   Cursor SDK     : live (CursorSdkAdapter; apiKey from process.env.CURSOR_API_KEY, listScope="local")
+   ```
+   instead of the v0.1 fallback line.
+
+If the banner still shows `fake (InMemorySdkAdapter; ...)`, the key didn't reach the shell — the most common cause on Windows is forgetting to relaunch after editing `.env`. The shell reads config exactly once, at startup.
 
 ---
 

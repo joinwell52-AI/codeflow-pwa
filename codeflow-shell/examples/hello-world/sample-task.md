@@ -42,16 +42,13 @@ If you see ALL nine steps in the shell stdout, v0.1 is working end-to-end.
 Run by ADMIN via:
 
 ```powershell
-.\dist\CodeFlow-v0.1.0-rc.1.exe
-# In another window:
-copy examples\hello-world\sample-task.md "$env:USERPROFILE\.codeflow\v2\inbox\"
-```
-
-Or, if SEA/EXE bundling fails (Node SEA fallback per TASK-028 §三):
-
-```powershell
 cd codeflow-shell
 npm start
-# In another window:
-copy examples\hello-world\sample-task.md "$env:USERPROFILE\.codeflow\v2\inbox\"
+# In another window — IMPORTANT: drop with the exact filename matching
+# the frontmatter task_id above, so state_history append finds the file
+# again on review settle.
+copy examples\hello-world\sample-task.md `
+  "$env:USERPROFILE\.codeflow\v2\inbox\TASK-20260509-999-PM-to-DEV.md"
 ```
+
+For real `@cursor/sdk` calls (set `CURSOR_API_KEY` first — see `codeflow-shell/README.md` § "Quick start: getting a Cursor API key"), the reviewer will emit a real `VERDICT:` line and `decision` will be one of `approved` / `changes_requested` etc., not `needs_human`.

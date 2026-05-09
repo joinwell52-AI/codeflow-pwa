@@ -3,5 +3,17 @@ dist/
 *.log
 *.tmp
 
+# Local config / secrets — never commit.
+.env
+codeflow.config.json
+
+# But DO commit the env example — it is a user template.
+# (Repo-root .gitignore line 71 has `.env.*` which would otherwise
+# silently ignore `.env.example`; this re-include negates that for
+# this subtree only.)
+!.env.example
+
 # Demo state — wiped on each run; not source code.
+.smoke-test-state/
+.sigint-test-state/
 examples/hello-world/.codeflow-state/

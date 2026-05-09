@@ -32,7 +32,10 @@ In another PowerShell window:
 
 ```powershell
 $inbox = "$env:USERPROFILE\.codeflow\v2\inbox"
-copy codeflow-shell\examples\hello-world\sample-task.md $inbox\
+# IMPORTANT: drop with the EXACT filename matching the frontmatter task_id,
+# so the runtime's state_history append finds the file again on review settle.
+copy codeflow-shell\examples\hello-world\sample-task.md `
+  $inbox\TASK-20260509-999-PM-to-DEV.md
 ```
 
 Watch the main window's stdout. To stop, press **Ctrl+C** — you should see `[shell] runtime stopped cleanly. Goodbye.`
