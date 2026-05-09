@@ -120,8 +120,22 @@ export class RuntimeBootstrap {
         );
       }
 
-      // Step 2: query SDK.
-      const sdkIds = new Set<string>(await this._sdk.list());
+      // Step 2: query SDK. SDK.list() failure = HARD FAIL per crash-recovery.md
+      // decision 2 ("不允许半启动状态"). We translate any uncaught SDK error
+      // to RuntimeBootstrapError so the caller's stderr summary stays consistent
+      // with the step-1 (agents.json corrupted) failure path. Test scenario 12
+      // (TS-2.8 B-path) verifies this propagation.
+      let sdkIds: Set<string>;
+      try {
+        sdkIds = new Set<string>(await this._sdk.list());
+      } catch (err) {
+        throw new RuntimeBootstrapError(
+          `SDK.list() failed during reconciliation: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+          { cause: err },
+        );
+      }
       const knownLocalIds = new Set<string>();
 
       const success: ReconciliationSuccessEntry[] = [];

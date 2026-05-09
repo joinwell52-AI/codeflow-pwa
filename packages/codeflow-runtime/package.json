@@ -1,13 +1,13 @@
 {
   "name": "@codeflow/runtime",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
-  "description": "CodeFlow AI Runtime — Agent Registry + Session Manager. Phase A (Sprint S3) implements AgentRegistry + PersistentStore + RuntimeBootstrap; SessionManager remains S2 design skeleton until Phase B.",
+  "description": "CodeFlow AI Runtime — Agent Registry + Session Manager. Phase A (Sprint S3): AgentRegistry + PersistentStore + RuntimeBootstrap. Phase B (Sprint S3): SessionManager + SessionStore + TranscriptWriter.",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/registry/__tests__/*.test.ts"
+    "test": "node --import tsx --test \"src/**/__tests__/*.test.ts\""
   },
   "dependencies": {
     "@codeflow/protocol": "file:../codeflow-protocol",

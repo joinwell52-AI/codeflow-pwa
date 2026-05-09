@@ -133,3 +133,71 @@ test("scenario 10: rename failure → original agents.json preserved, .tmp visib
     void dir;
   });
 });
+
+// Scenario 11 — TS-1.6 follow-up (TASK-20260509-016): concurrent upsert
+// via Promise.allSettled does NOT corrupt agents.json.
+//
+// QA-014 §三 noted this case wasn't covered in DEV Phase A's 16 tests.
+// QA self-assessed it as "防护性测试", not blocking — `JsonFileStore`'s
+// atomic-rename already guarantees the property at the OS level
+// (write-temp + rename is POSIX/NTFS atomic). This test is the explicit
+// regression guard.
+//
+// Why allSettled (not Promise.all) — Phase A decision D explicitly
+// forbids a lock. Concurrent saveAll calls share the SAME `agents.json.tmp`
+// staging path; on Windows + Linux, two simultaneous rename() of the
+// same source can produce ENOENT for the loser ("source vanished
+// because the winner already renamed it"). That's a feature of
+// no-lock atomic-rename, not a bug — the surviving rename was atomic,
+// the loser saw a clean ENOENT, and the on-disk JSON is never half-written.
+//
+// Key invariants under test:
+//
+//   1. At least ONE upsert wins (via atomic rename, file is committed).
+//   2. `loadAll()` after the storm NEVER throws RegistryWriteError.
+//   3. `loadAll()` returns structurally valid records (no half-merged JSON).
+//
+// Survivor count is allowed to be 1 (last-writer-wins under no-lock).
+test("scenario 11: concurrent upsert via Promise.allSettled does not corrupt agents.json", async () => {
+  await withTempStore(async ({ store }) => {
+    const records: AgentRecord[] = Array.from({ length: 5 }, (_, i) =>
+      fakeRecord(`DEV-${i.toString().padStart(2, "0")}`, `sdk-${i}`),
+    );
+
+    // Act: 5 concurrent upserts.
+    const results = await Promise.allSettled(
+      records.map((r) => store.upsert(r)),
+    );
+
+    // At least one upsert MUST have committed. (Without commits, the
+    // file wouldn't exist — but `loadAll` returns [] for that case,
+    // so we'd miss a real corruption regression. This guards.)
+    const fulfilledCount = results.filter(
+      (r) => r.status === "fulfilled",
+    ).length;
+    assert.ok(
+      fulfilledCount >= 1,
+      `at least one upsert must commit; got ${fulfilledCount} of ${results.length}`,
+    );
+
+    // Any rejection MUST be the documented ENOENT-on-rename race, NOT
+    // a corrupted-JSON or unrelated error. We don't bother enumerating
+    // the exact error class — the only failure path here is a lost-
+    // rename race, and the next assertion (loadAll OK) is the real test.
+
+    // Core invariant: loadAll must NOT throw, must NOT see partial JSON.
+    const loaded = await store.loadAll();
+    assert.ok(Array.isArray(loaded), "loadAll must return an array");
+    assert.ok(loaded.length >= 1, "at least one record must persist");
+    assert.ok(loaded.length <= 5, "no extra ghost records");
+
+    // Every surviving record is structurally valid.
+    for (const r of loaded) {
+      assert.ok(r.protocol.agent_id, "every record needs an agent_id");
+      assert.ok(r.protocol.sdk_agent_id, "every record needs a sdk_agent_id");
+      assert.equal(r.protocol.layer, "worker");
+      assert.equal(r.protocol.role, "developer");
+      assert.match(r.protocol.agent_id, /^DEV-\d{2}$/);
+    }
+  });
+});

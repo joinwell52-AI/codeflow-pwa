@@ -137,3 +137,66 @@ export class RuntimeNotReadyError extends Error {
     );
   }
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// Session-layer errors (Sprint S3 Phase B)
+//
+// Co-located with the registry error file deliberately: same governance
+// rationale (named-class identity for `assert.rejects` + `instanceof`
+// dispatch in Mobile push / audit log), and consumers tend to import a
+// single error module rather than two. If the session layer ever grows a
+// large error vocabulary we can split, but Phase B (3 deliverables) keeps
+// the count low — see decision J in REPORT-20260509-013.
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Thrown when `SessionManager.cancelSession` (or any other session op
+ * that requires an existing record) is called with a `session_id` not
+ * present in the SessionStore.
+ *
+ * `getSession` deliberately does NOT throw this — it returns `null` for
+ * the "is this session known?" probe (symmetric with `AgentRegistry.get`).
+ * Throwing is reserved for methods where the missing record is a contract
+ * violation, not a query.
+ */
+export class SessionNotFoundError extends Error {
+  override readonly name = "SessionNotFoundError";
+  readonly sessionId: string;
+
+  constructor(sessionId: string) {
+    super(`session_id="${sessionId}" is not present in SessionStore`);
+    this.sessionId = sessionId;
+  }
+}
+
+/**
+ * Thrown when `SessionManager.startSession` is invoked against an agent
+ * whose protocol-level `status` is not in the allow-list (`idle | error`).
+ *
+ * Phase B default = serial sessions per agent (TASK-013 §主交付 1
+ * key invariant: "不允许 startSession on running, 除非 §3.2 explicit
+ * concurrency 允许"). `_attemptedStatus` lets callers route the error
+ * to a useful Mobile push message ("agent is still running task X" vs.
+ * "agent is in failed state, requires manual reset").
+ */
+export class InvalidAgentStatusError extends Error {
+  override readonly name = "InvalidAgentStatusError";
+  readonly agentId: string;
+  readonly attemptedStatus: string;
+  readonly allowedStatuses: readonly string[];
+
+  constructor(
+    agentId: string,
+    attemptedStatus: string,
+    allowedStatuses: readonly string[],
+  ) {
+    super(
+      `agent_id="${agentId}" is in status="${attemptedStatus}"; ` +
+        `startSession requires status ∈ {${allowedStatuses.join(", ")}} ` +
+        `(see TASK-20260509-013 §主交付 1 invariant: serial sessions per agent).`,
+    );
+    this.agentId = agentId;
+    this.attemptedStatus = attemptedStatus;
+    this.allowedStatuses = allowedStatuses;
+  }
+}

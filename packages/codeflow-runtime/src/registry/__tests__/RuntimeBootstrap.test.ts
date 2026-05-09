@@ -1,5 +1,6 @@
 /**
- * RuntimeBootstrap unit tests — TASK-20260509-009 §必交付 6 scenarios 7-9 + 11.
+ * RuntimeBootstrap unit tests — TASK-20260509-009 §必交付 6 scenarios 7-9 + 11
+ * + TASK-20260509-013 附加交付 2 scenario 12 (TS-2.8 B-path).
  *
  * Run with `npm test`.
  *
@@ -8,6 +9,7 @@
  *   8.  Bootstrap orphan_local (record's sdk_agent_id missing from SDK)
  *   9.  Bootstrap ignore_foreign (SDK has extra id not in records)
  *   11. Race-defense: register during run() throws RuntimeNotReadyError
+ *   12. SDK.list() failure → RuntimeBootstrapError (TS-2.8 B HARD FAIL)
  */
 
 import { strict as assert } from "node:assert";
@@ -18,6 +20,7 @@ import {
   InMemorySdkAdapter,
 } from "../AgentSdkAdapter.ts";
 import {
+  RuntimeBootstrapError,
   RuntimeNotReadyError,
 } from "../errors.ts";
 import { RuntimeBootstrap } from "../RuntimeBootstrap.ts";
@@ -166,5 +169,51 @@ test("bootstrap: register during run() throws RuntimeNotReadyError", async () =>
     // a subsequent register after run() finishes.
     await bootstrap.run();
     assert.equal(registry.isBootstrapping, false);
+  });
+});
+
+// Scenario 12 — TS-2.8 B-path: SDK.list() fails → HARD FAIL as RuntimeBootstrapError.
+//
+// crash-recovery.md decision 2 mandates "不允许半启动状态". When the SDK
+// is unreachable during reconciliation we must propagate a single,
+// uniformly-typed `RuntimeBootstrapError` (so the bin/codeflow-runtime
+// stderr summary stays consistent with the agents.json-corrupt path)
+// and let the caller `process.exit(1)`.
+test("bootstrap: SDK.list() throws → RuntimeBootstrapError (TS-2.8 B)", async () => {
+  await withTempStore(async ({ store }) => {
+    const sdk = new InMemorySdkAdapter();
+    const registry = new AgentRegistry({ store, sdk });
+
+    // Have at least one record so step 1 succeeds and we hit step 2.
+    await registry.register(validAgentSpec());
+
+    // Plant the SDK.list failure — must fire on the very next list() call.
+    sdk.failNextListWith("network down");
+
+    const logger = captureLogger();
+    const bootstrap = new RuntimeBootstrap({ store, sdk, registry, logger });
+
+    await assert.rejects(
+      () => bootstrap.run(),
+      (err: unknown) => {
+        assert.ok(
+          err instanceof RuntimeBootstrapError,
+          `expected RuntimeBootstrapError, got ${(err as Error).constructor.name}`,
+        );
+        assert.match(
+          (err as Error).message,
+          /SDK\.list\(\) failed during reconciliation: list failed: network down/,
+          `error message must include the SDK.list reason; got: ${(err as Error).message}`,
+        );
+        return true;
+      },
+    );
+
+    // Race-defense flag must clear even on HARD FAIL — finally{} guarantee.
+    assert.equal(
+      registry.isBootstrapping,
+      false,
+      "isBootstrapping flag must clear after HARD FAIL via finally{}",
+    );
   });
 });

@@ -115,6 +115,11 @@ export interface SessionRecord {
  *
  * Defined as an interface so concrete runtime impls (S3+) can wrap the
  * SDK Run however they like, as long as they expose this shape.
+ *
+ * Phase B (TASK-013) added `onEvent` so TranscriptWriter can subscribe
+ * to the SDK event stream without coupling itself to `@cursor/sdk`.
+ * The handle is responsible for translating SDKMessage → RuntimeEvent
+ * (decision M / spike-aligned 8 sdk.* types) before emitting.
  */
 export interface RunHandle {
   /** Pattern: `^run-[a-z0-9-]+$` (matches SessionRun.run_id). */
@@ -129,6 +134,16 @@ export interface RunHandle {
   cancel(reason: string): Promise<void>;
   /** Resolve when the run reaches a terminal status. */
   whenSettled(): Promise<SessionRun>;
+  /**
+   * Subscribe to runtime events emitted by this run. Listener fires once
+   * per SDKMessage observed in the underlying `run.stream()` (mapped to
+   * `sdk.*` `RuntimeEventType`). Returns an `Unsubscribe`.
+   *
+   * Listeners MUST NOT throw — a throwing listener is unsubscribed and
+   * the error is logged via `console.error`. Idempotent: re-subscribing
+   * the same function returns a fresh `Unsubscribe`.
+   */
+  onEvent(listener: (event: RuntimeEvent) => void): Unsubscribe;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -136,27 +151,44 @@ export interface RunHandle {
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * The 8 SDK message types observed in the spike (`_ignore/spike_sdk_doorbell/`)
- * + runtime-internal events (lifecycle / cancellation / error).
+ * The 8 SDK message types observed in the spike (`_ignore/spike_sdk_doorbell/
+ * ringer.ts` switch on `event.type`) + 4 runtime-internal lifecycle events.
  *
- * Not in any schema. Subscribers (transcript writer, Mobile push, audit log)
- * can switch on `event_type` to dispatch.
+ * Sprint S3 Phase B alignment (TASK-20260509-013 §主交付 3):
+ *
+ * - **8 SDK types** mirror the `SDKMessage` discriminator from `@cursor/sdk@1.0.12`
+ *   exactly as observed live in the spike on 2026-05-08:
+ *   `system | thinking | assistant | tool_call | status | task | request | user`.
+ *   We prefix each with `sdk.` to keep dot-namespacing consistent with the
+ *   runtime side. **NOTE**: TASK-013 §主交付 3 line 110 lists a different
+ *   8-name set (`message_start / message_delta / ...`) — that wording mirrors
+ *   the Anthropic Messages SSE schema, NOT the Cursor SDK surface. The
+ *   spike is the ground truth and what TranscriptWriter actually subscribes
+ *   to; this is captured as decision M in REPORT-20260509-013.
+ *
+ * - **4 runtime types** match crash-recovery.md decision 1 (`persistence_flushed`)
+ *   + decision 4 (`session_started` / `session_ended` / `session_cancelled`).
+ *   Mobile emergency-stop fires `session_cancelled` per cancelled session
+ *   (no separate `emergency_stop` event), per TASK-013 §主交付 1 cancel-flow.
+ *
+ * Not in any FCoP schema. Subscribers (TranscriptWriter, Mobile push,
+ * audit log) switch on `event_type` to dispatch.
  */
 export type RuntimeEventType =
-  // SDK-originated events (subset; full list resolved at S3)
-  | "sdk.message"
-  | "sdk.token"
-  | "sdk.tool_call"
-  | "sdk.tool_result"
+  // SDK-originated events (8) — mirrors SDKMessage discriminator from spike.
+  | "sdk.system"
   | "sdk.thinking"
-  | "sdk.error"
-  | "sdk.run_started"
-  | "sdk.run_finished"
-  // Runtime-originated events
+  | "sdk.assistant"
+  | "sdk.tool_call"
+  | "sdk.status"
+  | "sdk.task"
+  | "sdk.request"
+  | "sdk.user"
+  // Runtime-originated events (4) — lifecycle + persistence.
   | "runtime.session_started"
+  | "runtime.session_ended"
   | "runtime.session_cancelled"
-  | "runtime.session_failed"
-  | "runtime.emergency_stop";
+  | "runtime.persistence_flushed";
 
 export interface RuntimeEvent {
   /** Monotonic-ish event id (e.g. ULID). */

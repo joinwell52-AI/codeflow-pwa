@@ -13,9 +13,12 @@ export {
 export {
   type AgentSdkAdapter,
   type AgentCreateSpec,
+  type AgentSendSpec,
   CursorSdkAdapter,
   type CursorSdkAdapterOptions,
   InMemorySdkAdapter,
+  InMemoryRunHandle,
+  type InMemoryRunHandleOptions,
   InMemorySdkPlantedError,
 } from "./AgentSdkAdapter.ts";
 
@@ -26,6 +29,8 @@ export {
   RegistryWriteError,
   RuntimeBootstrapError,
   RuntimeNotReadyError,
+  SessionNotFoundError,
+  InvalidAgentStatusError,
 } from "./errors.ts";
 
 export {

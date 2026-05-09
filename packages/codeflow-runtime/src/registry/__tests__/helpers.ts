@@ -28,7 +28,30 @@ export async function withTempStore<T>(
   try {
     return await fn({ store, agentsPath, dir });
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    // Windows can EBUSY here when a concurrent test (scenario 11) leaves
+    // file handles transiently busy. Retry up to 3 times with a small
+    // delay before giving up; we never want a tempdir cleanup to fail
+    // a passing test.
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        await rm(dir, { recursive: true, force: true });
+        lastErr = undefined;
+        break;
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 25 * (attempt + 1)));
+      }
+    }
+    if (lastErr) {
+      // Best-effort: log but don't throw — process exit cleans tmp on most OSes.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[withTempStore] failed to rm ${dir} after retries: ${
+          (lastErr as Error).message
+        }`,
+      );
+    }
   }
 }
 
