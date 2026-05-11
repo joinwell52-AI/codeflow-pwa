@@ -21,6 +21,7 @@ export {
 export {
   NeedsHumanGate,
   UnsupportedHumanPushSinkError,
+  type HumanApprovedSpec,
   type HumanPushRequest,
   type NeedsHumanGateLogger,
   type NeedsHumanGateOptions,

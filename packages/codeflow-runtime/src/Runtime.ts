@@ -295,9 +295,18 @@ export class Runtime {
     });
 
     // --- review + B' integration layer (Sprint S4) ---
-    const reviewWriter = new ReviewWriter({ reviewsDir });
+    // P4 sprint Day 3 (TASK-20260511-011): when a fcop client is supplied,
+    // wire ReviewWriter + NeedsHumanGate to forward through fcop so the
+    // review file front-matter + human-approval audit trail flow through
+    // fcop@1.1.0 instead of the v0.1 YAML emitter. fcopClient=null keeps
+    // the legacy YAML behavior for backward compat + skip-mode.
+    const reviewWriter = new ReviewWriter({
+      reviewsDir,
+      ...(opts.fcopClient ? { fcopClient: opts.fcopClient } : {}),
+    });
     const needsHumanGate = new NeedsHumanGate({
       sink: "cli",
+      ...(opts.fcopClient ? { fcopClient: opts.fcopClient } : {}),
       ...(opts.logger ? { logger: opts.logger } : {}),
     });
     const reviewEngine = new ReviewEngine({

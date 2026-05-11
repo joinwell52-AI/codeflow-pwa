@@ -35,6 +35,10 @@ import { dirname, join } from "node:path";
 
 import { stringify as stringifyYaml } from "yaml";
 
+import {
+  FcopClientError,
+  type FcopProjectClient,
+} from "../_external/fcop-client.ts";
 import { atomicWriteJson, cleanupTmp } from "../_internal/atomic-write.ts";
 import { ReviewWriteError } from "../registry/errors.ts";
 
@@ -143,33 +147,166 @@ export interface ReviewWriterOptions {
   /**
    * Directory to write `REVIEW-*.md` files into. Created on first write
    * via the atomic-write helper (which calls `mkdir -p` for the parent).
+   *
+   * Honored on the YAML path AND when fcop falls back. On the fcop-first
+   * path, fcop owns directory placement (typically
+   * `<projectRoot>/<workspaceDir>/reviews/`) and `reviewsDir` is ignored.
    */
   reviewsDir: string;
+  /**
+   * P4 sprint Day 3 (TASK-20260511-011 §3.1.1) — optional fcop bridge.
+   *
+   * When supplied, `write(verdict, body)` first attempts to persist via
+   * `fcopClient.writeReview()` (fcop owns review_id generation + directory
+   * placement). On `FcopClientError`, the writer falls back to the v0.1
+   * YAML path so that a degraded fcop bridge never breaks reviews — same
+   * model as Day 2 `TaskParser`'s "Path A 改良" pattern.
+   *
+   * When omitted (default), the writer keeps the v0.1 YAML-only behavior
+   * and the schema-mirrored, schema-validated, atomic-write contract that
+   * Sprint S4 / BUG-SDK-001..007 baked into 197 regression tests.
+   */
+  fcopClient?: FcopProjectClient;
 }
 
 export class ReviewWriter {
   private readonly _reviewsDir: string;
+  private readonly _fcopClient: FcopProjectClient | null;
 
   constructor(opts: ReviewWriterOptions) {
     this._reviewsDir = opts.reviewsDir;
+    this._fcopClient = opts.fcopClient ?? null;
   }
 
   /**
-   * Write a verdict + markdown body to `<reviewsDir>/<review_id>.md`.
+   * Write a verdict + markdown body and return the absolute filepath the
+   * REVIEW landed at.
    *
-   * @returns absolute filepath of the freshly persisted REVIEW.
+   * Routing (P4 Day 3):
+   *   - If a `fcopClient` was supplied: try `fcopClient.writeReview()`
+   *     first. The returned `FcopReview.path` is what we return. On
+   *     `FcopClientError`, **fall back** to the v0.1 YAML path so a
+   *     degraded fcop bridge never breaks reviews.
+   *   - Otherwise: take the v0.1 YAML path directly (legacy contract,
+   *     Sprint S4 197 tests).
+   *
+   * On the fcop path:
+   *   - `verdict.review_id` is **discarded** — fcop owns id generation.
+   *     The caller should treat the returned filepath as authoritative.
+   *   - `verdict.human_approval` is **discarded** — fcop's schema
+   *     forbids the v0.1 stub ack block; v0.3 routes through
+   *     `NeedsHumanGate.markApproved()` → `fcopClient.markHumanApproved()`
+   *     after the human acks.
+   *   - `verdict.decision_duration_ms` is **discarded** — fcop schema
+   *     doesn't carry it.
    *
    * @throws `ReviewWriteError` when:
    *   - `verdict.review_id` does not match the schema pattern
-   *   - the target file already exists (refuse to overwrite)
-   *   - the schema's allOf if/then constraints are violated
-   *     (`needs_human` without `human_approval`, `needs_changes` without
-   *     `required_changes`)
-   *   - the underlying atomic-write helper throws
+   *   - YAML path: the target file already exists (refuse to overwrite)
+   *   - YAML path: schema allOf if/then violated (`needs_human` without
+   *     `human_approval`, `needs_changes` without `required_changes`)
+   *   - YAML path: the underlying atomic-write helper throws
+   *   - fcop path AND fallback YAML path BOTH throw
    */
   async write(verdict: ReviewVerdict, body: string): Promise<string> {
     this._validate(verdict);
 
+    if (this._fcopClient !== null) {
+      try {
+        return await this._writeViaFcop(verdict, body);
+      } catch (err) {
+        if (err instanceof FcopClientError) {
+          // fcop is degraded — fall through to YAML path so reviews still
+          // land somewhere durable. The fcop error is preserved as `cause`
+          // when the YAML path ALSO fails (see _writeYaml).
+          return this._writeYaml(verdict, body, err);
+        }
+        throw err;
+      }
+    }
+
+    return this._writeYaml(verdict, body);
+  }
+
+  /**
+   * Convenience: directory the writer is currently configured to use.
+   * Exposed so tests / Runtime.start() can log it.
+   */
+  get reviewsDir(): string {
+    return this._reviewsDir;
+  }
+
+  /**
+   * Convenience: whether this writer has an active fcop bridge wire-up.
+   * Tests + Runtime.start() can log it; v0.3 `Task parser:` banner uses
+   * the same idiom for transparency.
+   */
+  get fcopClientWired(): boolean {
+    return this._fcopClient !== null;
+  }
+
+  // ── private ──────────────────────────────────────────────────────────
+
+  /**
+   * fcop-first path. Forwards the verdict + body through
+   * `FcopProjectClient.writeReview()`. fcop owns id generation +
+   * directory placement, so the returned `FcopReview.path` is what we
+   * give back to the caller (instead of `<reviewsDir>/<review_id>.md`).
+   *
+   * v0.1 fields fcop's `write_review` does NOT accept are discarded:
+   *   - `verdict.review_id` — fcop generates its own
+   *   - `verdict.human_approval` — fcop ack goes through
+   *     `mark_human_approved()` post-write
+   *   - `verdict.decision_duration_ms` — not in fcop schema
+   */
+  private async _writeViaFcop(
+    verdict: ReviewVerdict,
+    body: string,
+  ): Promise<string> {
+    if (this._fcopClient === null) {
+      // Guarded by caller (`write`) — defensive only.
+      throw new ReviewWriteError(
+        verdict.review_id,
+        "internal: _writeViaFcop called without a fcopClient",
+      );
+    }
+    const reviewerRole = verdict.reviewer_role ?? "UNKNOWN";
+    const requiredChanges = normalizeRequiredChanges(verdict.required_changes);
+    const review = await this._fcopClient.writeReview({
+      reviewer_role: reviewerRole,
+      subject_type: verdict.subject_type,
+      subject_ref: verdict.subject_ref,
+      decision: verdict.decision,
+      ...(verdict.rationale !== undefined
+        ? { rationale: verdict.rationale }
+        : {}),
+      ...(requiredChanges !== undefined
+        ? { required_changes: requiredChanges }
+        : {}),
+      ...(verdict.reviewer_agent !== undefined &&
+      verdict.reviewer_agent !== null
+        ? { reviewer_agent: verdict.reviewer_agent }
+        : {}),
+      body,
+    });
+    return review.path;
+  }
+
+  /**
+   * v0.1 YAML path — the legacy `<reviewsDir>/<review_id>.md` writer.
+   * Used directly when `fcopClient` is null, and as a fallback when the
+   * fcop path raises `FcopClientError`.
+   *
+   * @param fcopCause When called as a fallback, the original
+   *   `FcopClientError` that triggered the fallback. Preserved as
+   *   `cause` on any subsequent `ReviewWriteError` so postmortems see
+   *   both failures.
+   */
+  private async _writeYaml(
+    verdict: ReviewVerdict,
+    body: string,
+    fcopCause?: unknown,
+  ): Promise<string> {
     const filename = `${verdict.review_id}.md`;
     const filepath = join(this._reviewsDir, filename);
 
@@ -180,7 +317,13 @@ export class ReviewWriter {
       await fs.stat(filepath);
       throw new ReviewWriteError(
         verdict.review_id,
-        `target file already exists at "${filepath}"; ReviewWriter refuses to overwrite`,
+        `target file already exists at "${filepath}"; ReviewWriter refuses to overwrite` +
+          (fcopCause
+            ? ` (fcop fallback path; fcop error: ${
+                fcopCause instanceof Error ? fcopCause.message : String(fcopCause)
+              })`
+            : ""),
+        fcopCause !== undefined ? { cause: fcopCause } : undefined,
       );
     } catch (err) {
       if (err instanceof ReviewWriteError) throw err;
@@ -197,6 +340,28 @@ export class ReviewWriter {
       // ENOENT = OK to write. fall through.
     }
 
+    // v0.1 schema enforces `needs_human → human_approval` and
+    // `needs_changes → required_changes`. The fcop-first path discards
+    // both of those fields (fcop has its own ack flow) — so v0.1 schema
+    // checks belong HERE, on the YAML path, not in the shared validate.
+    if (verdict.decision === "needs_human" && !verdict.human_approval) {
+      throw new ReviewWriteError(
+        verdict.review_id,
+        `decision="needs_human" requires human_approval (schema allOf #1)`,
+        fcopCause !== undefined ? { cause: fcopCause } : undefined,
+      );
+    }
+    if (
+      verdict.decision === "needs_changes" &&
+      verdict.required_changes === undefined
+    ) {
+      throw new ReviewWriteError(
+        verdict.review_id,
+        `decision="needs_changes" requires required_changes (schema allOf #2)`,
+        fcopCause !== undefined ? { cause: fcopCause } : undefined,
+      );
+    }
+
     // Build the file contents: `---\n<yaml>\n---\n\n<body>\n`.
     const fileBody = renderReviewMarkdown(verdict, body);
 
@@ -207,8 +372,13 @@ export class ReviewWriter {
       await cleanupTmp(filepath);
       throw new ReviewWriteError(
         verdict.review_id,
-        `atomic write failed: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
+        `atomic write failed: ${err instanceof Error ? err.message : String(err)}` +
+          (fcopCause
+            ? ` (fcop fallback path; fcop error: ${
+                fcopCause instanceof Error ? fcopCause.message : String(fcopCause)
+              })`
+            : ""),
+        { cause: fcopCause ?? err },
       );
     }
 
@@ -216,21 +386,17 @@ export class ReviewWriter {
   }
 
   /**
-   * Convenience: directory the writer is currently configured to use.
-   * Exposed so tests / Runtime.start() can log it.
-   */
-  get reviewsDir(): string {
-    return this._reviewsDir;
-  }
-
-  // ── private ──────────────────────────────────────────────────────────
-
-  /**
    * Schema-light validation that mirrors review.schema.json's `if/then`
    * + pattern constraints. We deliberately do NOT pull ajv here — the
    * writer is in a fast path (one ReviewEngine emits → one write per
    * settled session), and the runtime's pattern is "validate at the
    * protocol boundary, trust internally" (see types/state.ts rule #1).
+   *
+   * P4 Day 3 split: the `needs_human → human_approval` and
+   * `needs_changes → required_changes` schema-allOf checks moved into
+   * `_writeYaml` because the fcop path enforces them server-side and
+   * happily writes `needs_human` verdicts without a v0.1 stub
+   * human_approval block (the fcop ack flow handles it post-write).
    */
   private _validate(verdict: ReviewVerdict): void {
     if (!REVIEW_ID_PATTERN.test(verdict.review_id)) {
@@ -242,24 +408,10 @@ export class ReviewWriter {
       );
     }
 
-    if (verdict.decision === "needs_human" && !verdict.human_approval) {
-      throw new ReviewWriteError(
-        verdict.review_id,
-        `decision="needs_human" requires human_approval (schema allOf #1)`,
-      );
-    }
-
-    if (
-      verdict.decision === "needs_changes" &&
-      verdict.required_changes === undefined
-    ) {
-      throw new ReviewWriteError(
-        verdict.review_id,
-        `decision="needs_changes" requires required_changes (schema allOf #2)`,
-      );
-    }
-
-    // Sanity: the parent directory of reviewsDir is consistent.
+    // Sanity: the parent directory of reviewsDir is consistent. This
+    // sanity check still runs on the fcop path because `reviewsDir` is
+    // the YAML-fallback target — a misconfigured runtime would lose
+    // reviews on a degraded fcop bridge if we skipped it.
     if (!this._reviewsDir || dirname(this._reviewsDir) === this._reviewsDir) {
       throw new ReviewWriteError(
         verdict.review_id,
@@ -267,6 +419,21 @@ export class ReviewWriter {
       );
     }
   }
+}
+
+/**
+ * fcop's `write_review` takes `required_changes: Sequence[str]`. The v0.1
+ * verdict shape allows either `string` (when a caller forgot it was a
+ * list) or `string[]` (schema-correct). Normalize to `string[]` for the
+ * fcop path; `undefined` stays `undefined` so we don't accidentally
+ * write an empty list when the caller never set the field.
+ */
+function normalizeRequiredChanges(
+  rc: string | string[] | undefined,
+): string[] | undefined {
+  if (rc === undefined) return undefined;
+  if (Array.isArray(rc)) return rc;
+  return [rc];
 }
 
 // ───────────────────────────────────────────────────────────────────────────

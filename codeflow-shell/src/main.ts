@@ -326,21 +326,31 @@ async function main(): Promise<void> {
   console.log(`Cursor SDK     : ${adapterDescription}`);
   // P4 Day 1.4: surface fcop bridge state in the banner. When the probe
   // skipped (FAKE_PYTHONIA env / probe disabled), show "(skipped)".
+  // P4 Day 3 (TASK-20260511-011): added `Review writer` line to surface
+  // the per-subsystem fcop wire-up so operators see WHICH layers route
+  // through fcop and which stay on YAML — same transparency idiom as
+  // the Day 2 `Task parser` line.
   if (fcopReady.status === "ok") {
     const parserMode = fcopClient
       ? "TaskParser=fcop"
       : "TaskParser=yaml fallback (FcopProjectClient.create failed)";
+    const reviewMode = fcopClient
+      ? "ReviewWriter=fcop + NeedsHumanGate fcop audit wired"
+      : "ReviewWriter=yaml (no fcop client)";
     console.log(
       `fcop bridge    : fcop ${fcopReady.fcopVersion} via pythonia ` +
         `(Python at ${fcopReady.pythonExecutable})`,
     );
     console.log(`Task parser    : ${parserMode}`);
+    console.log(`Review writer  : ${reviewMode}`);
   } else if (fcopReady.status === "skipped") {
     console.log(`fcop bridge    : (skipped — ${fcopReady.reason})`);
     console.log(`Task parser    : yaml fallback (no fcop client)`);
+    console.log(`Review writer  : ReviewWriter=yaml (no fcop client)`);
   } else {
     console.log(`fcop bridge    : FAILED — see message above`);
     console.log(`Task parser    : yaml fallback`);
+    console.log(`Review writer  : ReviewWriter=yaml (no fcop client)`);
   }
   // MT-1 friendly hint: live adapter without a default model + local
   // listScope = nothing actually wrong yet, but every task drop will

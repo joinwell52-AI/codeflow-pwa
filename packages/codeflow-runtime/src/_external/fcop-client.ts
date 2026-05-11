@@ -209,7 +209,26 @@ export interface FcopTaskFrontmatter {
   extra: Record<string, unknown>;
 }
 
-/** Review descriptor returned by `writeReview` / `markHumanApproved`. */
+/**
+ * Review descriptor returned by `writeReview` / `readReview` /
+ * `markHumanApproved`.
+ *
+ * **Structure mirrors fcop@1.1.0 actual shape**: fcop's `Review`
+ * dataclass is **fully top-level** (no nested `frontmatter` layer
+ * unlike `Task`). Day 3 (TASK-20260511-011) reconciliation —
+ * inspected via `inspect.getmembers(fcop.Review)`:
+ *
+ *   path, filename, review_id, date, sequence, subject_type,
+ *   subject_ref, reviewer_role, reviewer_agent, decision, rationale,
+ *   required_changes, decided_at, body, is_archived, mtime,
+ *   human_approval
+ *
+ * Day 1 (TASK-20260511-007) shipped this interface **without**
+ * `body / date / mtime` and without `human_approval.approved_at /
+ * evidence` — NOT a crash bug (unlike Day 2 D2-S1 for `FcopTask`,
+ * because `Review` IS top-level so the flat read worked) but a field
+ * coverage bug. Day 3 fix adds them.
+ */
 export interface FcopReview {
   review_id: string;
   filename: string;
@@ -221,19 +240,68 @@ export interface FcopReview {
   rationale: string | null;
   required_changes: string[];
   decided_at: string;
+  /** `review.date` — YYYYMMDD string (Day 3 added). */
+  date: string;
   sequence: number;
   is_archived: boolean;
+  /** `review.body` — markdown body AFTER closing `---` (Day 3 added). */
+  body: string;
+  /**
+   * `review.mtime` — last filesystem-modification time as an ISO-8601
+   * string. fcop exposes `datetime`; we stringify on the TS side
+   * (Day 3 added).
+   */
+  mtime: string;
   path: string;
   /**
    * Present only after `markHumanApproved` was called (or external write of
    * the same effect). `null` before.
+   *
+   * Day 3 (TASK-20260511-011) added `approved_at` + `evidence` fields
+   * to mirror fcop's `HumanApproval` dataclass.
    */
-  human_approval: {
-    approver: string;
-    decision: string;
-    channel: string;
-    comment: string | null;
-  } | null;
+  human_approval: FcopHumanApproval | null;
+}
+
+/**
+ * Human approval block embedded in `FcopReview`. Mirrors fcop's
+ * `HumanApproval` dataclass exactly (`inspect.signature(fcop.HumanApproval)`
+ * — Day 3 reconnaissance).
+ */
+export interface FcopHumanApproval {
+  approver: string;
+  decision: string;
+  /** ISO-8601 stringified `approved_at: datetime` (Day 3 added). */
+  approved_at: string;
+  channel: string;
+  comment: string | null;
+  /**
+   * `HumanApprovalEvidence` block — additional ack evidence (device_id,
+   * ip, auth_method). fcop returns a nested dataclass or `None`. We
+   * surface it as a plain `Record<string, unknown> | null` because
+   * CodeFlow v0.3 does not type-narrow further (the Mobile/CLI ack
+   * layer in v0.5 will). Day 3 added.
+   */
+  evidence: Record<string, unknown> | null;
+}
+
+/**
+ * Validation issue returned by `Project.inspect_task()`. Mirrors fcop's
+ * `ValidationIssue` dataclass — Day 3 reconnaissance via
+ * `inspect.getmembers(fcop.ValidationIssue)`.
+ */
+export interface FcopValidationIssue {
+  /** fcop literal: `"error" | "warning" | "info"`. */
+  severity: string;
+  /** Front-matter field path or `"<body>"` / `"<filename>"` per fcop. */
+  field: string;
+  /** Human-readable issue description. */
+  message: string;
+  /**
+   * `validation.path: Path | None` — absolute path to the offending
+   * file when fcop can resolve it. Surfaced as a string or `null`.
+   */
+  path: string | null;
 }
 
 /** Spec passed to `writeTask`. Field names mirror `fcop.Project.write_task`. */
@@ -721,6 +789,71 @@ export class FcopProjectClient {
     }
   }
 
+  /**
+   * Read a single REVIEW file via fcop. The argument is a **filename or
+   * review_id** (NOT a filesystem path) — fcop resolves it against the
+   * project's `docs/agents/reviews/` (or whatever `workspace_dir` was
+   * configured at create() time).
+   *
+   * fcop 端 signature (Day 3 reconnaissance verified):
+   *   `Project.read_review(filename_or_id: str) -> Review`
+   *
+   * Throws `FcopClientError` if the review doesn't exist, the file's
+   * front-matter is malformed (fcop validates), or pythonia fails to
+   * bridge.
+   *
+   * Day 3 (TASK-20260511-011) addition — Day 1 only had an *internal*
+   * `readReview(proxy)` helper used by `writeReview` /
+   * `markHumanApproved`; the public `readReview(filenameOrId)` method
+   * was missing. PM TASK-011 §3.1.4 + DEV-009 §五 prep flagged this
+   * (PM error #14); Day 3 adds it.
+   */
+  async readReview(filenameOrId: string): Promise<FcopReview> {
+    try {
+      const p = this._project as {
+        read_review: (filenameOrId: string) => Promise<unknown>;
+      };
+      const reviewProxy = await p.read_review(filenameOrId);
+      return await readReview(reviewProxy);
+    } catch (err) {
+      throw new FcopClientError(
+        `project.read_review(${JSON.stringify(filenameOrId)}) failed`,
+        "FcopProjectClient.readReview",
+        err,
+      );
+    }
+  }
+
+  /**
+   * Run fcop's schema validator against a task file. Returns the list of
+   * `ValidationIssue` records fcop emitted (empty list = clean).
+   *
+   * fcop 端 signature (Day 3 reconnaissance verified):
+   *   `Project.inspect_task(filename_or_id: str) -> list[ValidationIssue]`
+   *
+   * Intended consumers (out of Day 3 scope but the surface is ready):
+   *   - InboxWatcher boot-time schema gating (Day 4 task per PM)
+   *   - PM tooling for verifying task files before re-dispatch
+   *
+   * Day 3 (TASK-20260511-011 §3.1.4) addition — Day 1 did not expose
+   * `inspect_task` (PM error #14). Day 3 adds it.
+   */
+  async inspectTask(filenameOrId: string): Promise<FcopValidationIssue[]> {
+    try {
+      const p = this._project as {
+        inspect_task: (filenameOrId: string) => Promise<unknown>;
+      };
+      const issuesProxy = await p.inspect_task(filenameOrId);
+      return await readValidationIssueList(issuesProxy);
+    } catch (err) {
+      throw new FcopClientError(
+        `project.inspect_task(${JSON.stringify(filenameOrId)}) failed`,
+        "FcopProjectClient.inspectTask",
+        err,
+      );
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // 私有
   // ─────────────────────────────────────────────────────────────────────
@@ -890,6 +1023,9 @@ async function coerceDictValue(v: unknown): Promise<unknown> {
 }
 
 async function readReview(proxy: unknown): Promise<FcopReview> {
+  // fcop.Review is FULLY TOP-LEVEL (no nested frontmatter unlike Task).
+  // Day 3 (TASK-20260511-011) added body / date / mtime + the upgraded
+  // human_approval block to mirror fcop@1.1.0's actual `Review` shape.
   const r = proxy as {
     review_id: Promise<string>;
     filename: Promise<string>;
@@ -900,9 +1036,12 @@ async function readReview(proxy: unknown): Promise<FcopReview> {
     decision: Promise<unknown>;
     rationale: Promise<string | null>;
     required_changes: Promise<unknown>;
-    decided_at: Promise<string>;
+    decided_at: Promise<unknown>;
+    date: Promise<string>;
     sequence: Promise<number>;
     is_archived: Promise<boolean>;
+    body: Promise<string>;
+    mtime: Promise<unknown>;
     path: Promise<unknown>;
     human_approval: Promise<unknown>;
   };
@@ -916,27 +1055,124 @@ async function readReview(proxy: unknown): Promise<FcopReview> {
     decision: await readEnumLike(r.decision),
     rationale: await r.rationale,
     required_changes: await readStringList(r.required_changes),
-    decided_at: await r.decided_at,
+    decided_at: stringifyMaybeDatetime(await r.decided_at),
+    date: await r.date,
     sequence: await r.sequence,
     is_archived: await r.is_archived,
+    body: await r.body,
+    mtime: stringifyMaybeDatetime(await r.mtime),
     path: String(await r.path),
     human_approval: await readHumanApproval(await r.human_approval),
   };
 }
 
-async function readHumanApproval(proxy: unknown): Promise<FcopReview["human_approval"]> {
+async function readHumanApproval(
+  proxy: unknown,
+): Promise<FcopHumanApproval | null> {
   if (proxy === null || proxy === undefined) return null;
   const h = proxy as {
     approver: Promise<string>;
     decision: Promise<unknown>;
+    approved_at: Promise<unknown>;
     channel: Promise<unknown>;
     comment: Promise<string | null>;
+    evidence: Promise<unknown>;
   };
   return {
     approver: await h.approver,
     decision: await readEnumLike(h.decision),
+    approved_at: stringifyMaybeDatetime(await h.approved_at),
     channel: await readEnumLike(h.channel),
     comment: await h.comment,
+    evidence: await readEvidenceLike(await h.evidence),
+  };
+}
+
+/**
+ * fcop returns `HumanApprovalEvidence` as a Python dataclass or `None`.
+ * v0.3 doesn't type-narrow further — Mobile/CLI ack layer (v0.5) will.
+ * Returns `null` for None; otherwise serializes known evidence fields
+ * (`device_id`, `ip`, `auth_method`) plus a `__repr__` fallback.
+ */
+async function readEvidenceLike(
+  proxy: unknown,
+): Promise<Record<string, unknown> | null> {
+  if (proxy === null || proxy === undefined) return null;
+  // Best-effort: try the documented fields; fcop guarantees the
+  // dataclass exposes these even if some are None.
+  const e = proxy as {
+    device_id?: Promise<string | null>;
+    ip?: Promise<string | null>;
+    auth_method?: Promise<string | null>;
+  };
+  const evidence: Record<string, unknown> = {};
+  try {
+    if (e.device_id !== undefined) evidence["device_id"] = await e.device_id;
+  } catch {
+    // tolerated — caller doesn't strictly need it
+  }
+  try {
+    if (e.ip !== undefined) evidence["ip"] = await e.ip;
+  } catch {
+    // tolerated
+  }
+  try {
+    if (e.auth_method !== undefined)
+      evidence["auth_method"] = await e.auth_method;
+  } catch {
+    // tolerated
+  }
+  return evidence;
+}
+
+/**
+ * fcop returns `datetime.datetime` for `decided_at`, `mtime`,
+ * `approved_at`. pythonia stringifies via `__str__` which gives
+ * `"2026-05-11 15:30:00.000000+00:00"`. We surface the raw string —
+ * callers that need ISO-8601 can re-parse, but most CodeFlow code just
+ * logs / persists this verbatim.
+ */
+function stringifyMaybeDatetime(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v;
+  return String(v);
+}
+
+async function readValidationIssueList(
+  proxy: unknown,
+): Promise<FcopValidationIssue[]> {
+  // Same pattern as readTaskList — Python list exposes async-iter +
+  // index access; we go via `builtins.len + arr[i]` because it's
+  // strictly serialized and avoids pythonia's async-iter quirks.
+  const python = await getPython();
+  const builtins = (await python("builtins")) as {
+    len: (x: unknown) => Promise<number>;
+  };
+  const n = await builtins.len(proxy);
+  const out: FcopValidationIssue[] = [];
+  const arr = proxy as { [idx: number]: Promise<unknown> };
+  for (let i = 0; i < n; i++) {
+    const issueProxy = await arr[i];
+    out.push(await readValidationIssue(issueProxy));
+  }
+  return out;
+}
+
+async function readValidationIssue(
+  proxy: unknown,
+): Promise<FcopValidationIssue> {
+  const v = proxy as {
+    severity: Promise<string>;
+    field: Promise<string>;
+    message: Promise<string>;
+    path: Promise<unknown>;
+  };
+  const rawPath = await v.path;
+  return {
+    severity: await v.severity,
+    field: await v.field,
+    message: await v.message,
+    path: rawPath === null || rawPath === undefined ? null : String(rawPath),
   };
 }
 

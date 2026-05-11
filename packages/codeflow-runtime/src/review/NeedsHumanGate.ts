@@ -34,6 +34,12 @@
  *   - TASK-20260509-022 §主交付 2
  */
 
+import {
+  FcopClientError,
+  type FcopProjectClient,
+  type HumanApprovalChannel,
+  type HumanApprovalDecision,
+} from "../_external/fcop-client.ts";
 import type { HumanApproval } from "./ReviewWriter.ts";
 
 /**
@@ -78,6 +84,51 @@ export interface NeedsHumanGateOptions {
   logger?: NeedsHumanGateLogger;
   /** Wall clock — tests inject. */
   now?: () => Date;
+  /**
+   * P4 sprint Day 3 (TASK-20260511-011 §3.1.2) — optional fcop bridge
+   * for audit-trail writeback.
+   *
+   * `push()` is unchanged when this is set or unset — v0.1 push is still
+   * a non-blocking stub that returns immediately with
+   * `approved_by/approved_at = null`. The fcop wire-up is only used by
+   * the new `markApproved()` method: when a real human ack arrives (v0.2
+   * Mobile or v0.5 ack-after-push), upstream code calls
+   * `gate.markApproved(reviewId, spec)` which forwards to
+   * `fcopClient.markHumanApproved()` and lands the audit block onto the
+   * REVIEW file's front-matter.
+   *
+   * v0.1 / v0.3-without-fcopClient mode: `markApproved()` is a degraded
+   * stub that only returns the in-memory approval block (no fcop audit).
+   * Same shape so callers don't branch.
+   */
+  fcopClient?: FcopProjectClient;
+}
+
+/**
+ * Spec for `NeedsHumanGate.markApproved()`. Mirrors fcop's
+ * `mark_human_approved()` kwargs (DEV-005 §S4 实证 + Day 3 reconnaissance).
+ *
+ * The set of fields is a strict subset of fcop's signature — v0.3 doesn't
+ * surface `device_id` / `ip` / `auth_method` yet (those land with Mobile
+ * v0.2 + auth v0.5). Optional `pushed_at` / `trigger_reason` mirror v0.1
+ * stub semantics for the returned `HumanApproval` shape.
+ */
+export interface HumanApprovedSpec {
+  approver: string;
+  decision: HumanApprovalDecision;
+  channel: HumanApprovalChannel;
+  comment?: string;
+  /**
+   * Carried from the original `push()` so the returned `HumanApproval`
+   * round-trips the full v0.1 stub shape (caller sees the same
+   * `trigger_reason` as before the ack).
+   */
+  trigger_reason?: string;
+  /**
+   * Carried from the original `push()` (same rationale as
+   * `trigger_reason`).
+   */
+  pushed_at?: string;
 }
 
 /**
@@ -103,6 +154,7 @@ export class NeedsHumanGate {
   private readonly _sink: "cli" | "mobile";
   private readonly _logger: NeedsHumanGateLogger;
   private readonly _now: () => Date;
+  private readonly _fcopClient: FcopProjectClient | null;
 
   constructor(opts: NeedsHumanGateOptions = {}) {
     this._sink = opts.sink ?? "cli";
@@ -115,6 +167,7 @@ export class NeedsHumanGate {
     }
     this._logger = opts.logger ?? { info: (m, ...a) => console.log(m, ...a) };
     this._now = opts.now ?? (() => new Date());
+    this._fcopClient = opts.fcopClient ?? null;
   }
 
   /**
@@ -151,9 +204,103 @@ export class NeedsHumanGate {
     };
   }
 
+  /**
+   * P4 Day 3 (TASK-20260511-011 §3.1.2) — record a real human ack.
+   *
+   * Called after `push()` returns (potentially long after, when the human
+   * actually replied on Mobile / CLI). Updates the REVIEW file's
+   * front-matter via `fcopClient.markHumanApproved()` so the audit trail
+   * carries `approver / approved_at / channel / comment / evidence`.
+   *
+   * v0.1 / v0.3-without-fcopClient mode: returns a *fully populated*
+   * `HumanApproval` block in memory but does NOT touch any file — fcop
+   * is the only writeback path and is intentionally optional. The
+   * returned block reflects what the file WOULD have said if a real
+   * fcopClient were wired; an upstream caller can choose to bridge it
+   * (e.g. v0.5 secondary audit) but the v0.3 contract is "no fcop = no
+   * persisted audit".
+   *
+   * @returns The full v0.1 `HumanApproval` shape with `approved_by` /
+   *   `approved_at` populated from `spec.approver` and the wall clock.
+   *
+   * @throws Bubbles `FcopClientError` from `fcopClient.markHumanApproved`
+   *   when the fcop bridge is wired AND fcop refuses the ack (e.g.
+   *   `review_id` doesn't exist, or fcop's own schema validator says no).
+   *   v0.1 / v0.3-without-fcopClient mode never throws.
+   */
+  async markApproved(
+    reviewId: string,
+    spec: HumanApprovedSpec,
+  ): Promise<HumanApproval> {
+    const ackedAt = this._now().toISOString();
+
+    // Log marker — same `[NeedsHumanGate]` prefix as push() so operators
+    // grep one pattern for the whole HITL flow.
+    const fcopWired = this._fcopClient !== null ? "yes" : "no";
+    this._logger.info(
+      `[NeedsHumanGate] human ack received: ` +
+        `review_id="${reviewId}" ` +
+        `approver="${spec.approver}" decision="${spec.decision}" ` +
+        `channel="${spec.channel}" ` +
+        `(sink=${this._sink}, fcop_audit=${fcopWired}, acked_at=${ackedAt})` +
+        (spec.comment
+          ? ` comment="${truncate(spec.comment, 200)}"`
+          : ""),
+    );
+
+    if (this._fcopClient !== null) {
+      try {
+        const review = await this._fcopClient.markHumanApproved(reviewId, {
+          approver: spec.approver,
+          decision: spec.decision,
+          channel: spec.channel,
+          ...(spec.comment !== undefined ? { comment: spec.comment } : {}),
+        });
+        // Hand back the v0.1 HumanApproval shape, populated from fcop's
+        // truth (so callers get the actual `approved_at` fcop minted,
+        // not our wall-clock guess).
+        return {
+          pushed_to: this._sink,
+          pushed_at: spec.pushed_at ?? ackedAt,
+          approved_by: spec.approver,
+          approved_at:
+            review.human_approval?.approved_at !== undefined &&
+            review.human_approval?.approved_at !== ""
+              ? review.human_approval.approved_at
+              : ackedAt,
+          trigger_reason: spec.trigger_reason ?? "(post-ack)",
+        };
+      } catch (err) {
+        // Rethrow as-is — FcopClientError carries the actionable stack
+        // for upstream callers (v0.2 Mobile / v0.5 audit will catch +
+        // retry). v0.1 callers don't construct gates with fcopClient
+        // wired, so this branch is unreachable for them.
+        if (err instanceof FcopClientError) throw err;
+        throw err;
+      }
+    }
+
+    // v0.1 / v0.3-without-fcopClient degraded mode: in-memory only.
+    return {
+      pushed_to: this._sink,
+      pushed_at: spec.pushed_at ?? ackedAt,
+      approved_by: spec.approver,
+      approved_at: ackedAt,
+      trigger_reason: spec.trigger_reason ?? "(post-ack)",
+    };
+  }
+
   /** Read-only accessor — for diagnostic logging in Runtime.start(). */
   get sink(): "cli" | "mobile" {
     return this._sink;
+  }
+
+  /**
+   * P4 Day 3 (TASK-20260511-011) — whether this gate has an active fcop
+   * bridge wire-up. Runtime.start() / `Task parser:` banner can log it.
+   */
+  get fcopClientWired(): boolean {
+    return this._fcopClient !== null;
   }
 }
 

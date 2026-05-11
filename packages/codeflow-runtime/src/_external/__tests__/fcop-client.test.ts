@@ -262,6 +262,22 @@ function buildDictProxy(entries: Record<string, unknown>): unknown {
   return proxy;
 }
 
+/**
+ * Review proxy mirroring fcop@1.1.0's actual shape (Day 3 update):
+ *
+ * fcop.Review is FULLY TOP-LEVEL (no nested `frontmatter` unlike Task):
+ *   path / filename / review_id / date / sequence / subject_type /
+ *   subject_ref / reviewer_role / reviewer_agent / decision / rationale /
+ *   required_changes / decided_at / body / is_archived / mtime /
+ *   human_approval
+ *
+ * fcop.HumanApproval (the nested ack block when present):
+ *   approver / decision / approved_at / channel / comment / evidence
+ *
+ * Day 1 stub omitted `body / date / mtime` AND
+ * `human_approval.approved_at / evidence`. Day 3 fix adds them all to
+ * match fcop's actual `Review.__dataclass_fields__`.
+ */
 function buildReviewProxy(args: {
   decision: string;
   humanApproval: {
@@ -269,7 +285,16 @@ function buildReviewProxy(args: {
     decision: string;
     channel: string;
     comment: string | null;
+    approved_at?: string;
+    evidence?: {
+      device_id?: string | null;
+      ip?: string | null;
+      auth_method?: string | null;
+    } | null;
   } | null;
+  body?: string;
+  date?: string;
+  mtime?: string;
 }): unknown {
   return {
     review_id: Promise.resolve("REVIEW-20260511-001-QA-on-task-20260511-001"),
@@ -284,8 +309,11 @@ function buildReviewProxy(args: {
     rationale: Promise.resolve("stub rationale"),
     required_changes: Promise.resolve([]),
     decided_at: Promise.resolve("2026-05-11T10:00:00+08:00"),
+    date: Promise.resolve(args.date ?? "20260511"),
     sequence: Promise.resolve(1),
     is_archived: Promise.resolve(false),
+    body: Promise.resolve(args.body ?? "stub review body"),
+    mtime: Promise.resolve(args.mtime ?? "2026-05-11T10:00:00+08:00"),
     path: Promise.resolve("/tmp/stub/REVIEW-20260511-001.md"),
     human_approval: Promise.resolve(
       args.humanApproval === null
@@ -295,12 +323,55 @@ function buildReviewProxy(args: {
             decision: Promise.resolve({
               value: Promise.resolve(args.humanApproval.decision),
             }),
+            approved_at: Promise.resolve(
+              args.humanApproval.approved_at ?? "2026-05-11T10:30:00+08:00",
+            ),
             channel: Promise.resolve({
               value: Promise.resolve(args.humanApproval.channel),
             }),
             comment: Promise.resolve(args.humanApproval.comment),
+            evidence: Promise.resolve(
+              args.humanApproval.evidence === undefined ||
+                args.humanApproval.evidence === null
+                ? null
+                : {
+                    device_id: Promise.resolve(
+                      args.humanApproval.evidence.device_id ?? null,
+                    ),
+                    ip: Promise.resolve(
+                      args.humanApproval.evidence.ip ?? null,
+                    ),
+                    auth_method: Promise.resolve(
+                      args.humanApproval.evidence.auth_method ?? null,
+                    ),
+                  },
+            ),
           },
     ),
+  };
+}
+
+/**
+ * Stub for fcop.ValidationIssue dataclass:
+ *   severity (Literal "error" | "warning" | "info")
+ *   field    (str)
+ *   message  (str)
+ *   path     (Path | None — surfaced as string|null)
+ *
+ * Used by TS-FCC-12 to assert `inspectTask` deserializes a real list of
+ * issues, including the `null` path branch.
+ */
+function buildValidationIssueProxy(args: {
+  severity: string;
+  field: string;
+  message: string;
+  path: string | null;
+}): unknown {
+  return {
+    severity: Promise.resolve(args.severity),
+    field: Promise.resolve(args.field),
+    message: Promise.resolve(args.message),
+    path: Promise.resolve(args.path),
   };
 }
 
@@ -797,5 +868,225 @@ describe("FcopProjectClient (P4 sprint Day 1.3 — TASK-20260511-007)", () => {
       "TaskFrontmatter.extra dict deserialized — CodeFlow uses this for `layer`",
     );
     assert.match(task.body, /Day 2 task body/);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Day 3 (TASK-20260511-011) — readReview / inspectTask + FcopReview
+  // shape upgrade
+  // ─────────────────────────────────────────────────────────────────────
+
+  test("TS-FCC-11 (Day 3): readReview(filenameOrId) forwards positional + walks fully-top-level Review + body/date/mtime populated", async () => {
+    // Custom stub: Project$ returns `read_review` (positional-only,
+    // mirroring fcop.Project.read_review signature) that records
+    // arguments and returns a top-level Review proxy.
+    const recorder = freshRecorder();
+    const readReviewCalls: string[] = [];
+    const customFcop = () => ({
+      __version__: Promise.resolve("1.1.0"),
+      Project$: async (path: string, kwargs: Record<string, unknown>) => {
+        recorder.projectCalls.push({ path, kwargs });
+        recorder.projectBuilt = true;
+        return {
+          is_initialized: async () => false,
+          init$: async () => undefined,
+          read_review: async (filenameOrId: string) => {
+            readReviewCalls.push(filenameOrId);
+            return buildReviewProxy({
+              decision: "approved",
+              humanApproval: null,
+              body: "# Day 3 review body\n\nReviewer approved.\n",
+              date: "20260511",
+              mtime: "2026-05-11T14:30:00+08:00",
+            });
+          },
+        };
+      },
+    });
+    const pythonStub = (async (moduleName: string) => {
+      if (moduleName === "fcop") return customFcop();
+      if (moduleName === "sys") return buildSysStub();
+      if (moduleName === "builtins") return buildBuiltinsStub();
+      throw new Error(`unexpected module: ${moduleName}`);
+    }) as (m: string) => Promise<unknown>;
+    __setPythonForTests(
+      Object.assign(pythonStub, { exit: () => undefined }),
+    );
+
+    const client = await FcopProjectClient.create({
+      projectRoot: "D:/fake/project",
+      ensureInitialized: false,
+    });
+    const review = await client.readReview(
+      "REVIEW-20260511-001-QA-on-task-20260511-001.md",
+    );
+
+    assert.deepEqual(
+      readReviewCalls,
+      ["REVIEW-20260511-001-QA-on-task-20260511-001.md"],
+      "filename_or_id is forwarded positionally (NOT as kwargs) — fcop.Project.read_review is positional-only",
+    );
+    assert.equal(review.review_id, "REVIEW-20260511-001-QA-on-task-20260511-001");
+    assert.equal(review.decision, "approved");
+    assert.equal(review.reviewer_role, "QA");
+    assert.equal(review.subject_type, "task");
+    assert.equal(review.subject_ref, "TASK-20260511-001");
+    // Day 3-added fields:
+    assert.match(review.body, /Day 3 review body/, "body field populated (Day 3 add)");
+    assert.equal(review.date, "20260511", "date field populated (Day 3 add)");
+    assert.equal(
+      review.mtime,
+      "2026-05-11T14:30:00+08:00",
+      "mtime field populated (Day 3 add)",
+    );
+    assert.equal(review.human_approval, null, "no ack yet → human_approval=null");
+  });
+
+  test("TS-FCC-12 (Day 3): inspectTask(filenameOrId) returns FcopValidationIssue[] including null-path branch", async () => {
+    // Custom stub: Project$ returns `inspect_task` (positional-only)
+    // that returns a list of 2 ValidationIssue proxies, one with
+    // path=null (fcop emits null when the issue isn't file-scoped).
+    const recorder = freshRecorder();
+    const inspectCalls: string[] = [];
+    const customFcop = () => ({
+      __version__: Promise.resolve("1.1.0"),
+      Project$: async (path: string, kwargs: Record<string, unknown>) => {
+        recorder.projectCalls.push({ path, kwargs });
+        recorder.projectBuilt = true;
+        return {
+          is_initialized: async () => false,
+          init$: async () => undefined,
+          inspect_task: async (filenameOrId: string) => {
+            inspectCalls.push(filenameOrId);
+            return [
+              buildValidationIssueProxy({
+                severity: "error",
+                field: "frontmatter.recipient",
+                message: "unknown recipient role 'XYZ'",
+                path: "/tmp/stub/TASK-20260511-007.md",
+              }),
+              buildValidationIssueProxy({
+                severity: "warning",
+                field: "<body>",
+                message: "trailing whitespace on last line",
+                path: null,
+              }),
+            ];
+          },
+        };
+      },
+    });
+    const pythonStub = (async (moduleName: string) => {
+      if (moduleName === "fcop") return customFcop();
+      if (moduleName === "sys") return buildSysStub();
+      if (moduleName === "builtins") return buildBuiltinsStub();
+      throw new Error(`unexpected module: ${moduleName}`);
+    }) as (m: string) => Promise<unknown>;
+    __setPythonForTests(
+      Object.assign(pythonStub, { exit: () => undefined }),
+    );
+
+    const client = await FcopProjectClient.create({
+      projectRoot: "D:/fake/project",
+      ensureInitialized: false,
+    });
+    const issues = await client.inspectTask("TASK-20260511-007-PM-to-DEV.md");
+
+    assert.deepEqual(
+      inspectCalls,
+      ["TASK-20260511-007-PM-to-DEV.md"],
+      "filename_or_id forwarded positionally (fcop.Project.inspect_task is positional-only)",
+    );
+    assert.equal(issues.length, 2, "stub returns 2 issues");
+    assert.deepEqual(issues[0], {
+      severity: "error",
+      field: "frontmatter.recipient",
+      message: "unknown recipient role 'XYZ'",
+      path: "/tmp/stub/TASK-20260511-007.md",
+    });
+    assert.deepEqual(
+      issues[1],
+      {
+        severity: "warning",
+        field: "<body>",
+        message: "trailing whitespace on last line",
+        path: null,
+      },
+      "issues with no filesystem path surface `path: null` (not '' nor undefined)",
+    );
+  });
+
+  test("TS-FCC-13 (Day 3): markHumanApproved returns Review with full human_approval (approved_at + evidence) — Day 1 latent shape fix", async () => {
+    // Same path as TS-FCC-7 but the stub now adds Day 3 fields. We
+    // verify that approved_at and evidence are populated end-to-end.
+    const recorder = freshRecorder();
+    const customFcop = () => ({
+      __version__: Promise.resolve("1.1.0"),
+      Project$: async (path: string, kwargs: Record<string, unknown>) => {
+        recorder.projectCalls.push({ path, kwargs });
+        recorder.projectBuilt = true;
+        return {
+          is_initialized: async () => false,
+          init$: async () => undefined,
+          mark_human_approved$: async (
+            reviewId: string,
+            kwargs: Record<string, unknown>,
+          ) => {
+            recorder.markHumanApprovedCalls.push({ reviewId, kwargs });
+            return buildReviewProxy({
+              decision: "needs_human",
+              humanApproval: {
+                approver: String(kwargs["approver"] ?? "ADMIN"),
+                decision: String(kwargs["decision"] ?? "approve"),
+                channel: String(kwargs["channel"] ?? "cli"),
+                comment: (kwargs["comment"] as string | undefined) ?? null,
+                approved_at: "2026-05-11T14:35:21+08:00",
+                evidence: {
+                  device_id: "phone-001",
+                  ip: "10.0.0.42",
+                  auth_method: "biometric",
+                },
+              },
+            });
+          },
+        };
+      },
+    });
+    const pythonStub = (async (moduleName: string) => {
+      if (moduleName === "fcop") return customFcop();
+      if (moduleName === "sys") return buildSysStub();
+      if (moduleName === "builtins") return buildBuiltinsStub();
+      throw new Error(`unexpected module: ${moduleName}`);
+    }) as (m: string) => Promise<unknown>;
+    __setPythonForTests(
+      Object.assign(pythonStub, { exit: () => undefined }),
+    );
+
+    const client = await FcopProjectClient.create({
+      projectRoot: "D:/fake/project",
+      ensureInitialized: false,
+    });
+    const review = await client.markHumanApproved(
+      "REVIEW-20260511-001-QA-on-task-20260511-001",
+      {
+        approver: "ADMIN",
+        decision: "approve",
+        channel: "mobile",
+        comment: "scanned",
+      },
+    );
+
+    assert.equal(review.human_approval?.approver, "ADMIN");
+    assert.equal(review.human_approval?.decision, "approve");
+    assert.equal(review.human_approval?.channel, "mobile");
+    assert.equal(
+      review.human_approval?.approved_at,
+      "2026-05-11T14:35:21+08:00",
+      "approved_at populated end-to-end (Day 3 add)",
+    );
+    assert.deepEqual(
+      review.human_approval?.evidence,
+      { device_id: "phone-001", ip: "10.0.0.42", auth_method: "biometric" },
+      "evidence dataclass surfaced as plain object with device_id/ip/auth_method (Day 3 add)",
+    );
   });
 });

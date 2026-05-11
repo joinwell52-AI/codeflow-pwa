@@ -19,6 +19,11 @@ import assert from "node:assert/strict";
 import { validate } from "@codeflow/protocol";
 import { parse as parseYaml } from "yaml";
 
+import {
+  FcopClientError,
+  type FcopProjectClient,
+  type FcopReview,
+} from "../../_external/fcop-client.ts";
 import { ReviewWriteError } from "../../registry/errors.ts";
 import {
   ReviewWriter,
@@ -38,6 +43,46 @@ function makeApprovedVerdict(overrides: Partial<ReviewVerdict> = {}): ReviewVerd
     rationale: "looks good",
     decided_at: "2026-05-09T16:00:00.000Z",
     decision_duration_ms: 1234,
+    ...overrides,
+  };
+}
+
+/**
+ * Stub a minimal `FcopProjectClient`. ReviewWriter only calls
+ * `writeReview()` on the fcop path, so each test overrides that method.
+ * No pythonia spin-up — these tests stay fast + offline (same idiom as
+ * `TaskParser.test.ts` Day 2 stubFcopClient).
+ */
+function stubFcopClient(impl: {
+  writeReview: (spec: unknown) => Promise<FcopReview>;
+}): FcopProjectClient {
+  return impl as unknown as FcopProjectClient;
+}
+
+/**
+ * Build a minimal `FcopReview` matching fcop@1.1.0's actual top-level
+ * shape (Day 3 reconnaissance). Defaults reflect a fresh-write Review
+ * with no human_approval block yet.
+ */
+function fakeFcopReview(overrides: Partial<FcopReview> = {}): FcopReview {
+  return {
+    review_id: "REVIEW-20260511-001-QA-on-TASK-20260511-001-PM-to-DEV",
+    filename: "REVIEW-20260511-001-QA-on-TASK-20260511-001-PM-to-DEV.md",
+    reviewer_role: "QA",
+    reviewer_agent: null,
+    subject_type: "task",
+    subject_ref: "TASK-20260511-001-PM-to-DEV",
+    decision: "approved",
+    rationale: "fcop-stub rationale",
+    required_changes: [],
+    decided_at: "2026-05-11T14:30:00+08:00",
+    date: "20260511",
+    sequence: 1,
+    is_archived: false,
+    body: "fcop-stub body",
+    mtime: "2026-05-11T14:30:00+08:00",
+    path: "/fake/docs/agents/reviews/REVIEW-20260511-001-QA-on-TASK-20260511-001-PM-to-DEV.md",
+    human_approval: null,
     ...overrides,
   };
 }
@@ -164,6 +209,155 @@ describe("ReviewWriter", () => {
         existsSync(join(reviewsDir, `${bad2.review_id}.md`)),
         false,
         "needs_changes-without-required_changes target also absent",
+      );
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Day 3 (TASK-20260511-011) — fcop instance API + fallback semantics
+  // ─────────────────────────────────────────────────────────────────────
+
+  it("TS-RW-D3-1: ReviewWriter without fcopClient keeps the v0.1 YAML contract (backward compat)", async () => {
+    await withTempReview(async ({ reviewsDir }) => {
+      const writer = new ReviewWriter({ reviewsDir });
+      assert.equal(writer.fcopClientWired, false);
+
+      const verdict = makeApprovedVerdict();
+      const filepath = await writer.write(verdict, "Day 3 fallback body");
+
+      assert.equal(
+        filepath,
+        join(reviewsDir, `${verdict.review_id}.md`),
+        "YAML path returns caller-controlled <reviewsDir>/<review_id>.md",
+      );
+      const { frontmatter, body } = await readReviewFile(filepath);
+      assert.equal(frontmatter["decision"], "approved");
+      assert.match(body, /Day 3 fallback body/);
+    });
+  });
+
+  it("TS-RW-D3-2: fcop-first path forwards to fcopClient.writeReview and returns the fcop-generated path (review_id discarded)", async () => {
+    await withTempReview(async ({ reviewsDir }) => {
+      const writeReviewCalls: unknown[] = [];
+      const fcopClient = stubFcopClient({
+        writeReview: async (spec) => {
+          writeReviewCalls.push(spec);
+          return fakeFcopReview({
+            review_id: "REVIEW-20260511-042-QA-on-TASK-20260511-001-PM-to-DEV",
+            path: "/fake/docs/agents/reviews/REVIEW-20260511-042-QA-on-TASK-20260511-001-PM-to-DEV.md",
+          });
+        },
+      });
+      const writer = new ReviewWriter({ reviewsDir, fcopClient });
+      assert.equal(writer.fcopClientWired, true, "fcopClient wired flag exposed");
+
+      const verdict = makeApprovedVerdict({
+        // Caller-supplied review_id should be discarded on the fcop path.
+        review_id: "REVIEW-20260509-001-REVIEW-on-TASK-20260509-001-PM-to-DEV",
+        required_changes: ["change-a"],
+      });
+      const filepath = await writer.write(verdict, "Day 3 fcop-first body");
+
+      // Path comes from fcop's returned Review.path, NOT from
+      // `<reviewsDir>/<verdict.review_id>.md`. This is the contract
+      // change v0.3 ships under TASK-20260511-011 §3.1.1.
+      assert.equal(
+        filepath,
+        "/fake/docs/agents/reviews/REVIEW-20260511-042-QA-on-TASK-20260511-001-PM-to-DEV.md",
+        "fcop path returns the fcop-generated filepath (caller's review_id is discarded)",
+      );
+
+      assert.equal(writeReviewCalls.length, 1);
+      const spec = writeReviewCalls[0] as Record<string, unknown>;
+      assert.equal(spec["reviewer_role"], "REVIEW");
+      assert.equal(spec["subject_type"], "task");
+      assert.equal(spec["subject_ref"], "TASK-20260509-001-PM-to-DEV");
+      assert.equal(spec["decision"], "approved");
+      assert.equal(spec["rationale"], "looks good");
+      assert.deepEqual(
+        spec["required_changes"],
+        ["change-a"],
+        "string[] required_changes forwarded as-is",
+      );
+      assert.equal(spec["reviewer_agent"], "REVIEW-01");
+      assert.equal(spec["body"], "Day 3 fcop-first body");
+      assert.equal(
+        "review_id" in spec,
+        false,
+        "fcop owns review_id generation — we MUST NOT forward the caller's id",
+      );
+      assert.equal(
+        "human_approval" in spec,
+        false,
+        "fcop schema rejects the v0.1 stub human_approval — must be filtered",
+      );
+      assert.equal(
+        "decision_duration_ms" in spec,
+        false,
+        "fcop schema has no decision_duration_ms — must be filtered",
+      );
+    });
+  });
+
+  it("TS-RW-D3-3: FcopClientError on the fcop path → YAML fallback writes to <reviewsDir>/<review_id>.md", async () => {
+    await withTempReview(async ({ reviewsDir }) => {
+      const fcopClient = stubFcopClient({
+        writeReview: async () => {
+          throw new FcopClientError(
+            "fcop bridge is sad (stub)",
+            "writeReview",
+            new Error("stub cause"),
+          );
+        },
+      });
+      const writer = new ReviewWriter({ reviewsDir, fcopClient });
+      const verdict = makeApprovedVerdict();
+      const filepath = await writer.write(verdict, "fallback path body");
+
+      // Fell back to the caller-controlled YAML path.
+      assert.equal(
+        filepath,
+        join(reviewsDir, `${verdict.review_id}.md`),
+        "fallback path returns <reviewsDir>/<caller-review_id>.md",
+      );
+      const { frontmatter, body } = await readReviewFile(filepath);
+      assert.equal(frontmatter["decision"], "approved");
+      assert.equal(frontmatter["protocol"], "fcop");
+      assert.match(body, /fallback path body/);
+    });
+  });
+
+  it("TS-RW-D3-4: fcop path FcopClientError + YAML fallback ALSO blows up → ReviewWriteError preserves the fcop cause", async () => {
+    await withTempReview(async ({ reviewsDir }) => {
+      const fcopClient = stubFcopClient({
+        writeReview: async () => {
+          throw new FcopClientError(
+            "fcop refused",
+            "writeReview",
+            new Error("original fcop reason"),
+          );
+        },
+      });
+      const writer = new ReviewWriter({ reviewsDir, fcopClient });
+      // Force a v0.1 schema-allOf violation on the YAML fallback path so
+      // it also throws — the writer must surface a ReviewWriteError whose
+      // cause/message carries BOTH failure reasons for postmortems.
+      const bad: ReviewVerdict = {
+        review_id: "REVIEW-20260509-090-REVIEW-on-TASK-20260509-090-PM-to-DEV",
+        subject_type: "task",
+        subject_ref: "TASK-20260509-090-PM-to-DEV",
+        reviewer_role: "REVIEW",
+        reviewer_agent: "REVIEW-01",
+        decision: "needs_changes",
+        // Deliberately missing required_changes — YAML path will reject.
+        decided_at: "2026-05-09T16:00:00.000Z",
+      };
+      await assert.rejects(
+        () => writer.write(bad, "body"),
+        (err: unknown) =>
+          err instanceof ReviewWriteError &&
+          /requires required_changes/.test(err.message),
+        "ReviewWriteError emitted when YAML fallback also fails",
       );
     });
   });
