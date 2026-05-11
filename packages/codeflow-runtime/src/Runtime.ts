@@ -41,6 +41,7 @@
 
 import { join } from "node:path";
 
+import type { FcopProjectClient } from "./_external/fcop-client.ts";
 import { AgentRegistry } from "./registry/AgentRegistry.ts";
 import type { AgentSdkAdapter } from "./registry/AgentSdkAdapter.ts";
 import { AgentStatusReconciler } from "./registry/AgentStatusReconciler.ts";
@@ -60,6 +61,7 @@ import {
   StateHistoryWriter,
   TaskDispatcher,
   type TaskDispatcherLogger,
+  TaskParser,
 } from "./scheduler/index.ts";
 import { SessionManager } from "./session/SessionManager.ts";
 import { SessionStore } from "./session/SessionStore.ts";
@@ -122,6 +124,23 @@ export interface RuntimeCreateOptions {
   mcpInjectorMode?: "stub" | "live";
   /** Optional logger override forwarded to TaskDispatcher + Bootstrap. */
   logger?: TaskDispatcherLogger;
+  /**
+   * Optional fcop@1.1.0 client (P4 sprint Day 2 — TASK-20260511-009).
+   *
+   * When provided, `Runtime` wires a `TaskParser` instance configured to
+   * delegate to `fcopClient.readTask(filename)` instead of doing
+   * in-process YAML parsing. fcop validates the front-matter against the
+   * official `task.schema` and returns a typed `FcopTask`, which the
+   * parser then shapes back into CodeFlow's existing `ParsedTask`
+   * interface — TaskDispatcher / SessionManager / state-history paths
+   * downstream are untouched.
+   *
+   * When omitted (CODEFLOW_SKIP_FCOP_PROBE=1 path, unit tests, demo),
+   * Runtime keeps the legacy static yaml parser. This preserves backward
+   * compat with all pre-Day-2 callers and the 4 existing TaskParser
+   * tests.
+   */
+  fcopClient?: FcopProjectClient;
 }
 
 export interface RuntimeBootstrapResult {
@@ -255,11 +274,23 @@ export class Runtime {
     // --- scheduler layer ---
     const historyWriter = new StateHistoryWriter();
     const watcher = new InboxWatcher({ dir: opts.inboxDir });
+    // P4 sprint Day 2: when a fcop client is supplied, wire a TaskParser
+    // instance whose `.parse(filepath)` delegates to fcop's typed
+    // `read_task(filename_or_id)`. Otherwise leave dispatcher on the
+    // legacy static parser (back-compat + CODEFLOW_SKIP_FCOP_PROBE=1
+    // escape hatch).
+    const parserOverride = opts.fcopClient
+      ? (() => {
+          const inst = new TaskParser({ fcopClient: opts.fcopClient });
+          return { parse: inst.parse.bind(inst) };
+        })()
+      : undefined;
     const dispatcher = new TaskDispatcher({
       watcher,
       historyWriter,
       registry,
       sessionManager,
+      ...(parserOverride ? { parser: parserOverride } : {}),
       ...(opts.logger ? { logger: opts.logger } : {}),
     });
 

@@ -161,25 +161,105 @@ function buildFcopStub(
 }
 
 /**
- * Task proxy: every field is `Promise<value>` to mimic pythonia auto-proxying.
- * Some fields ship enum-shaped objects so we can exercise `readEnumLike`
- * across all three branches (plain string / {value} / regex fallback).
+ * Task proxy mirroring fcop@1.1.0's actual shape:
+ *   - `Task` top-level: `path / filename / task_id / date / sequence /
+ *     frontmatter (nested) / body / is_archived / mtime`
+ *   - `TaskFrontmatter` nested: `protocol / version / sender / recipient /
+ *     priority / thread_key / subject / references / risk_level / extra`
+ *
+ * Day 2 (TS-FCC-1..9 updated) — Day 1 stubs were a flat shape and went
+ * along with the bug in `readTask(proxy)`. Now stubs match real fcop,
+ * forcing `readTask` to actually walk into `frontmatter`.
+ *
+ * `priority` ships as a python enum (`{value: Promise<'P1'>}`) so we keep
+ * exercising `readEnumLike`'s primary branch.
  */
-function buildTaskProxy(sequence: number): unknown {
+function buildTaskProxy(sequence: number, overrides: {
+  layer?: string;
+  thread_key?: string | null;
+  references?: string[];
+  body?: string;
+} = {}): unknown {
   return {
     task_id: Promise.resolve(`TASK-20260511-00${sequence}`),
     filename: Promise.resolve(`TASK-20260511-00${sequence}-PM-to-DEV.md`),
-    sender: Promise.resolve("PM"),
-    recipient: Promise.resolve("DEV"),
-    // Pretend pythonia returned a python enum: object with `.value`
-    priority: Promise.resolve({ value: Promise.resolve("P1") }),
-    subject: Promise.resolve(`stub task #${sequence}`),
-    body: Promise.resolve("stub body"),
+    body: Promise.resolve(overrides.body ?? "stub body"),
     date: Promise.resolve("20260511"),
     sequence: Promise.resolve(sequence),
     is_archived: Promise.resolve(false),
     path: Promise.resolve(`/tmp/stub/TASK-20260511-00${sequence}.md`),
+    frontmatter: Promise.resolve(
+      buildTaskFrontmatterProxy({
+        sender: "PM",
+        recipient: "DEV",
+        priority: "P1",
+        subject: `stub task #${sequence}`,
+        ...(overrides.thread_key !== undefined
+          ? { thread_key: overrides.thread_key }
+          : {}),
+        ...(overrides.references !== undefined
+          ? { references: overrides.references }
+          : {}),
+        ...(overrides.layer !== undefined ? { layer: overrides.layer } : {}),
+      }),
+    ),
   };
+}
+
+function buildTaskFrontmatterProxy(args: {
+  sender: string;
+  recipient: string;
+  priority: string;
+  subject: string | null;
+  thread_key?: string | null;
+  references?: string[];
+  risk_level?: string;
+  layer?: string;
+}): unknown {
+  // Build the `extra` dict proxy with the same shape pythonia exposes —
+  // it must support `.keys()` returning an iterable of strings + bracket
+  // access for values. We fake all of that with plain objects.
+  const extraDict: Record<string, unknown> = {};
+  if (args.layer !== undefined) extraDict["layer"] = args.layer;
+  return {
+    protocol: Promise.resolve("fcop"),
+    version: Promise.resolve(1),
+    sender: Promise.resolve(args.sender),
+    recipient: Promise.resolve(args.recipient),
+    // pythonia returns Python enum → object with `.value`
+    priority: Promise.resolve({ value: Promise.resolve(args.priority) }),
+    thread_key: Promise.resolve(args.thread_key ?? null),
+    subject: Promise.resolve(args.subject),
+    references: Promise.resolve(args.references ?? []),
+    risk_level: Promise.resolve({
+      value: Promise.resolve(args.risk_level ?? "low"),
+    }),
+    extra: Promise.resolve(buildDictProxy(extraDict)),
+  };
+}
+
+/**
+ * Build a stub dict proxy that mimics pythonia's representation of a
+ * Python `dict[str, object]`: `.keys()` returns a list-like iterable of
+ * strings, and bracket-index access returns the value as a Promise.
+ *
+ * Our `readPlainDict` calls `await dictProxy.keys()` → `builtins.list(...)`
+ * → `builtins.len(...)` → bracket-indexed reads. For test purposes we
+ * compose the same surface using plain JS objects/arrays plus a custom
+ * `builtins.list` stub that just returns its input unchanged (since arrays
+ * already support indexing + length).
+ */
+function buildDictProxy(entries: Record<string, unknown>): unknown {
+  const keys = Object.keys(entries);
+  // Wrap each entry value in `Promise.resolve` because the readPlainDict
+  // helper `await`s every value.
+  const proxy: Record<string, unknown> = {
+    keys: () => Promise.resolve(keys),
+  };
+  for (const k of keys) {
+    proxy[k] = Promise.resolve(entries[k]);
+  }
+  return proxy;
 }
 
 function buildReviewProxy(args: {
@@ -233,13 +313,18 @@ function buildSysStub(): unknown {
   };
 }
 
-/** Stub `builtins` proxy (only `.len()` used by readTaskList / readStringList). */
+/** Stub `builtins` proxy (`.len()` + `.list()` used by readTaskList /
+ *  readStringList / readPlainDict). */
 function buildBuiltinsStub(): unknown {
   return {
     len: async (x: unknown) => {
       if (Array.isArray(x)) return x.length;
       throw new Error("stub builtins.len: only supports arrays");
     },
+    // `builtins.list(view)` in real pythonia materializes a dict_keys view
+    // into a list. Our test stub already hands `.keys()` a JS array, so
+    // `list(...)` is a pass-through.
+    list: async (x: unknown) => x,
   };
 }
 
@@ -412,7 +497,7 @@ describe("FcopProjectClient (P4 sprint Day 1.3 — TASK-20260511-007)", () => {
       subject: "min spec",
       body: "min body",
     };
-    const taskA = await client.writeTask(specMin);
+      const taskA = await client.writeTask(specMin);
     assert.deepEqual(recorder.writeTaskCalls[0], {
       sender: "PM",
       recipient: "DEV",
@@ -421,11 +506,19 @@ describe("FcopProjectClient (P4 sprint Day 1.3 — TASK-20260511-007)", () => {
       body: "min body",
     });
     assert.equal(taskA.task_id, "TASK-20260511-001");
+    // Day 2 (D2-S1 fix): Task uses nested frontmatter shape; verify both
+    // the nested object AND the convenience top-level accessors.
+    assert.equal(taskA.frontmatter.sender, "PM");
+    assert.equal(taskA.frontmatter.recipient, "DEV");
     assert.equal(
-      taskA.priority,
+      taskA.frontmatter.priority,
       "P1",
       "readEnumLike pulls .value from {value: 'P1'} stub (DEV-005 §S10 enum repr)",
     );
+    assert.equal(taskA.sender, "PM", "top-level sender pre-pulled");
+    assert.equal(taskA.recipient, "DEV", "top-level recipient pre-pulled");
+    assert.equal(taskA.priority, "P1", "top-level priority pre-pulled");
+    assert.equal(taskA.body, "stub body");
 
     // Variant B: with optional fields → keys present in kwargs.
     const specFull: WriteTaskSpec = {
@@ -562,37 +655,52 @@ describe("FcopProjectClient (P4 sprint Day 1.3 — TASK-20260511-007)", () => {
       assert.equal(typeof t.priority, "string", "priority decoded to plain string");
       assert.equal(typeof t.sequence, "number");
       assert.equal(typeof t.is_archived, "boolean");
+      assert.equal(
+        typeof t.frontmatter.sender,
+        "string",
+        "nested frontmatter populated (D2-S1 fix)",
+      );
+      assert.deepEqual(t.references, [], "references list materialized");
     }
   });
 
   test("TS-FCC-9: readEnumLike handles plain string / {value} / regex repr fallback", async () => {
-    // We exercise this indirectly via writeTask whose priority comes back
-    // as `{value: 'P1'}` (most common). Additional belt-and-braces: use a
-    // string-priority stub to verify the plain-string branch.
+    // We exercise this indirectly via writeTask. Build a custom fcop stub
+    // where `frontmatter.priority` is a PLAIN STRING (some fcop deployments
+    // serialize frontmatter without enum wrapping); readEnumLike's
+    // plain-string branch should return it as-is.
     const recorder = freshRecorder();
-    const stringPriorityFcop = (recorder: CallRecorder) => ({
+    const stringPriorityFcop = (rec: CallRecorder) => ({
       __version__: Promise.resolve("1.1.0"),
       Project$: async (path: string, kwargs: Record<string, unknown>) => {
-        recorder.projectCalls.push({ path, kwargs });
-        recorder.projectBuilt = true;
+        rec.projectCalls.push({ path, kwargs });
+        rec.projectBuilt = true;
         return {
           is_initialized: async () => false,
           init$: async () => undefined,
           write_task$: async (kw: Record<string, unknown>) => {
-            recorder.writeTaskCalls.push(kw);
-            // priority returned as PLAIN STRING (some fcop fields are non-enum)
+            rec.writeTaskCalls.push(kw);
             return {
               task_id: Promise.resolve("TASK-X-1"),
               filename: Promise.resolve("TASK-X-1.md"),
-              sender: Promise.resolve("PM"),
-              recipient: Promise.resolve("DEV"),
-              priority: Promise.resolve("P3"), // plain string branch
-              subject: Promise.resolve("plain string priority"),
               body: Promise.resolve("..."),
               date: Promise.resolve("20260511"),
               sequence: Promise.resolve(1),
               is_archived: Promise.resolve(false),
               path: Promise.resolve("/tmp/x"),
+              frontmatter: Promise.resolve({
+                protocol: Promise.resolve("fcop"),
+                version: Promise.resolve(1),
+                sender: Promise.resolve("PM"),
+                recipient: Promise.resolve("DEV"),
+                // PLAIN STRING branch — no `.value` wrapper.
+                priority: Promise.resolve("P3"),
+                thread_key: Promise.resolve(null),
+                subject: Promise.resolve("plain string priority"),
+                references: Promise.resolve([]),
+                risk_level: Promise.resolve("low"),
+                extra: Promise.resolve(buildDictProxy({})),
+              }),
             };
           },
         };
@@ -622,7 +730,72 @@ describe("FcopProjectClient (P4 sprint Day 1.3 — TASK-20260511-007)", () => {
     assert.equal(
       task.priority,
       "P3",
-      "readEnumLike returns plain string as-is when proxy already resolved to string",
+      "readEnumLike returns plain string as-is when proxy resolves to string",
     );
+    assert.equal(task.frontmatter.priority, "P3");
+  });
+
+  test("TS-FCC-10 (Day 2): readTask(filenameOrId) forwards positional + walks nested frontmatter + populates `extra.layer`", async () => {
+    // Custom stub: Project$ returns a `read_task` (NOT `read_task$` because
+    // there are no kwargs — it's positional-only) that records the
+    // requested filename_or_id and returns a Task proxy with a CodeFlow-
+    // specific `extra.layer = "worker"` set.
+    const recorder = freshRecorder();
+    const readTaskCalls: string[] = [];
+    const customFcop = () => ({
+      __version__: Promise.resolve("1.1.0"),
+      Project$: async (path: string, kwargs: Record<string, unknown>) => {
+        recorder.projectCalls.push({ path, kwargs });
+        recorder.projectBuilt = true;
+        return {
+          is_initialized: async () => false,
+          init$: async () => undefined,
+          read_task: async (filenameOrId: string) => {
+            readTaskCalls.push(filenameOrId);
+            return buildTaskProxy(7, {
+              layer: "worker",
+              thread_key: "p4-day2",
+              references: ["TASK-20260511-007"],
+              body: "# Day 2 task body\n\nfcop bridge wiring.\n",
+            });
+          },
+        };
+      },
+    });
+    const pythonStub = (async (moduleName: string) => {
+      if (moduleName === "fcop") return customFcop();
+      if (moduleName === "sys") return buildSysStub();
+      if (moduleName === "builtins") return buildBuiltinsStub();
+      throw new Error(`unexpected module: ${moduleName}`);
+    }) as (m: string) => Promise<unknown>;
+    __setPythonForTests(
+      Object.assign(pythonStub, { exit: () => undefined }),
+    );
+
+    const client = await FcopProjectClient.create({
+      projectRoot: "D:/fake/project",
+      ensureInitialized: false,
+    });
+    const task = await client.readTask("TASK-20260511-007-PM-to-DEV.md");
+
+    assert.deepEqual(
+      readTaskCalls,
+      ["TASK-20260511-007-PM-to-DEV.md"],
+      "filename_or_id is forwarded positionally (NOT as kwargs)",
+    );
+    assert.equal(task.task_id, "TASK-20260511-007");
+    assert.equal(task.filename, "TASK-20260511-007-PM-to-DEV.md");
+    assert.equal(task.sender, "PM", "convenience top-level sender populated");
+    assert.equal(task.recipient, "DEV");
+    assert.equal(task.priority, "P1");
+    assert.equal(task.thread_key, "p4-day2");
+    assert.deepEqual(task.references, ["TASK-20260511-007"]);
+    assert.equal(task.frontmatter.sender, "PM", "nested frontmatter accessible");
+    assert.equal(
+      task.frontmatter.extra["layer"],
+      "worker",
+      "TaskFrontmatter.extra dict deserialized — CodeFlow uses this for `layer`",
+    );
+    assert.match(task.body, /Day 2 task body/);
   });
 });

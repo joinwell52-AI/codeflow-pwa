@@ -54,6 +54,7 @@ import {
   assertFcopReady,
   disposeFcopBridge,
   FcopClientError,
+  FcopProjectClient,
 } from "@codeflow/runtime";
 
 import {
@@ -262,12 +263,47 @@ async function main(): Promise<void> {
   const adapterDescription = describeAdapterChoice(cfg.cursor, sdkAdapter);
 
   // ── 6. Construct runtime (bootstrap runs synchronously) ────────────
+  // P4 sprint Day 2: when the fcop probe succeeded, build a
+  // FcopProjectClient bound to the data dir and inject it into Runtime
+  // so TaskDispatcher's parser walks fcop @1.1.0 instead of in-process
+  // yaml. When the probe was skipped or fcop is otherwise unavailable,
+  // omit the client — Runtime then keeps the legacy yaml parser
+  // (back-compat + CODEFLOW_SKIP_FCOP_PROBE=1 escape hatch).
+  //
+  // Note: we pass `workspaceDir: "docs/agents"` to keep CodeFlow's v0.x
+  // task layout (`docs/agents/tasks/`) — TASK-20260511-007 §五 P1-1 +
+  // DEV-005 §S8 escape hatch. `ensureInitialized: false` because fcop
+  // init writes 12+ files and we want full control over when that
+  // happens; the demo / shell startup just READS the existing tree.
+  let fcopClient: FcopProjectClient | undefined;
+  if (fcopReady.status === "ok") {
+    try {
+      fcopClient = await FcopProjectClient.create({
+        projectRoot: process.cwd(),
+        workspaceDir: "docs/agents",
+        ensureInitialized: false,
+      });
+    } catch (err) {
+      // The probe passed but the actual Project construction failed —
+      // this should be rare (e.g. projectRoot points at a place fcop
+      // refuses), but it's not worth crashing the shell. Log a warning
+      // and proceed with the legacy yaml parser.
+      consoleLogger.warn(
+        `[shell] FcopProjectClient.create failed: ${
+          err instanceof Error ? err.message : String(err)
+        } — falling back to in-process yaml parser`,
+      );
+      fcopClient = undefined;
+    }
+  }
+
   const runtime = await Runtime.create({
     sdkAdapter,
     persistDir: dataDir,
     inboxDir,
     skillsDir,
     logger: consoleLogger,
+    ...(fcopClient ? { fcopClient } : {}),
   });
 
   // ── 7. Register default agent kit ──────────────────────────────────
@@ -291,15 +327,20 @@ async function main(): Promise<void> {
   // P4 Day 1.4: surface fcop bridge state in the banner. When the probe
   // skipped (FAKE_PYTHONIA env / probe disabled), show "(skipped)".
   if (fcopReady.status === "ok") {
+    const parserMode = fcopClient
+      ? "TaskParser=fcop"
+      : "TaskParser=yaml fallback (FcopProjectClient.create failed)";
     console.log(
       `fcop bridge    : fcop ${fcopReady.fcopVersion} via pythonia ` +
         `(Python at ${fcopReady.pythonExecutable})`,
     );
+    console.log(`Task parser    : ${parserMode}`);
   } else if (fcopReady.status === "skipped") {
     console.log(`fcop bridge    : (skipped — ${fcopReady.reason})`);
+    console.log(`Task parser    : yaml fallback (no fcop client)`);
   } else {
-    // 'failed' — error already printed by probeFcopBridge before exit.
     console.log(`fcop bridge    : FAILED — see message above`);
+    console.log(`Task parser    : yaml fallback`);
   }
   // MT-1 friendly hint: live adapter without a default model + local
   // listScope = nothing actually wrong yet, but every task drop will

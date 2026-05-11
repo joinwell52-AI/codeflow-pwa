@@ -131,22 +131,82 @@ export type HumanApprovalDecision = "approve" | "reject";
 export type HumanApprovalChannel = "mobile" | "cli" | "web" | "manual_file_edit";
 
 /**
- * Task descriptor returned by `writeTask` / `readTask`. Mirrors `fcop.Task`
- * dataclass fields. **字段名严格匹配 fcop@1.1.0** —— 别在这里加 CodeFlow
- * runtime-only 字段（runtime PCB 状态属 `state.ts` 不在此）。
+ * Task descriptor returned by `writeTask` / `readTask` / `listTasks`.
+ *
+ * **STRUCTURE MATCHES fcop@1.1.0 ACTUAL SHAPE (Day 2 fix)**: fcop's `Task`
+ * dataclass is `{path, filename, task_id, date, sequence, frontmatter,
+ * body, is_archived, mtime}` where governance-meaningful fields like
+ * `sender / recipient / priority / subject / thread_key / references /
+ * risk_level / layer` all live inside the `frontmatter: TaskFrontmatter`
+ * **nested** dataclass.
+ *
+ * Day 1 (TASK-20260511-007) shipped this interface with `sender` etc. as
+ * top-level fields and our test stubs went along — but real fcop Task
+ * objects would return `undefined` on `await task.sender`. Day 2 fix:
+ * mirror fcop's actual structure with a nested `frontmatter` object, and
+ * provide convenience top-level accessors that `readTask()` pre-populates
+ * for callers that don't want to dig through the nested layer.
+ *
+ * `extra` carries any front-matter keys fcop doesn't define schema for
+ * (e.g. CodeFlow's `layer: worker | governance | admin`, status flags,
+ * etc.). fcop.TaskFrontmatter.extra is a `dict[str, object]` in Python.
  */
 export interface FcopTask {
+  // ── fcop.Task top-level fields ─────────────────────────────────────
+  /** `task.task_id` — canonical task id (e.g. "TASK-20260511-007"). */
   task_id: string;
+  /** `task.filename` — basename (e.g. "TASK-20260511-007-PM-to-DEV.md"). */
   filename: string;
+  /** `task.path` — absolute filesystem path as a string. */
+  path: string;
+  /** `task.date` — YYYYMMDD string. */
+  date: string;
+  /** `task.sequence` — sequence number within the date. */
+  sequence: number;
+  /** `task.body` — markdown body AFTER the closing `---`. */
+  body: string;
+  /** `task.is_archived` — true iff fcop has archived the task. */
+  is_archived: boolean;
+  /** `task.frontmatter` — nested governance metadata. */
+  frontmatter: FcopTaskFrontmatter;
+
+  // ── Convenience accessors (pre-pulled from frontmatter for callers) ─
+  /** `task.frontmatter.sender`. */
+  sender: string;
+  /** `task.frontmatter.recipient`. */
+  recipient: string;
+  /** `task.frontmatter.priority.value` (decoded enum). */
+  priority: string;
+  /** `task.frontmatter.subject` (may be null in fcop; we surface ""). */
+  subject: string;
+  /** `task.frontmatter.thread_key` — null if absent. */
+  thread_key: string | null;
+  /** `task.frontmatter.risk_level.value` (decoded enum). */
+  risk_level: string;
+  /** `task.frontmatter.references` (decoded tuple → array). */
+  references: string[];
+}
+
+/**
+ * Mirrors fcop@1.1.0 `TaskFrontmatter` dataclass. `extra` covers anything
+ * outside fcop's schema (e.g. CodeFlow's `layer: worker | governance |
+ * admin`).
+ */
+export interface FcopTaskFrontmatter {
+  protocol: string;
+  version: number;
   sender: string;
   recipient: string;
   priority: string;
+  thread_key: string | null;
   subject: string;
-  body: string;
-  date: string;
-  sequence: number;
-  is_archived: boolean;
-  path: string;
+  references: string[];
+  risk_level: string;
+  /**
+   * Free-form extra fields preserved from the source `---` block.
+   * CodeFlow keeps `layer` here (and historically `status: pending`).
+   */
+  extra: Record<string, unknown>;
 }
 
 /** Review descriptor returned by `writeReview` / `markHumanApproved`. */
@@ -510,6 +570,46 @@ export class FcopProjectClient {
   }
 
   /**
+   * Read a single TASK file via fcop. The argument is a **filename or
+   * task_id** (NOT a filesystem path) — fcop resolves it against the
+   * project's `docs/agents/tasks/` (or whatever `workspace_dir` was
+   * configured at create() time).
+   *
+   * fcop 端 signature（实证）：
+   *   `Project.read_task(filename_or_id: str) -> Task`
+   *
+   * Returns `FcopTask` with both top-level fields (path, body, date,
+   * sequence, is_archived, frontmatter nested) and convenience accessors
+   * (sender, recipient, priority, subject, thread_key, risk_level,
+   * references) pre-pulled from `frontmatter` so callers don't need to
+   * descend.
+   *
+   * Throws `FcopClientError` if the task doesn't exist, the file's
+   * front-matter is malformed (fcop validates), or pythonia fails to
+   * bridge.
+   *
+   * Day 2 (TASK-20260511-009) addition — Day 1 only had an *internal*
+   * `readTask(proxy)` helper used by `writeTask`/`listTasks`; the public
+   * `readTask(filenameOrId)` method was missing. PM TASK-009 §四 assumed
+   * it existed (PM error #11); this Day 2 commit adds it.
+   */
+  async readTask(filenameOrId: string): Promise<FcopTask> {
+    try {
+      const p = this._project as {
+        read_task: (filenameOrId: string) => Promise<unknown>;
+      };
+      const taskProxy = await p.read_task(filenameOrId);
+      return await readTask(taskProxy);
+    } catch (err) {
+      throw new FcopClientError(
+        `project.read_task(${JSON.stringify(filenameOrId)}) failed`,
+        "FcopProjectClient.readTask",
+        err,
+      );
+    }
+  }
+
+  /**
    * List TASK files matching `filter`. Returns materialized `FcopTask[]`.
    *
    * fcop 端 signature：
@@ -656,29 +756,137 @@ async function readTask(proxy: unknown): Promise<FcopTask> {
   const t = proxy as {
     task_id: Promise<string>;
     filename: Promise<string>;
-    sender: Promise<string>;
-    recipient: Promise<string>;
-    priority: Promise<unknown>;
-    subject: Promise<string>;
     body: Promise<string>;
     date: Promise<string>;
     sequence: Promise<number>;
     is_archived: Promise<boolean>;
     path: Promise<unknown>;
+    frontmatter: Promise<unknown>;
   };
+
+  // Read top-level + frontmatter proxy in parallel where possible
+  // (pythonia serializes these anyway, but the awaits read clearer).
+  const frontmatterProxy = await t.frontmatter;
+  const frontmatter = await readTaskFrontmatter(frontmatterProxy);
+
   return {
     task_id: await t.task_id,
     filename: await t.filename,
-    sender: await t.sender,
-    recipient: await t.recipient,
-    priority: await readEnumLike(t.priority),
-    subject: await t.subject,
-    body: await t.body,
+    path: String(await t.path),
     date: await t.date,
     sequence: await t.sequence,
+    body: await t.body,
     is_archived: await t.is_archived,
-    path: String(await t.path),
+    frontmatter,
+    // Pre-populate convenience accessors so callers (TaskParser, etc.)
+    // don't have to know about the nested structure.
+    sender: frontmatter.sender,
+    recipient: frontmatter.recipient,
+    priority: frontmatter.priority,
+    subject: frontmatter.subject,
+    thread_key: frontmatter.thread_key,
+    risk_level: frontmatter.risk_level,
+    references: frontmatter.references,
   };
+}
+
+async function readTaskFrontmatter(proxy: unknown): Promise<FcopTaskFrontmatter> {
+  if (proxy === null || proxy === undefined) {
+    // Defensive — fcop always populates frontmatter, but a permissive
+    // shape lets us return a usable object when stubs simulate edge cases.
+    return {
+      protocol: "fcop",
+      version: 1,
+      sender: "",
+      recipient: "",
+      priority: "",
+      thread_key: null,
+      subject: "",
+      references: [],
+      risk_level: "",
+      extra: {},
+    };
+  }
+  const f = proxy as {
+    protocol: Promise<string>;
+    version: Promise<number>;
+    sender: Promise<string>;
+    recipient: Promise<string>;
+    priority: Promise<unknown>;
+    thread_key: Promise<string | null>;
+    subject: Promise<string | null>;
+    references: Promise<unknown>;
+    risk_level: Promise<unknown>;
+    extra: Promise<unknown>;
+  };
+  const subjectRaw = await f.subject;
+  return {
+    protocol: await f.protocol,
+    version: await f.version,
+    sender: await f.sender,
+    recipient: await f.recipient,
+    priority: await readEnumLike(f.priority),
+    thread_key: await f.thread_key,
+    subject: subjectRaw ?? "",
+    references: await readStringList(f.references),
+    risk_level: await readEnumLike(f.risk_level),
+    extra: await readPlainDict(f.extra),
+  };
+}
+
+/**
+ * Read a Python `dict[str, object]` proxy into a JS `Record<string, unknown>`.
+ * Best-effort: we only support primitives + nested arrays/dicts of primitives.
+ * Anything weirder gets `String(...)`'d. fcop's `TaskFrontmatter.extra` is
+ * usually small (a few CodeFlow-specific keys like `layer`, `status`).
+ */
+async function readPlainDict(
+  proxy: Promise<unknown> | unknown,
+): Promise<Record<string, unknown>> {
+  const resolved = await proxy;
+  if (resolved === null || resolved === undefined) return {};
+  const python = await getPython();
+  const builtins = (await python("builtins")) as {
+    list: (x: unknown) => Promise<unknown>;
+  };
+  // dict.keys() comes back as a `dict_keys` view; wrap in `list(...)` for
+  // index access.
+  try {
+    const dictProxy = resolved as {
+      keys: () => Promise<unknown>;
+      [key: string]: unknown;
+    };
+    const keysView = await dictProxy.keys();
+    const keysList = await builtins.list(keysView);
+    const builtinsLen = (await python("builtins")) as {
+      len: (x: unknown) => Promise<number>;
+    };
+    const n = await builtinsLen.len(keysList);
+    const out: Record<string, unknown> = {};
+    const keysArr = keysList as { [idx: number]: Promise<string> | undefined };
+    for (let i = 0; i < n; i++) {
+      const k = await keysArr[i];
+      if (typeof k !== "string") continue;
+      // `dict[key]` in pythonia: use bracket-index on the proxy
+      const v = await (dictProxy as { [key: string]: Promise<unknown> })[k];
+      out[k] = await coerceDictValue(v);
+    }
+    return out;
+  } catch {
+    // If the proxy doesn't behave like a dict, return empty rather than
+    // throw — frontmatter.extra is an optional surface.
+    return {};
+  }
+}
+
+async function coerceDictValue(v: unknown): Promise<unknown> {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+    return v;
+  }
+  // Anything else: stringify for safety. CodeFlow's `extra` usage is
+  // string/number/boolean only in practice.
+  return String(v);
 }
 
 async function readReview(proxy: unknown): Promise<FcopReview> {
